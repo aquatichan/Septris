@@ -1,0 +1,13 @@
+{
+ "k": 5,
+ "seed": 1,
+ "beds": 20,
+ "patients": 3051,
+ "eligible_septic": 238,
+ "days": 249.3,
+ "reviews": 2477,
+ "sb_caught6": 73,
+ "random_caught6": 31,
+ "sb_false": 2278,
+ "random_false": 2390
+}

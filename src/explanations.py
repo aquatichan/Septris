@@ -75,6 +75,19 @@ def phrase(feature: str, X_row, base: dict, row: int) -> str | None:
     return None
 
 
+def reasons(X_row, contrib: np.ndarray, columns: list[str], base: dict, row: int, top: int = 3) -> list[str]:
+    """Up to `top` plain-language reasons that raised the score."""
+    order = np.argsort(-contrib)
+    parts = []
+    for i in order:
+        if contrib[i] <= 0 or len(parts) == top:
+            break
+        p = phrase(columns[i], X_row, base, row)
+        if p and p not in parts:
+            parts.append(p)
+    return parts
+
+
 def why_now(X_row, contrib: np.ndarray, columns: list[str], base: dict, row: int, top: int = 3) -> str:
     order = np.argsort(-contrib)
     parts = []

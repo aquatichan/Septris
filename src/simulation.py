@@ -123,9 +123,10 @@ def sweep(cohort: Cohort, policies: list[str], k: int, seed: int,
     free = [(0, b) for b in range(BEDS)]
     heapq.heapify(free)
     admit = np.empty(len(run_patients), np.int64)
+    bed = np.empty(len(run_patients), np.int64)
     for i, p in enumerate(run_patients):
         t, b = heapq.heappop(free)
-        admit[i] = t
+        admit[i], bed[i] = t, b
         heapq.heappush(free, (t + int(nh[p]), b))
     end = int(max(t for t, _ in free))
     stops = admit + nh[run_patients]
@@ -178,4 +179,4 @@ def sweep(cohort: Cohort, policies: list[str], k: int, seed: int,
             "queue_pos": rev_pos, "cohort_idx": run_patients[rev_pos],
             "record_hour": rev_h, "unit_hour": admit[rev_pos] + rev_h,
         })
-    return out, logs, {"run_patients": run_patients, "admit": admit, "end": end}
+    return out, logs, {"run_patients": run_patients, "admit": admit, "bed": bed, "end": end}

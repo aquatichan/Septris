@@ -118,6 +118,15 @@ make reproduce                          # train, evaluate, secondary, app artifa
 python app/app.py                       # http://127.0.0.1:7860 (add --share for a public link)
 ```
 
+The app has three tabs. **Replay** steps through one simulated run of the
+Hospital A test patients at 5 chart checks per shift (the budget the team
+chose for the demo; 3 per shift stays the pre-registered primary result):
+which bed SignalBridge says to open and why, what actually happened, what
+random checking opened at the same moment, and a running scoreboard.
+Buttons jump to a good catch, a miss or a false alarm. **Results** shows
+every test patient at both hospitals for 1, 2, 3 or 5 checks per shift.
+**How it works** is a plain-language FAQ.
+
 Or open [notebooks/reproduce.ipynb](notebooks/reproduce.ipynb) in Colab and
 run all cells. Runtime: about 17 minutes for `make reproduce` on a 2-core,
 8 GB machine, plus the download. A fresh clone run with `make reproduce`
@@ -128,7 +137,7 @@ result. Exact package versions: `requirements-lock.txt`.
 ```
 src/        data_io, labels, splits, audit, features, simulation, utility, explanations
 scripts/    01_audit → 02_train → 03_evaluate → 04_secondary → 05_app_artifacts → 06_report
-tests/      leakage, splits, labels, slots, alert classes, utility, explanations (19 tests)
+tests/      leakage, splits, labels, slots, alert classes, utility, explanations (23 tests)
 app/        Gradio app and its precomputed artifacts
 docs/       results, pre-registration, data provenance
 vendor/     official PhysioNet 2019 scoring code (BSD-2)
