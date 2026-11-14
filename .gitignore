@@ -1,0 +1,18 @@
+# Raw and processed PhysioNet data stay local (download with scripts/setup_data.py)
+data/raw/
+data/processed/
+*.psv
+*.parquet
+
+# Large or regenerable outputs
+outputs/*.parquet
+outputs/predictions/
+
+# Python / notebooks
+__pycache__/
+*.pyc
+.pytest_cache/
+.ipynb_checkpoints/
+.venv/
+venv/
+.DS_Store
