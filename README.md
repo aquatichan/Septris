@@ -98,6 +98,17 @@ Full results: **[docs/results.md](docs/results.md)**. Pre-registration
    replicates (resample patients, new admission order, all policies on the
    same replicate); paired differences.
 
+## Familiarity guard
+
+SignalBridge now fits a transparent distribution-shift guard separately for
+each source hospital. It learns central feature ranges from source training
+patients and freezes its abstention threshold on source validation patients.
+At deployment it labels a patient record **Within validated feature range** or
+**Unfamiliar data pattern**. The guard never changes the preregistered model
+score or suppresses a human review; it makes uncertainty visible so a
+clinician does not mistake a transferred score for a guarantee. The
+reproducible report is written to `outputs/familiarity_report.json`.
+
 ## Run it
 
 ```bash
