@@ -1,0 +1,83 @@
+{
+  "architecture": {
+    "name": "masked temporal GRU",
+    "hidden": 64,
+    "layers": 2,
+    "inputs": "normalized current values, observation masks, log hours since measurement, age, sex"
+  },
+  "device": "cpu",
+  "models": {
+    "A": {
+      "best_val_pr_auc": 0.11740779812119849,
+      "history": [
+        {
+          "epoch": 1,
+          "train_loss": 1.3078234990828492,
+          "val_pr_auc": 0.07653202951541305,
+          "val_auroc": 0.7483188541153516
+        },
+        {
+          "epoch": 2,
+          "train_loss": 1.2668031993374396,
+          "val_pr_auc": 0.10922064175220864,
+          "val_auroc": 0.7986815605047871
+        },
+        {
+          "epoch": 3,
+          "train_loss": 1.2634934919854899,
+          "val_pr_auc": 0.10863270677347177,
+          "val_auroc": 0.7872313130106725
+        },
+        {
+          "epoch": 4,
+          "train_loss": 1.2407022643959924,
+          "val_pr_auc": 0.10621207244344787,
+          "val_auroc": 0.7845854714904825
+        },
+        {
+          "epoch": 5,
+          "train_loss": 1.2049960023064292,
+          "val_pr_auc": 0.11258876519126063,
+          "val_auroc": 0.7870785632020699
+        },
+        {
+          "epoch": 6,
+          "train_loss": 1.223600857537449,
+          "val_pr_auc": 0.11424541483882968,
+          "val_auroc": 0.8008414777564491
+        },
+        {
+          "epoch": 7,
+          "train_loss": 1.2221563939339994,
+          "val_pr_auc": 0.11500227113856377,
+          "val_auroc": 0.8014227409586083
+        },
+        {
+          "epoch": 8,
+          "train_loss": 1.2038162998059827,
+          "val_pr_auc": 0.11740779812119849,
+          "val_auroc": 0.7956930559185428
+        },
+        {
+          "epoch": 9,
+          "train_loss": 1.1814449608995674,
+          "val_pr_auc": 0.11375064298698233,
+          "val_auroc": 0.7810311013617139
+        },
+        {
+          "epoch": 10,
+          "train_loss": 1.1898225948926102,
+          "val_pr_auc": 0.11025727963360274,
+          "val_auroc": 0.7774331345153441
+        },
+        {
+          "epoch": 11,
+          "train_loss": 1.170021567782492,
+          "val_pr_auc": 0.10698916483527743,
+          "val_auroc": 0.7795459499415509
+        }
+      ],
+      "rows": 1552210
+    }
+  }
+}
