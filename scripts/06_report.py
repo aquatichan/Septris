@@ -12,9 +12,9 @@ import pandas as pd  # noqa: E402
 RES = ROOT / "outputs/results"
 NAMES = {"random": "Random review (same budget)", "sirs": "SIRS ranking", "news": "NEWS-inspired score",
          "lr": "Logistic regression (current values)", "lgbm_values": "LightGBM, values only",
-         "lgbm_missing": "LightGBM, measurement pattern only", "lgbm_combined": "**SignalBridge** (LightGBM, combined)",
+         "lgbm_missing": "LightGBM, measurement pattern only", "lgbm_combined": "**SignalBridge** (LightGBM, combined)", "temporal_gru": "Masked temporal GRU (exploratory)",
          "lgbm_shortcuts": "LightGBM + shortcut fields (never deployed)"}
-ORDER = ["random", "sirs", "news", "lr", "lgbm_values", "lgbm_missing", "lgbm_combined", "lgbm_shortcuts"]
+ORDER = ["random", "sirs", "news", "lr", "lgbm_values", "lgbm_missing", "lgbm_combined", "temporal_gru", "lgbm_shortcuts"]
 
 
 def pct(v, lo=None, hi=None):
