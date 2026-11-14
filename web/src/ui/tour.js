@@ -11,23 +11,23 @@ export function tourSteps(data, slot) {
     },
     {
       title: "Septris ranks every bed",
-      text: `Septris reads each bed's vital signs, lab results and which tests were done, using only what has been recorded up to ${s.clock}. The ring on the floor and the bedside monitor show each bed's risk (0 to 100). Grey beds were reviewed in the last 12 hours, so they're skipped.`,
+      text: `Septris reads each bed's vital signs, lab results and which tests were done, using only what has been recorded up to ${s.clock}. The ring on the floor and the bedside monitor show each bed's risk: red is high, yellow is medium, green is low. Grey beds were reviewed in the last 12 hours, so they're skipped.`,
       apply: (go) => go({ showKey: false, camera: "overview" }),
     },
     {
       title: `It points to Bed ${s.bed}`,
       text: `Bed ${s.bed} is first in line (the blue light). The panel on the right shows what stood out in its chart, so the nurse knows where to look. It's a pointer, not a diagnosis: the nurse decides.`,
-      apply: (go) => go({ showKey: false, camera: s.bed, tab: "review" }),
+      apply: (go) => go({ showKey: false, camera: s.bed, tab: "priority" }),
     },
     {
-      title: "What really happened",
-      text: "These are real patients from past hospital records, so we already know how each stay turned out. That's our answer key. Septris never saw it. Red rings mark beds that developed sepsis within 12 hours.",
-      apply: (go) => go({ showKey: true, camera: s.bed, tab: "bed", selectedBed: s.bed }),
+      title: "Was it right?",
+      text: `These are real patients from past hospital records, so we can check each pick afterwards. Here the record shows sepsis ${Math.round(s.lead_hours)} hours after this review: Septris flagged Bed ${s.bed} early enough to act. Septris itself never sees outcomes. “Show outcomes” at the top turns this on and off.`,
+      apply: (go) => go({ showKey: true, camera: s.bed, tab: "patient", selectedBed: s.bed }),
     },
     {
-      title: "Now you drive",
-      text: "Click any bed to open its chart. Use the review buttons at the top to move through the shift, or try the example buttons. You can also type or say commands like “show bed 6”, “next review” or “show me a miss”.",
-      apply: (go) => go({ showKey: true, camera: "overview", tab: "review" }),
+      title: "Explore",
+      text: "Click any bed for its full patient card. The Queue tab lists all 20 beds in priority order, and Results and How it works explain the evidence. Use the review buttons at the top to move through the shift. You can also type or say commands like “show bed 6”, “next review” or “show me a miss”.",
+      apply: (go) => go({ showKey: true, camera: "overview", tab: "priority" }),
     },
   ];
 }

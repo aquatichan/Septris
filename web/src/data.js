@@ -34,16 +34,16 @@ export function ordinal(n) {
 
 // Plain-language verdicts for a review class (known only in hindsight).
 export const VERDICT = {
-  early6: { icon: "✓", head: "Caught in time", tone: "good" },
-  early: { icon: "•", head: "Caught, but with little warning", tone: "warn" },
-  late: { icon: "!", head: "Too late", tone: "bad" },
-  false: { icon: "○", head: "False alarm: this patient turned out fine", tone: "grey" },
-  uncertain: { icon: "–", head: "Doesn't count", tone: "grey" },
+  early6: { icon: "✓", head: "Sepsis accurately predicted", tone: "good" },
+  early: { icon: "•", head: "Sepsis predicted, but with little warning", tone: "warn" },
+  late: { icon: "!", head: "Flagged too late", tone: "bad" },
+  false: { icon: "○", head: "False alarm: no sepsis followed", tone: "grey" },
+  uncertain: { icon: "–", head: "Not scored", tone: "grey" },
 };
 
 export function whatHappened(cls, lead, bed) {
-  if (cls === "early6") return `Bed ${bed} developed sepsis ${Math.round(lead)} hours after this review. That's enough warning to act early.`;
-  if (cls === "early") return `Bed ${bed} developed sepsis ${Math.round(lead)} hours after this review: before it happened, but with less than the 6 hours of warning we aim for.`;
+  if (cls === "early6") return `Sepsis was recorded ${Math.round(lead)} hours after this review, inside the 6–12 hour early-warning window.`;
+  if (cls === "early") return `Sepsis was recorded ${Math.round(lead)} hours after this review: ahead of time, but with less than the 6 hours of warning we aim for.`;
   if (cls === "late") {
     const ago = -lead;
     return `Bed ${bed} already had sepsis when it was reviewed (recorded ${ago === 0 ? "in the same hour" : `${Math.round(ago)} hours earlier`}).`;

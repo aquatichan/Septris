@@ -10,7 +10,7 @@ export const state = {
   showKey: true,       // show the answer key (what really happened)
   narrate: false,      // read picks aloud
   playing: false,      // auto-advance through reviews
-  tab: "review",       // right panel tab
+  tab: "priority",     // right panel tab
   tourStep: null,      // null when the tour is closed
 };
 

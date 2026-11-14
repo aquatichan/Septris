@@ -61,6 +61,10 @@ def main():
             "risk": [None if pd.isna(v) else int(round(v)) for v in t.percentile],
             "hr": [None if pd.isna(v) else int(round(v)) for v in t.HR],
             "map": [None if pd.isna(v) else int(round(v)) for v in t.MAP],
+            "resp": [None if pd.isna(v) else int(round(v)) for v in t.Resp],
+            "temp": [None if pd.isna(v) else round(float(v), 1) for v in t.Temp],
+            "lactate": [[int(h), round(float(v), 1)] for h, v in zip(t.hour, t.Lactate) if not pd.isna(v)],
+            "wbc": [[int(h), round(float(v), 1)] for h, v in zip(t.hour, t.WBC) if not pd.isna(v)],
             "reviews": [int(h) for h in rev_by.get(r.patient_id, [])],
         })
 
@@ -88,7 +92,17 @@ def main():
                             "sirs": pol(T, "sirs", k), "random": pol(T, "random", k)} for T in "AB"}
                for k in (1, 2, 3, 5)}
 
+    hm = pd.read_csv(ART / "hourly_metrics.csv")
+    ut = pd.read_csv(ART / "utility_scores.csv")
+    names = {"blend": "septris", "lgbm_combined": "lightgbm", "temporal_gru": "gru"}
+    quality = {}
+    for m, key in names.items():
+        for r in hm[hm.model == m].itertuples():
+            quality.setdefault(f"{r.train}>{r.test}", {})[key] = {"auroc": round(r.auroc, 3)}
+        for r in ut[ut.model == m].itertuples():
+            quality[f"{r.train}>{r.test}"][key]["utility"] = round(r.test_utility, 3)
     out = {
+        "quality": quality,
         "meta": {k: demo[k] for k in ("k", "beds", "patients", "eligible_septic", "days", "policy_label",
                                       "model_text", "kind")},
         "slots": table(slots, ["unit_hour", "day", "clock", "shift_name", "shift", "check", "bed", "p",

@@ -271,10 +271,8 @@ export function createBeds(world, onSelect) {
       else if (r.picked) { color = COLOR.pick; state = "pick"; }
       else if (r.snoozed) { color = COLOR.snooze; state = "snooze"; }
       else { color = r.tier === 2 ? COLOR.high : r.tier === 1 ? COLOR.med : COLOR.low; state = "rank"; }
-      const soon = r && st.showKey && r.hours_to_sepsis != null && r.hours_to_sepsis > 0 && r.hours_to_sepsis <= 12;
-      if (soon && state !== "pick") state = "warnKey";
       b.state = state;
-      b.ringMat.color.copy(soon && state !== "pick" ? COLOR.high : color).multiplyScalar(state === "snooze" || state === "empty" ? 1 : GLOW);
+      b.ringMat.color.copy(color).multiplyScalar(state === "snooze" || state === "empty" ? 1 : GLOW);
       b.ringMat.opacity = state === "snooze" || state === "empty" ? 0.35 : 0.85;
       b.ring.scale.setScalar(1);
       b.padMat.color.copy(color);
@@ -291,12 +289,13 @@ export function createBeds(world, onSelect) {
       if (st.selectedBed === bed) cls.push("sel");
       b.el.className = cls.join(" ");
       let line = "empty";
-      if (r) line = r.picked ? "Septris's pick" : r.snoozed ? `reviewed ${r.hours_since_check} h ago` : `${ordinal(r.rank)} in line`;
+      if (r) line = r.picked ? "review now" : r.snoozed ? `reviewed ${r.hours_since_check} h ago` : `${ordinal(r.rank)} in line · risk ${r.percentile}`;
       let extra = "";
-      if (r && st.showKey) {
-        if (pat.group === "uncertain_onset") extra = "<small class='warn'>septic on arrival</small>";
-        else if (soon) extra = `<small class='warn'>⚠ <span class='long'>sepsis in </span>${Math.round(r.hours_to_sepsis)} h</small>`;
-        else if (r.hours_to_sepsis != null && r.hours_to_sepsis <= 0) extra = "<small class='warn'>already septic</small>";
+      if (r && r.picked && st.showKey) {
+        const c = slotRow.review_class, lead = Math.round(slotRow.lead_hours ?? 0);
+        if (c === "early6" || c === "early") extra = `<small class='ok'>✓ <span class='long'>sepsis predicted </span>${lead} h early</small>`;
+        else if (c === "false") extra = "<small class='line'>false alarm</small>";
+        else if (c === "late") extra = "<small class='line'>flagged too late</small>";
       }
       if (bed === missBed) extra += "<small class='warn'>missed</small>";
       b.el.innerHTML = `<span class='long'>Bed </span>${bed}<small class='line'>${line}</small>${extra}`;

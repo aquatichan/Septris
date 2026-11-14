@@ -4,7 +4,7 @@
 
 const C = { risk: "#4fb3ff", hr: "#cfe0e4", map: "#f5b84b", now: "#e7f0f2", onset: "#ff6b5e", win: "#3ccf8e", grid: "#2a3f47", muted: "#8fa6ad" };
 
-export function drawChart(canvas, patient, now) {
+export function drawChart(canvas, patient, now, showOutcome = true) {
   const dpr = Math.min(window.devicePixelRatio || 1, 2);
   const W = canvas.clientWidth, H = canvas.clientHeight;
   canvas.width = W * dpr;
@@ -14,9 +14,9 @@ export function drawChart(canvas, patient, now) {
   g.clearRect(0, 0, W, H);
 
   const n = patient.risk.length;
-  const onset = patient.onset;
+  const onset = showOutcome ? patient.onset : null;
   const x0 = Math.max(0, now - 48);
-  const x1 = Math.min(n - 1, Math.max(now, onset ?? 0) + 8);
+  const x1 = showOutcome ? Math.min(n - 1, Math.max(now, onset ?? 0) + 8) : now;
   const L = 34, R = W - 8;
   const X = (h) => L + ((h - x0) / Math.max(1, x1 - x0)) * (R - L);
   const panels = [
@@ -30,7 +30,7 @@ export function drawChart(canvas, patient, now) {
     const Y = (v) => p.top + p.h - ((v - p.lo) / (p.hi - p.lo)) * p.h;
     // future shading and the caught-in-time window
     g.fillStyle = "#ffffff0d";
-    g.fillRect(X(now + 0.5), p.top, R - X(now + 0.5), p.h);
+    if (showOutcome) g.fillRect(X(now + 0.5), p.top, R - X(now + 0.5), p.h);
     if (onset != null && onset - 6 > x0) {
       g.fillStyle = "#3ccf8e22";
       g.fillRect(X(Math.max(x0, onset - 12)), p.top, X(onset - 6) - X(Math.max(x0, onset - 12)), p.h);
@@ -58,7 +58,7 @@ export function drawChart(canvas, patient, now) {
     if (p.key === "risk") {
       g.fillStyle = C.risk;
       for (const h of patient.reviews) {
-        if (h < x0 || h > x1) continue;
+        if (h < x0 || h > x1 || (!showOutcome && h > now)) continue;
         const x = X(h), y = Y(vals[h] ?? 0) - 6;
         g.beginPath();
         g.moveTo(x - 6, y - 9); g.lineTo(x + 6, y - 9); g.lineTo(x, y);
@@ -76,7 +76,9 @@ export function drawChart(canvas, patient, now) {
     }
   }
   g.fillStyle = C.now;
-  g.fillText("now", X(now) + 3, 11);
+  g.textAlign = X(now) > R - 30 ? "right" : "left";
+  g.fillText("now", X(now) + (X(now) > R - 30 ? -4 : 3), 11);
+  g.textAlign = "left";
   if (onset != null && onset <= x1) {
     g.fillStyle = C.onset;
     const right = X(onset) > R - 50;
@@ -90,11 +92,13 @@ export function drawChart(canvas, patient, now) {
   g.fillText(`hour ${x1}`, R, H - 1);
 }
 
-export const chartLegend = `
+export const chartLegend = (showOutcome) => `
 <div class="legend">
   <span><i style="background:${C.risk}"></i>Septris risk</span>
-  <span>▼ reviewed</span>
-  <span><i style="background:#ffffff33"></i>future (hidden from Septris)</span>
-  <span><i style="background:#3ccf8e66"></i>caught-in-time window</span>
-  <span><i style="background:${C.onset}"></i>sepsis recorded</span>
+  <span><i style="background:${C.hr}"></i>heart rate</span>
+  <span><i style="background:${C.map}"></i>blood pressure</span>
+  <span>▼ chart reviewed</span>
+  ${showOutcome ? `<span><i style="background:#ffffff33"></i>after this point (from the record)</span>
+  <span><i style="background:#3ccf8e66"></i>6–12 h before sepsis</span>
+  <span><i style="background:${C.onset}"></i>sepsis recorded</span>` : ""}
 </div>`;

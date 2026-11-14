@@ -26,17 +26,17 @@
   <header id="hud" class="hud">
     <div class="brand">
       <span class="brand-name">Septris</span>
-      <span class="brand-tag">which chart to review next</span>
+      <span class="brand-tag">sepsis review priority for the ICU</span>
     </div>
     <div class="clock" id="clock" aria-live="polite"></div>
-    <nav class="timebar" aria-label="Move through the replay">
+    <nav class="timebar" aria-label="Move through time">
       <button id="prevShift" class="btn ghost" title="Previous shift">◀ Shift</button>
       <div id="reviewChips" class="chips" role="group" aria-label="This shift's reviews"></div>
       <button id="nextShift" class="btn ghost" title="Next shift">Shift ▶</button>
       <button id="play" class="btn" title="Play through reviews">▶ Play</button>
     </nav>
     <div class="toggles">
-      <label class="switch"><input type="checkbox" id="showKey" checked><span>Answer key</span></label>
+      <label class="switch"><input type="checkbox" id="showKey" checked><span>Show outcomes</span></label>
       <label class="switch"><input type="checkbox" id="narrate"><span>Read aloud</span></label>
       <button id="overview" class="btn ghost" title="Zoom out to the whole unit">Overview</button>
       <button id="startTour" class="btn ghost">Tour</button>
@@ -45,29 +45,42 @@
 
   <aside id="examples" class="examples" aria-label="Jump to an example">
     <div class="eyebrow">Jump to an example</div>
-    <button class="btn ex" data-kind="good"><i class="dot good"></i>Septris catches sepsis in time</button>
-    <button class="btn ex" data-kind="miss"><i class="dot miss"></i>Septris misses a sepsis patient</button>
-    <button class="btn ex" data-kind="false"><i class="dot false"></i>False alarm: patient was fine</button>
+    <button class="btn ex" data-kind="good"><i class="dot good"></i>Sepsis accurately predicted</button>
+    <button class="btn ex" data-kind="miss"><i class="dot miss"></i>A sepsis patient it missed</button>
+    <button class="btn ex" data-kind="false"><i class="dot false"></i>A false alarm</button>
+  </aside>
+
+  <aside id="legend" class="legendbox" aria-label="Colour key">
+    <div class="eyebrow">Colour key</div>
+    <div><i class="sw pick"></i>Review now (Septris's pick)</div>
+    <div><i class="sw high"></i>High risk</div>
+    <div><i class="sw med"></i>Medium risk</div>
+    <div><i class="sw low"></i>Low risk</div>
+    <div><i class="sw snooze"></i>Reviewed in the last 12 hours</div>
   </aside>
 
   <aside id="panel" class="panel" aria-label="Details">
     <div class="tabs" role="tablist">
-      <button role="tab" data-tab="review" class="tab on">This review</button>
-      <button role="tab" data-tab="bed" class="tab">Bed chart</button>
+      <button role="tab" data-tab="priority" class="tab on">Priority</button>
+      <button role="tab" data-tab="patient" class="tab">Patient</button>
+      <button role="tab" data-tab="queue" class="tab">Queue</button>
       <button role="tab" data-tab="results" class="tab">Results</button>
-      <button role="tab" data-tab="about" class="tab">About</button>
+      <button role="tab" data-tab="model" class="tab">How it works</button>
+      <button role="tab" data-tab="faq" class="tab">FAQ</button>
     </div>
-    <div class="tabbody" id="tab-review"></div>
-    <div class="tabbody" id="tab-bed" hidden></div>
+    <div class="tabbody" id="tab-priority"></div>
+    <div class="tabbody" id="tab-patient" hidden></div>
+    <div class="tabbody" id="tab-queue" hidden></div>
     <div class="tabbody" id="tab-results" hidden></div>
-    <div class="tabbody" id="tab-about" hidden></div>
+    <div class="tabbody" id="tab-model" hidden></div>
+    <div class="tabbody" id="tab-faq" hidden></div>
   </aside>
 
   <form id="command" class="command" autocomplete="off">
     <button type="button" id="mic" class="mic" title="Speak a command" aria-label="Speak a command">
       <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M12 15a3 3 0 0 0 3-3V6a3 3 0 1 0-6 0v6a3 3 0 0 0 3 3Zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.92V21h2v-2.08A7 7 0 0 0 19 12h-2Z"/></svg>
     </button>
-    <input id="cmdInput" type="text" placeholder="Try “show bed 6”, “next review”, “show me a miss”, “why?”" aria-label="Type a command">
+    <input id="cmdInput" type="text" placeholder="Try “show bed 6”, “next review”, “queue”, “why?”" aria-label="Type a command">
     <div id="cmdEcho" class="cmd-echo" aria-live="polite"></div>
   </form>
 
