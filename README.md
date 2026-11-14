@@ -102,7 +102,7 @@ trained on death: **[docs/challenge2012_check.md](docs/challenge2012_check.md)**
    GRU that consumes value, observation-mask and measurement-gap sequences.
    The GRU is exploratory and must improve the same fixed-capacity,
    cross-hospital review outcome before it can be considered further. Selection
-   by home validation PR-AUC.
+   by home validation PR-AUC. A separate exploratory blend uses patient-disjoint source-validation halves: one to calibrate the two score scales and one to choose a fixed mixture under the three-review simulation.
 6. **Review-slot simulation:** every test patient passes once through a
    20-bed unit in a shuffled admission order; each 12-hour shift has 3 slots
    (hours 0, 4, 8); each policy picks one patient per slot, skipping anyone
@@ -117,7 +117,7 @@ trained on death: **[docs/challenge2012_check.md](docs/challenge2012_check.md)**
 ```bash
 pip install -r requirements.txt
 python scripts/01_audit.py --download   # PhysioNet files, audit, splits (~15 min)
-make reproduce                          # train, temporal GRU, evaluate, secondary, app artifacts, tests
+make reproduce                          # train, temporal GRU, validated blend, evaluate, secondary, app artifacts, tests
 python app/app.py                       # http://127.0.0.1:7860 (add --share for a public link)
 ```
 
@@ -130,7 +130,7 @@ result. The non-PyTorch stack is pinned in `requirements-lock.txt`; PyTorch is p
 
 ```
 src/        data_io, labels, splits, audit, features, simulation, utility, explanations
-scripts/    01_audit → 02_train → 08_temporal_gru → 03_evaluate → 04_secondary → 05_app_artifacts → 06_report
+scripts/    01_audit → 02_train → 08_temporal_gru → 09_validated_ensemble → 03_evaluate → 04_secondary → 05_app_artifacts → 06_report
 tests/      leakage, splits, labels, slots, alert classes, utility, explanations (19 tests)
 app/        Gradio app and its precomputed artifacts
 docs/       results, pre-registration, data provenance
