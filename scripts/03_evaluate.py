@@ -25,7 +25,7 @@ from src.labels import ELIGIBLE  # noqa: E402
 
 RES = ROOT / "outputs/results"
 SC = ROOT / "data/processed/scores"
-MODELS = ["lr", "lgbm_values", "lgbm_missing", "lgbm_combined", "temporal_gru", "lgbm_shortcuts"]
+MODELS = ["lr", "lgbm_values", "lgbm_missing", "lgbm_combined", "temporal_gru", "lgbm_gru_blend", "lgbm_shortcuts"]
 SHARED = ["sirs", "news"]
 TIER1_K_POLICIES = ["random", "sirs", "{H}:lgbm_combined"]
 METRICS = ["caught6", "caught_any", "caught3", "missed", "median_lead",
@@ -216,6 +216,12 @@ def summarize(pmean, boot):
                     f"{T}:temporal_gru", f"{T}:lgbm_combined")
                 add(T, k, "temporal GRU minus combined (external)",
                     f"{other}:temporal_gru", f"{other}:lgbm_combined")
+                add(T, k, "validated blend minus combined (home)",
+                    f"{T}:lgbm_gru_blend", f"{T}:lgbm_combined")
+                add(T, k, "validated blend minus GRU (home)",
+                    f"{T}:lgbm_gru_blend", f"{T}:temporal_gru")
+                add(T, k, "validated blend minus combined (external)",
+                    f"{other}:lgbm_gru_blend", f"{other}:lgbm_combined")
                 add(T, k, "shortcuts minus combined (home)", f"{T}:lgbm_shortcuts", f"{T}:lgbm_combined")
                 pmf = pmean[pmean.subgroup == "all"].pivot_table(index=["test", "k"], columns="policy",
                                                                  values="false_per_shift")
