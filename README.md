@@ -112,6 +112,15 @@ trained on death: **[docs/challenge2012_check.md](docs/challenge2012_check.md)**
    replicates (resample patients, new admission order, all policies on the
    same replicate); paired differences.
 
+## Clinical decision-support replay API
+
+A separate FastAPI backend turns frozen, locally generated artifacts into a replayable clinical-review service. It validates timestamped hourly observations, rejects out-of-order data, scores only from a trusted local model bundle, excludes charts with insufficient critical vitals, enforces a three-chart queue and 12-hour snooze, and writes hashed audit events. It is not connected to an EHR and makes no diagnosis or treatment recommendation. See [docs/clinical_api.md](docs/clinical_api.md).
+
+```bash
+make bundle                           # after training; exports trusted local artifacts
+make api                              # http://127.0.0.1:8000/docs
+```
+
 ## Run it
 
 ```bash
