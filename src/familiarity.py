@@ -1,6 +1,6 @@
 """Distribution-shift guard for SignalBridge.
 
-It flags a row as unfamiliar when a meaningful share of physiology features
+It flags a row as unfamiliar when a meaningful share of model features
 lie outside the central range observed in the training hospital. It is not a
 sepsis predictor and must never suppress a human review; it qualifies a score.
 """
