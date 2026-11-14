@@ -35,4 +35,6 @@ result. Any bug-forced change is logged at the bottom with the reason and time.
 
 ## Deviations log
 
-None yet.
+| When (Central) | Change | Reason |
+| --- | --- | --- |
+| Sat Nov 14, 00:31 | Validation rows get the same positive-class weight as training rows when computing the early-stopping log-loss | With weighted training and unweighted validation, validation log-loss rose from the first round (class weighting inflates predicted probabilities), so every LightGBM fit stopped after 1 round. No test-set result had been computed. Model selection is still by validation PR-AUC, which weighting does not affect |

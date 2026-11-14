@@ -30,8 +30,35 @@ def _pid_int(s: pd.Series) -> np.ndarray:
     return s.str[1:].astype(np.int64).to_numpy()
 
 
-def causal_base(df: pd.DataFrame, variables: list[str]) -> dict:
-    """Per-row causal arrays shared by all feature sets.
+def causal_base(df: pd.DataFrame, variables: list[str], chunk_patients: int = 4000) -> dict:
+    """Per-row causal arrays shared by all feature sets, built in chunks.
+
+    Every feature is computed within a patient, so splitting at patient
+    boundaries gives identical results with far less memory.
+    """
+    df = df.reset_index(drop=True)
+    pid = df["patient_id"].to_numpy()
+    starts = np.flatnonzero(np.r_[True, pid[1:] != pid[:-1]])
+    if len(starts) <= chunk_patients:
+        return _causal_base(df, variables)
+    cuts = list(starts[::chunk_patients]) + [len(df)]
+    parts = [_causal_base(df.iloc[a:b], variables) for a, b in zip(cuts[:-1], cuts[1:])]
+    out = {}
+    for k, v in parts[0].items():
+        if isinstance(v, np.ndarray):
+            out[k] = np.concatenate([p[k] for p in parts])
+        elif k == "roll":
+            out[k] = {s: np.concatenate([p[k][s] for p in parts]) for s in v}
+        else:
+            out[k] = v
+    out["n"] = len(df)
+    # group ids must stay unique across chunks
+    out["grp"] = np.cumsum(np.r_[True, out["pid"][1:] != out["pid"][:-1]]) - 1
+    return out
+
+
+def _causal_base(df: pd.DataFrame, variables: list[str]) -> dict:
+    """Per-row causal arrays for one chunk of whole patients.
 
     df must be sorted by patient_id then hour, with consecutive hours.
     Returns a dict of numpy arrays plus metadata.
@@ -69,15 +96,17 @@ def causal_base(df: pd.DataFrame, variables: list[str]) -> dict:
         prev_val[:, j] = pd.Series(col).groupby(grp).ffill().to_numpy()
 
     stale = np.array([VITAL_STALE_HOURS if v in VITALS else LAB_STALE_HOURS for v in variables])
-    current = np.where(since <= stale[None, :], last_val, np.nan)
-    delta = np.where(np.isnan(current), np.nan, last_val - prev_val)
+    current = np.where(since <= stale[None, :], last_val, np.nan).astype(np.float32)
+    delta = np.where(np.isnan(current), np.nan, last_val - prev_val).astype(np.float32)
+    since = since.astype(np.float32)
+    del last_val, prev_val, last_hour, obs_hour, raw_df
 
     # rolling window over real vital measurements in hours h-5..h
     vi = [variables.index(v) for v in vitals]
     roll = {}
-    stack = np.full((ROLL_HOURS, len(raw), len(vi)), np.nan)
+    stack = np.full((ROLL_HOURS, len(raw), len(vi)), np.nan, np.float32)
     for lag in range(ROLL_HOURS):
-        sh = np.full((len(raw), len(vi)), np.nan)
+        sh = np.full((len(raw), len(vi)), np.nan, np.float32)
         if lag == 0:
             sh[:] = raw[:, vi]
         else:
@@ -88,18 +117,18 @@ def causal_base(df: pd.DataFrame, variables: list[str]) -> dict:
         stack[lag] = sh
     with warnings.catch_warnings():  # all-NaN windows are expected
         warnings.simplefilter("ignore", RuntimeWarning)
-        roll["min"] = np.nanmin(stack, axis=0)
-        roll["max"] = np.nanmax(stack, axis=0)
-        roll["mean"] = np.nanmean(stack, axis=0)
+        roll["min"] = np.nanmin(stack, axis=0).astype(np.float32)
+        roll["max"] = np.nanmax(stack, axis=0).astype(np.float32)
+        roll["mean"] = np.nanmean(stack, axis=0).astype(np.float32)
     del stack
 
     return {
         "pid": pid, "hour": hour, "grp": grp, "variables": variables,
         "vitals": vitals, "labs": labs, "observed": observed, "since": since,
         "current": current, "delta": delta, "roll": roll,
-        "age": df["Age"].to_numpy(np.float64),
-        "gender": df["Gender"].to_numpy(np.float64),
-        "shortcuts": df[SHORTCUTS].to_numpy(np.float64),
+        "age": df["Age"].to_numpy(np.float32),
+        "gender": df["Gender"].to_numpy(np.float32),
+        "shortcuts": df[SHORTCUTS].to_numpy(np.float32),
         "n": len(df),
     }
 
@@ -133,7 +162,7 @@ def _hash_index(pid: np.ndarray, hour: np.ndarray, salt: int, n: int) -> np.ndar
 
 
 def _fill(col: np.ndarray, pool: np.ndarray, pid, hour, salt) -> np.ndarray:
-    out = col.copy()
+    out = col.astype(np.float32, copy=True)
     miss = np.isnan(out)
     if miss.any():
         if len(pool) == 0:

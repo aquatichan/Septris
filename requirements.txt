@@ -1,8 +1,9 @@
+# Minimum versions; requirements-lock.txt holds the exact versions every result was produced with.
 numpy>=1.26
 pandas>=2.1
 pyarrow>=14
 scikit-learn>=1.4
 lightgbm>=4.3
 matplotlib>=3.8
-gradio>=4.0
+gradio>=4.44
 pytest>=8.0

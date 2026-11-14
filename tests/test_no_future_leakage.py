@@ -62,3 +62,13 @@ def test_no_constant_fill_value_real():
         top = V[c].value_counts(normalize=True).iloc[0]
         is_flag = set(np.unique(V[c])) <= {0.0, 1.0}
         assert is_flag or top <= 0.5, (c, top)
+
+
+def test_chunked_build_matches_single_pass(hourly):
+    df = _patients(hourly)
+    one = F.causal_base(df, VARS, chunk_patients=10_000)
+    many = F.causal_base(df, VARS, chunk_patients=17)
+    pools = F.fit_pools(one, np.ones(one["n"], bool))
+    a = F.assemble(one, pools, "combined").to_numpy()
+    b = F.assemble(many, pools, "combined").to_numpy()
+    np.testing.assert_array_equal(a, b)
