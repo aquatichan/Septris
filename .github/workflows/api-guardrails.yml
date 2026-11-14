@@ -1,0 +1,28 @@
+name: API guardrails
+
+on:
+  pull_request:
+    paths:
+      - "api/**"
+      - "src/**"
+      - "scripts/11_export_model_bundle.py"
+      - "tests/test_api_store.py"
+      - "requirements.txt"
+      - ".github/workflows/api-guardrails.yml"
+  push:
+    branches:
+      - "feature/clinical-decision-api"
+
+jobs:
+  api-unit-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: python -m pip install --upgrade pip
+      - run: pip install -r requirements.txt
+      - run: python -m compileall -q api scripts/11_export_model_bundle.py
+      - run: pytest -q tests/test_api_store.py tests/test_validated_ensemble.py tests/test_temporal_gru.py
