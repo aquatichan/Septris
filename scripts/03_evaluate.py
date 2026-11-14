@@ -25,7 +25,7 @@ from src.labels import ELIGIBLE  # noqa: E402
 
 RES = ROOT / "outputs/results"
 SC = ROOT / "data/processed/scores"
-MODELS = ["lr", "lgbm_values", "lgbm_missing", "lgbm_combined", "lgbm_shortcuts"]
+MODELS = ["lr", "lgbm_values", "lgbm_missing", "lgbm_combined", "temporal_gru", "lgbm_shortcuts"]
 SHARED = ["sirs", "news"]
 TIER1_K_POLICIES = ["random", "sirs", "{H}:lgbm_combined"]
 METRICS = ["caught6", "caught_any", "caught3", "missed", "median_lead",
@@ -212,6 +212,10 @@ def summarize(pmean, boot):
                     f"{T}:lgbm_combined", f"{T}:lgbm_values")
                 add(T, k, "missingness-only (home) minus random", f"{T}:lgbm_missing", "random")
                 add(T, k, "combined minus LR (home)", f"{T}:lgbm_combined", f"{T}:lr")
+                add(T, k, "temporal GRU minus combined (home)",
+                    f"{T}:temporal_gru", f"{T}:lgbm_combined")
+                add(T, k, "temporal GRU minus combined (external)",
+                    f"{other}:temporal_gru", f"{other}:lgbm_combined")
                 add(T, k, "shortcuts minus combined (home)", f"{T}:lgbm_shortcuts", f"{T}:lgbm_combined")
                 pmf = pmean[pmean.subgroup == "all"].pivot_table(index=["test", "k"], columns="policy",
                                                                  values="false_per_shift")

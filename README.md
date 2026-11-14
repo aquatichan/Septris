@@ -63,7 +63,7 @@ These findings replicate known results about cross-hospital transfer and
 missingness in this dataset. Our contribution is evaluating them as a
 budgeted review decision.
 
-Full results: **[docs/results.md](docs/results.md)**. A post-hoc version 2
+Full results: **[docs/results.md](docs/results.md)**. The isolated exploratory sequence-model protocol and its completed-run results are in **[docs/masked_temporal_gru.md](docs/masked_temporal_gru.md)**. A post-hoc version 2
 (SOFA scores, 24-hour trends, baseline changes, local adaptation) gave no
 reliable gain on validation patients, so it was never run on the test set:
 **[docs/version2_attempt.md](docs/version2_attempt.md)**. An exploratory
@@ -98,8 +98,11 @@ trained on death: **[docs/challenge2012_check.md](docs/challenge2012_check.md)**
    "missing" value reaches the model. ICU length of stay, admission time and
    unit fields are excluded (shortcut ablation only).
 5. **Models:** logistic regression, LightGBM on values only, measurement
-   pattern only, and combined (the deployed candidate). Selection by home
-   validation PR-AUC.
+   pattern only, and combined (the deployed candidate), plus a masked temporal
+   GRU that consumes value, observation-mask and measurement-gap sequences.
+   The GRU is exploratory and must improve the same fixed-capacity,
+   cross-hospital review outcome before it can be considered further. Selection
+   by home validation PR-AUC.
 6. **Review-slot simulation:** every test patient passes once through a
    20-bed unit in a shuffled admission order; each 12-hour shift has 3 slots
    (hours 0, 4, 8); each policy picks one patient per slot, skipping anyone
@@ -114,7 +117,7 @@ trained on death: **[docs/challenge2012_check.md](docs/challenge2012_check.md)**
 ```bash
 pip install -r requirements.txt
 python scripts/01_audit.py --download   # PhysioNet files, audit, splits (~15 min)
-make reproduce                          # train, evaluate, secondary, app artifacts, tests
+make reproduce                          # train, temporal GRU, evaluate, secondary, app artifacts, tests
 python app/app.py                       # http://127.0.0.1:7860 (add --share for a public link)
 ```
 
@@ -132,12 +135,12 @@ run all cells. Runtime: about 17 minutes for `make reproduce` on a 2-core,
 8 GB machine, plus the download. A fresh clone run with `make reproduce`
 produced byte-identical audit, split, result and app files (checked 14 Nov 2026). The
 app only reads `app/artifacts/`, so it runs offline and cannot change any
-result. Exact package versions: `requirements-lock.txt`.
+result. The non-PyTorch stack is pinned in `requirements-lock.txt`; PyTorch is platform-specific and is installed from `requirements.txt`.
 
 ```
 src/        data_io, labels, splits, audit, features, simulation, utility, explanations
-scripts/    01_audit → 02_train → 03_evaluate → 04_secondary → 05_app_artifacts → 06_report
-tests/      leakage, splits, labels, slots, alert classes, utility, explanations (23 tests)
+scripts/    01_audit → 02_train → 08_temporal_gru → 03_evaluate → 04_secondary → 05_app_artifacts → 06_report
+tests/      leakage, splits, labels, slots, alert classes, utility, explanations, temporal GRU (25 tests)
 app/        Gradio app and its precomputed artifacts
 docs/       results, pre-registration, data provenance
 vendor/     official PhysioNet 2019 scoring code (BSD-2)
