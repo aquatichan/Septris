@@ -87,8 +87,10 @@ Full results: **[docs/results.md](docs/results.md)**. Pre-registration
    "missing" value reaches the model. ICU length of stay, admission time and
    unit fields are excluded (shortcut ablation only).
 5. **Models:** logistic regression, LightGBM on values only, measurement
-   pattern only, and combined (the deployed candidate). Selection by home
-   validation PR-AUC.
+   pattern only, and combined (the deployed candidate), plus an exploratory
+   masked temporal GRU that consumes value, observation-mask and measurement-gap
+   sequences. Selection by home validation PR-AUC. The GRU is only a candidate
+   if it improves the fixed-capacity, cross-hospital review outcome.
 6. **Review-slot simulation:** every test patient passes once through a
    20-bed unit in a shuffled admission order; each 12-hour shift has 3 slots
    (hours 0, 4, 8); each policy picks one patient per slot, skipping anyone
@@ -127,7 +129,7 @@ result. Exact package versions: `requirements-lock.txt`.
 
 ```
 src/        data_io, labels, splits, audit, features, simulation, utility, explanations
-scripts/    01_audit → 02_train → 07_familiarity_guard → 03_evaluate → 04_secondary → 05_app_artifacts → 06_report
+scripts/    01_audit → 02_train → 08_temporal_gru → 07_familiarity_guard → 03_evaluate → 04_secondary → 05_app_artifacts → 06_report
 tests/      leakage, splits, labels, slots, alert classes, utility, explanations, familiarity guard (21 tests)
 app/        Gradio app and its precomputed artifacts
 docs/       results, pre-registration, data provenance
@@ -154,6 +156,8 @@ vendor/     official PhysioNet 2019 scoring code (BSD-2)
 
 - Retrospective data from two hospital systems; never deployed, no outcome
   evidence. We do not claim it saves lives or works at any hospital.
+- The temporal GRU is an exploratory comparison, not the deployed candidate,
+  until its fixed-split and cross-hospital review outcomes are reproduced.
 - Onset comes partly from clinician orders, so a positive result shows
   flagging before the dataset's recorded onset, not before clinicians.
 - Lab times are result times, not order times.
