@@ -59,5 +59,29 @@
    "B, k=5": 34.72,
    "mean": 33.74
   }
+ },
+ "gru_ensemble": {
+  "seeds": [
+   "temporal_gru",
+   "temporal_gru_s2027",
+   "temporal_gru_s2028"
+  ],
+  "used": true,
+  "validation_caught6_pct": {
+   "current": {
+    "A, k=3": 31.08,
+    "A, k=5": 40.92,
+    "B, k=3": 25.56,
+    "B, k=5": 38.19,
+    "mean": 33.94
+   },
+   "with ensemble": {
+    "A, k=3": 31.25,
+    "A, k=5": 43.75,
+    "B, k=3": 27.5,
+    "B, k=5": 38.33,
+    "mean": 35.21
+   }
+  }
  }
 }

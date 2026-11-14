@@ -171,7 +171,7 @@ Admission order 1, 3 reviews per shift. Lab times are result times, not order ti
 - Cross-hospital rule dropped: EtCO2. Variables with very different coverage that the frozen rule kept: BaseExcess (A 62% vs B 3% of patients), HCO3 (A 97% vs B 2% of patients), Chloride (A 97% vs B 8% of patients), PTT (A 78% vs B 22% of patients).
 - Null check: LightGBM trained on shuffled labels caught 9.0%, inside random review's interval 5.3%–12.6%: pass.
 - Leakage, split, label, slot, alert-class and utility tests: see `tests/` (`python -m pytest -q tests`).
-- Too-good check: highest internal hourly AUROC of a portable model is 0.804 (alarm threshold 0.95).
+- Too-good check: highest internal hourly AUROC of a portable model is 0.805 (alarm threshold 0.95).
 
 ## Failure cases (picked by the frozen rule, A→A, admission order 1)
 

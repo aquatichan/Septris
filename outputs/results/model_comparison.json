@@ -8,7 +8,7 @@
    "GRU only": 32.6,
    "both": 29.4,
    "neither": 145.6,
-   "mix": 61.0
+   "mix": 62.4
   },
   {
    "test": "A",
@@ -18,7 +18,7 @@
    "GRU only": 40.2,
    "both": 39.4,
    "neither": 119.6,
-   "mix": 78.8
+   "mix": 79.0
   },
   {
    "test": "A",
@@ -28,7 +28,7 @@
    "GRU only": 38.8,
    "both": 12.4,
    "neither": 162.2,
-   "mix": 49.4
+   "mix": 51.8
   },
   {
    "test": "A",
@@ -38,7 +38,7 @@
    "GRU only": 44.0,
    "both": 22.8,
    "neither": 134.8,
-   "mix": 68.6
+   "mix": 60.8
   },
   {
    "test": "B",
@@ -48,7 +48,7 @@
    "GRU only": 20.6,
    "both": 14.6,
    "neither": 81.6,
-   "mix": 34.0
+   "mix": 33.0
   },
   {
    "test": "B",
@@ -58,7 +58,7 @@
    "GRU only": 21.4,
    "both": 19.4,
    "neither": 72.0,
-   "mix": 43.2
+   "mix": 42.2
   },
   {
    "test": "B",
@@ -68,7 +68,7 @@
    "GRU only": 22.0,
    "both": 17.6,
    "neither": 76.8,
-   "mix": 39.0
+   "mix": 41.4
   },
   {
    "test": "B",
@@ -78,7 +78,7 @@
    "GRU only": 22.2,
    "both": 26.0,
    "neither": 64.8,
-   "mix": 49.8
+   "mix": 50.4
   }
  ],
  "by_onset": [
@@ -89,8 +89,8 @@
    "onset_after": "24-72 h",
    "model": "blend",
    "n": 87.0,
-   "caught": 15.4,
-   "pct": 17.7
+   "caught": 13.0,
+   "pct": 14.9
   },
   {
    "test": "A",
@@ -119,8 +119,8 @@
    "onset_after": "over 72 h",
    "model": "blend",
    "n": 68.0,
-   "caught": 33.0,
-   "pct": 48.5
+   "caught": 36.0,
+   "pct": 52.9
   },
   {
    "test": "A",
@@ -149,8 +149,8 @@
    "onset_after": "under 24 h",
    "model": "blend",
    "n": 83.0,
-   "caught": 12.6,
-   "pct": 15.2
+   "caught": 13.4,
+   "pct": 16.1
   },
   {
    "test": "A",
@@ -209,8 +209,8 @@
    "onset_after": "over 72 h",
    "model": "blend",
    "n": 68.0,
-   "caught": 36.2,
-   "pct": 53.2
+   "caught": 38.0,
+   "pct": 55.9
   },
   {
    "test": "A",
@@ -239,8 +239,8 @@
    "onset_after": "under 24 h",
    "model": "blend",
    "n": 83.0,
-   "caught": 17.8,
-   "pct": 21.4
+   "caught": 16.2,
+   "pct": 19.5
   },
   {
    "test": "A",
@@ -269,8 +269,8 @@
    "onset_after": "24-72 h",
    "model": "blend",
    "n": 87.0,
-   "caught": 11.0,
-   "pct": 12.6
+   "caught": 11.8,
+   "pct": 13.6
   },
   {
    "test": "A",
@@ -299,8 +299,8 @@
    "onset_after": "over 72 h",
    "model": "blend",
    "n": 68.0,
-   "caught": 32.2,
-   "pct": 47.4
+   "caught": 32.8,
+   "pct": 48.2
   },
   {
    "test": "A",
@@ -329,8 +329,8 @@
    "onset_after": "under 24 h",
    "model": "blend",
    "n": 83.0,
-   "caught": 6.2,
-   "pct": 7.5
+   "caught": 7.2,
+   "pct": 8.7
   },
   {
    "test": "A",
@@ -359,8 +359,8 @@
    "onset_after": "24-72 h",
    "model": "blend",
    "n": 87.0,
-   "caught": 19.2,
-   "pct": 22.1
+   "caught": 15.4,
+   "pct": 17.7
   },
   {
    "test": "A",
@@ -389,8 +389,8 @@
    "onset_after": "over 72 h",
    "model": "blend",
    "n": 68.0,
-   "caught": 38.0,
-   "pct": 55.9
+   "caught": 33.6,
+   "pct": 49.4
   },
   {
    "test": "A",
@@ -419,8 +419,8 @@
    "onset_after": "under 24 h",
    "model": "blend",
    "n": 83.0,
-   "caught": 11.4,
-   "pct": 13.7
+   "caught": 11.8,
+   "pct": 14.2
   },
   {
    "test": "A",
@@ -449,8 +449,8 @@
    "onset_after": "24-72 h",
    "model": "blend",
    "n": 52.0,
-   "caught": 6.2,
-   "pct": 11.9
+   "caught": 6.0,
+   "pct": 11.5
   },
   {
    "test": "B",
@@ -479,8 +479,8 @@
    "onset_after": "over 72 h",
    "model": "blend",
    "n": 43.0,
-   "caught": 24.0,
-   "pct": 55.8
+   "caught": 22.4,
+   "pct": 52.1
   },
   {
    "test": "B",
@@ -509,8 +509,8 @@
    "onset_after": "under 24 h",
    "model": "blend",
    "n": 39.0,
-   "caught": 3.8,
-   "pct": 9.7
+   "caught": 4.6,
+   "pct": 11.8
   },
   {
    "test": "B",
@@ -539,8 +539,8 @@
    "onset_after": "24-72 h",
    "model": "blend",
    "n": 52.0,
-   "caught": 10.6,
-   "pct": 20.4
+   "caught": 10.4,
+   "pct": 20.0
   },
   {
    "test": "B",
@@ -569,8 +569,8 @@
    "onset_after": "over 72 h",
    "model": "blend",
    "n": 43.0,
-   "caught": 24.2,
-   "pct": 56.3
+   "caught": 22.6,
+   "pct": 52.6
   },
   {
    "test": "B",
@@ -599,8 +599,8 @@
    "onset_after": "under 24 h",
    "model": "blend",
    "n": 39.0,
-   "caught": 8.4,
-   "pct": 21.5
+   "caught": 9.2,
+   "pct": 23.6
   },
   {
    "test": "B",
@@ -629,8 +629,8 @@
    "onset_after": "24-72 h",
    "model": "blend",
    "n": 52.0,
-   "caught": 12.8,
-   "pct": 24.6
+   "caught": 13.8,
+   "pct": 26.5
   },
   {
    "test": "B",
@@ -659,8 +659,8 @@
    "onset_after": "over 72 h",
    "model": "blend",
    "n": 43.0,
-   "caught": 23.2,
-   "pct": 54.0
+   "caught": 24.8,
+   "pct": 57.7
   },
   {
    "test": "B",
@@ -689,8 +689,8 @@
    "onset_after": "under 24 h",
    "model": "blend",
    "n": 39.0,
-   "caught": 3.0,
-   "pct": 7.7
+   "caught": 2.8,
+   "pct": 7.2
   },
   {
    "test": "B",
@@ -719,8 +719,8 @@
    "onset_after": "24-72 h",
    "model": "blend",
    "n": 52.0,
-   "caught": 18.0,
-   "pct": 34.6
+   "caught": 17.4,
+   "pct": 33.5
   },
   {
    "test": "B",
@@ -749,8 +749,8 @@
    "onset_after": "over 72 h",
    "model": "blend",
    "n": 43.0,
-   "caught": 25.8,
-   "pct": 60.0
+   "caught": 26.6,
+   "pct": 61.9
   },
   {
    "test": "B",
@@ -779,8 +779,8 @@
    "onset_after": "under 24 h",
    "model": "blend",
    "n": 39.0,
-   "caught": 6.0,
-   "pct": 15.4
+   "caught": 6.4,
+   "pct": 16.4
   },
   {
    "test": "B",
