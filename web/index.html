@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Septris ICU</title>
+<meta name="description" content="Septris: a 3D ICU replay showing which patient's chart a nurse should review next for early signs of sepsis. Prototype, not medical advice.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@500;700&display=swap">
+<link rel="stylesheet" href="styles.css">
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+</head>
+<body>
+<div id="app">
+  <!-- 3D view fills the screen; UI floats over it -->
+  <div id="stage" aria-label="3D view of a 20-bed ICU"></div>
+
+  <header id="hud" class="hud">
+    <div class="brand">
+      <span class="brand-name">Septris</span>
+      <span class="brand-tag">which chart to review next</span>
+    </div>
+    <div class="clock" id="clock" aria-live="polite"></div>
+    <nav class="timebar" aria-label="Move through the replay">
+      <button id="prevShift" class="btn ghost" title="Previous shift">◀ Shift</button>
+      <div id="reviewChips" class="chips" role="group" aria-label="This shift's reviews"></div>
+      <button id="nextShift" class="btn ghost" title="Next shift">Shift ▶</button>
+      <button id="play" class="btn" title="Play through reviews">▶ Play</button>
+    </nav>
+    <div class="toggles">
+      <label class="switch"><input type="checkbox" id="showKey" checked><span>Answer key</span></label>
+      <label class="switch"><input type="checkbox" id="narrate"><span>Read aloud</span></label>
+      <button id="overview" class="btn ghost" title="Zoom out to the whole unit">Overview</button>
+      <button id="startTour" class="btn ghost">Tour</button>
+    </div>
+  </header>
+
+  <aside id="examples" class="examples" aria-label="Jump to an example">
+    <div class="eyebrow">Jump to an example</div>
+    <button class="btn ex" data-kind="good"><i class="dot good"></i>Septris catches sepsis in time</button>
+    <button class="btn ex" data-kind="miss"><i class="dot miss"></i>Septris misses a sepsis patient</button>
+    <button class="btn ex" data-kind="false"><i class="dot false"></i>False alarm: patient was fine</button>
+  </aside>
+
+  <aside id="panel" class="panel" aria-label="Details">
+    <div class="tabs" role="tablist">
+      <button role="tab" data-tab="review" class="tab on">This review</button>
+      <button role="tab" data-tab="bed" class="tab">Bed chart</button>
+      <button role="tab" data-tab="results" class="tab">Results</button>
+      <button role="tab" data-tab="about" class="tab">About</button>
+    </div>
+    <div class="tabbody" id="tab-review"></div>
+    <div class="tabbody" id="tab-bed" hidden></div>
+    <div class="tabbody" id="tab-results" hidden></div>
+    <div class="tabbody" id="tab-about" hidden></div>
+  </aside>
+
+  <form id="command" class="command" autocomplete="off">
+    <button type="button" id="mic" class="mic" title="Speak a command" aria-label="Speak a command">
+      <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M12 15a3 3 0 0 0 3-3V6a3 3 0 1 0-6 0v6a3 3 0 0 0 3 3Zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.92V21h2v-2.08A7 7 0 0 0 19 12h-2Z"/></svg>
+    </button>
+    <input id="cmdInput" type="text" placeholder="Try “show bed 6”, “next review”, “show me a miss”, “why?”" aria-label="Type a command">
+    <div id="cmdEcho" class="cmd-echo" aria-live="polite"></div>
+  </form>
+
+  <div id="tour" class="tour" hidden role="dialog" aria-label="Guided tour"></div>
+  <div id="note" class="note" hidden></div>
+  <div id="loading" class="loading">Loading the ICU…</div>
+  <footer class="disclaimer">Prototype. Not medical advice. Septris never diagnoses sepsis; it only suggests which chart to review next.</footer>
+</div>
+<script type="module" src="src/main.js"></script>
+</body>
+</html>
