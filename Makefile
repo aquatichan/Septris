@@ -3,7 +3,7 @@
 
 PY ?= python3
 
-.PHONY: reproduce data audit train deep ensemble evaluate secondary artifacts bundle test app api
+.PHONY: reproduce data audit train deep ensemble evaluate secondary artifacts bundle external-audit test app api
 
 reproduce: audit train deep ensemble evaluate secondary artifacts test
 
@@ -33,6 +33,10 @@ artifacts:
 
 bundle:
 	$(PY) scripts/11_export_model_bundle.py
+
+external-audit:
+	@test -n "$(SOURCE)" && test -n "$(INPUT)" && test -n "$(REPORT)" || (echo "Use SOURCE=eicu|mimiciv|hirid INPUT=/secure/hourly.parquet REPORT=outputs/external/audit.json"; exit 2)
+	$(PY) scripts/12_external_audit.py --source $(SOURCE) --input $(INPUT) --report $(REPORT)
 
 test:
 	$(PY) -m pytest -q tests
