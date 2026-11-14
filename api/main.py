@@ -7,6 +7,7 @@ import os
 from datetime import datetime, timezone
 from functools import lru_cache
 from pathlib import Path
+from sqlite3 import IntegrityError
 
 from fastapi import FastAPI, HTTPException, status
 
@@ -50,7 +51,7 @@ def health():
             availability[hospital] = {"ready": True, "model_version": e.bundle["model_version"]}
         except ModelUnavailable as err:
             availability[hospital] = {"ready": False, "reason": str(err)}
-    return {"status": "ok", "prototype": True, "loopback_only": True, "models": availability}
+    return {"status": "ok", "prototype": True, "intended_loopback_only": True, "models": availability}
 
 
 @app.post("/v1/observations", response_model=ScoreOut, status_code=status.HTTP_201_CREATED)
@@ -67,7 +68,7 @@ def ingest(observation: ObservationIn):
         store().append_observation(payload)
     except ModelUnavailable as err:
         raise HTTPException(status_code=503, detail=f"scoring unavailable: {err}") from err
-    except ValueError as err:
+    except (ValueError, IntegrityError) as err:
         raise HTTPException(status_code=409, detail=str(err)) from err
     score = {
         "patient_id": observation.patient_id, "hospital": observation.hospital,
