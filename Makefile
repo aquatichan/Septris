@@ -3,9 +3,9 @@
 
 PY ?= python3
 
-.PHONY: reproduce data audit train evaluate secondary artifacts test app
+.PHONY: reproduce data audit train familiarity evaluate secondary artifacts test app
 
-reproduce: audit train evaluate secondary artifacts test
+reproduce: audit train familiarity evaluate secondary artifacts test
 
 data:
 	$(PY) scripts/01_audit.py --download
@@ -15,6 +15,9 @@ audit:
 
 train:
 	$(PY) scripts/02_train.py
+
+familiarity:
+	$(PY) scripts/07_familiarity_guard.py
 
 evaluate:
 	$(PY) scripts/03_evaluate.py
