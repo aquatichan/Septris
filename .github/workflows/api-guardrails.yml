@@ -16,8 +16,7 @@ on:
       - ".github/workflows/api-guardrails.yml"
   push:
     branches:
-      - "feature/clinical-decision-api"
-      - "feature/external-validation-contracts"
+      - "main"
 
 jobs:
   api-unit-tests:
