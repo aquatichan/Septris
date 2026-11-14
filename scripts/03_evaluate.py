@@ -25,7 +25,7 @@ from src.labels import ELIGIBLE  # noqa: E402
 
 RES = ROOT / "outputs/results"
 SC = ROOT / "data/processed/scores"
-MODELS = ["lr", "lgbm_values", "lgbm_missing", "lgbm_combined", "lgbm_shortcuts"]
+MODELS = ["lr", "lgbm_values", "lgbm_missing", "lgbm_combined", "temporal_gru", "lgbm_shortcuts"]
 SHARED = ["sirs", "news"]
 TIER1_K_POLICIES = ["random", "sirs", "{H}:lgbm_combined"]
 METRICS = ["caught6", "caught_any", "caught3", "missed", "median_lead",
