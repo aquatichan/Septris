@@ -130,7 +130,7 @@ def find_slot(pid):
 POLICY_NAMES = [("random", "Random review (same budget)"), ("sirs", "SIRS ranking"),
                 ("news", "NEWS-inspired score"), ("lr", "Logistic regression"),
                 ("lgbm_values", "LightGBM, values only"), ("lgbm_missing", "LightGBM, measurement pattern only"),
-                ("lgbm_combined", "SignalBridge (LightGBM, combined)"), ("temporal_gru", "Masked temporal GRU (exploratory)"), ("lgbm_gru_blend", "Validated LightGBM + temporal GRU blend (exploratory)")]
+                ("lgbm_combined", "SignalBridge (LightGBM, combined)"), ("lgbm_queue_tuned", "LightGBM, queue-outcome tuned (exploratory)"), ("temporal_gru", "Masked temporal GRU (exploratory)"), ("lgbm_gru_blend", "Validated LightGBM + temporal GRU blend (exploratory)")]
 
 
 def fmt(v, lo, hi, pct=True):
@@ -168,6 +168,7 @@ def results(test, which, k):
             "reliance: combined minus values-only (home)": "Reliance on measurement pattern (combined minus values-only)",
             "missingness-only (home) minus random": "Measurement pattern alone minus random (sufficiency)",
             "temporal GRU minus combined (home)": "Masked temporal GRU minus LightGBM (exploratory paired comparison)",
+            "queue-tuned LightGBM minus combined (home)": "Queue-tuned LightGBM minus original LightGBM (exploratory paired comparison)",
             "validated blend minus combined (home)": "Validated blend minus LightGBM (exploratory paired comparison)"}
     for w, label in want.items():
         r = d[d.comparison == w]
