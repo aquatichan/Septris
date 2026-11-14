@@ -3,9 +3,9 @@
 
 PY ?= python3
 
-.PHONY: reproduce data audit train deep blend ensemble evaluate compare secondary artifacts bundle external-audit test app api
+.PHONY: reproduce data audit train deep familiarity blend ensemble evaluate compare secondary artifacts bundle external-audit test app api
 
-reproduce: audit train deep blend ensemble evaluate compare secondary artifacts bundle test
+reproduce: audit train deep familiarity blend ensemble evaluate compare secondary artifacts bundle test
 
 data:
 	$(PY) scripts/01_audit.py --download
@@ -18,6 +18,9 @@ train:
 
 deep:
 	$(PY) scripts/08_temporal_gru.py
+
+familiarity:
+	$(PY) scripts/07_familiarity_guard.py
 
 blend:
 	$(PY) scripts/10_blend.py
