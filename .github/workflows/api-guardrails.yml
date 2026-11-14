@@ -25,4 +25,4 @@ jobs:
       - run: python -m pip install --upgrade pip
       - run: pip install -r requirements.txt
       - run: python -m compileall -q api scripts/11_export_model_bundle.py
-      - run: pytest -q tests/test_api_store.py tests/test_api_schemas.py tests/test_api_engine.py tests/test_validated_ensemble.py tests/test_temporal_gru.py
+      - run: pytest -q tests/test_api_store.py tests/test_api_schemas.py tests/test_api_engine.py tests/test_external_data.py tests/test_validated_ensemble.py tests/test_temporal_gru.py
