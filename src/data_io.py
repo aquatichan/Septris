@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import shutil
 import subprocess
+import zipfile
 from pathlib import Path
 
 import numpy as np
@@ -34,33 +35,33 @@ SHORTCUTS = ["ICULOS", "HospAdmTime", "Unit1", "Unit2"]
 
 
 def download(data_dir: str | Path, hospitals=("A", "B")) -> Path:
-    """Download the training sets with wget (run this in Colab, not locally).
+    """Download the official compressed training archives, then unpack them.
 
-    Re-running is cheap: wget -N skips files that are already there.
+    PhysioNet hosts the two public archives directly. Downloading two archives
+    is far quicker and more reliable in a clean environment than recursively
+    making about 40,000 individual file requests.
     """
     data_dir = Path(data_dir)
     data_dir.mkdir(parents=True, exist_ok=True)
     for h in hospitals:
         destination = data_dir / HOSPITAL_DIRS[h]
-        # S3's concurrent sync is substantially faster than one HTTPS request
-        # per patient file on fresh CI machines. Keep the documented wget
-        # implementation as a portable fallback.
-        if shutil.which("aws"):
-            subprocess.run(
-                ["aws", "s3", "sync", "--no-sign-request", "--only-show-errors",
-                 f"s3://physionet-open/challenge-2019/1.0.0/training/{HOSPITAL_DIRS[h]}",
-                 str(destination)],
-                check=True,
-            )
-        else:
-            url = f"{PHYSIONET_BASE}/{HOSPITAL_DIRS[h]}/"
-            subprocess.run(
-                ["wget", "-q", "-r", "-N", "-c", "-np", "-nH", "--cut-dirs=4",
-                 "-A", "*.psv", "-P", str(data_dir), url],
-                check=True,
-            )
+        if any(destination.glob("*.psv")):
+            continue
+        archive = data_dir / f"training_set{h}.zip"
+        url = f"{PHYSIONET_BASE}_set{h}.zip"
+        subprocess.run(["wget", "-q", "-c", "-O", str(archive), url], check=True)
+        staging = data_dir / f".unpack_{h}"
+        shutil.rmtree(staging, ignore_errors=True)
+        staging.mkdir()
+        with zipfile.ZipFile(archive) as z:
+            z.extractall(staging)
+        source = staging / "training"
+        if not source.exists():
+            raise FileNotFoundError(f"Official archive {archive} did not contain training/")
+        shutil.rmtree(destination, ignore_errors=True)
+        shutil.move(str(source), str(destination))
+        shutil.rmtree(staging)
     return data_dir
-
 
 def load_hospital(data_dir: str | Path, hospital: str) -> pd.DataFrame:
     """Read every patient file for one hospital into one long table.
