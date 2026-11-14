@@ -66,7 +66,11 @@ budgeted review decision.
 Full results: **[docs/results.md](docs/results.md)**. A post-hoc version 2
 (SOFA scores, 24-hour trends, baseline changes, local adaptation) gave no
 reliable gain on validation patients, so it was never run on the test set:
-**[docs/version2_attempt.md](docs/version2_attempt.md)**. Pre-registration
+**[docs/version2_attempt.md](docs/version2_attempt.md)**. An exploratory
+zero-shot test on a third hospital system (eICU demo, 186 hospitals) was
+inconclusive for early warning because its approximate label leaves only 52
+usable cases, but a label-free check again shows the measurement-pattern
+signal transfers worst: **[docs/eicu_external.md](docs/eicu_external.md)**. Pre-registration
 (committed before any test-set number): **[docs/preregistration.md](docs/preregistration.md)**.
 
 ![Results tab](docs/img/results.png)
@@ -161,6 +165,10 @@ vendor/     official PhysioNet 2019 scoring code (BSD-2)
 - Reyna MA et al. *Early Prediction of Sepsis from Clinical Data: The
   PhysioNet/Computing in Cardiology Challenge 2019* (v1.0.0). PhysioNet,
   CC BY 4.0. https://doi.org/10.13026/v64v-d857
+- Pollard TJ, Johnson AEW, Raffa JD, Celi LA, Mark RG, Badawi O. The eICU
+  Collaborative Research Database, a freely available multi-center database
+  for critical care research. *Scientific Data* 5:180178 (2018). Demo v2.0.1,
+  ODbL 1.0: https://physionet.org/content/eicu-crd-demo/2.0.1/
 - Reyna MA et al. Early Prediction of Sepsis From Clinical Data: The
   PhysioNet/Computing in Cardiology Challenge 2019. *Critical Care Medicine*
   48(2):210–217 (2020). https://doi.org/10.1097/CCM.0000000000004145

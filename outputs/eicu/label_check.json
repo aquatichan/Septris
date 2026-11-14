@@ -1,0 +1,15 @@
+{
+ "stays": 2262,
+ "hospitals": 186,
+ "labelled_septic": 283,
+ "septic_pct": 12.5,
+ "groups": {
+  "non_septic": 1979,
+  "uncertain_onset": 231,
+  "eligible_septic": 52
+ },
+ "with_sepsis_diagnosis": 276,
+ "diagnosed_and_labelled": 77,
+ "labelled_share_with_diagnosis_pct": 27.2,
+ "diagnosed_share_labelled_pct": 27.9
+}
