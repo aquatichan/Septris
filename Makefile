@@ -3,7 +3,7 @@
 
 PY ?= python3
 
-.PHONY: reproduce data audit train deep ensemble evaluate secondary artifacts test app
+.PHONY: reproduce data audit train deep ensemble evaluate secondary artifacts bundle test app api
 
 reproduce: audit train deep ensemble evaluate secondary artifacts test
 
@@ -31,8 +31,14 @@ secondary:
 artifacts:
 	$(PY) scripts/05_app_artifacts.py
 
+bundle:
+	$(PY) scripts/11_export_model_bundle.py
+
 test:
 	$(PY) -m pytest -q tests
 
 app:
 	$(PY) app/app.py
+
+api:
+	uvicorn api.main:app --reload
