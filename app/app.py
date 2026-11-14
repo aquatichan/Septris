@@ -30,6 +30,7 @@ meta = pd.read_parquet(ART / "patients.parquet").set_index("patient_id")
 table = pd.read_csv(ART / "results_table.csv")
 diffs = pd.read_csv(ART / "paired_differences.csv")
 cases = json.loads((ART / "failure_cases.json").read_text())
+guard_report = json.loads((ART / "familiarity_report.json").read_text())
 beds_by_hour = {h: g for h, g in beds.groupby("unit_hour")}
 
 TIER_STYLE = {"High": ("#b42318", "#fef3f2"), "Medium": ("#b54708", "#fffaeb"), "Low": ("#344054", "#f9fafb")}
@@ -56,7 +57,8 @@ def bed_card(r, picked=False):
     return (f"<div class='sb-bed{pick}' style='background:{bg}; border-color:{fg}'>"
             f"<b style='color:{fg}'>{star}{r.tier}</b><br>"
             f"{r.patient_id}<br>ICU hour {r.record_hour}<br>"
-            f"Prototype priority score {r.score:.3f}</div>")
+            f"Prototype priority score {r.score:.3f}<br>"
+            f"<span style='font-size:12px'>{r.familiarity}</span></div>")
 
 
 def render_slot(i, focus=None):
@@ -68,7 +70,8 @@ def render_slot(i, focus=None):
             f"**Slots left this shift: {K - used} of {K}** · "
             f"{len(b)} patients in beds · review {i + 1} of {len(slots)} in this simulated run")
     pick = (f"<div class='sb-label'>Chart to open now</div>"
-            f"<div class='sb-why'><b>{s.patient_id}</b> (ICU hour {s.record_hour})<br>{s.why_now}</div>"
+            f"<div class='sb-why'><b>{s.patient_id}</b> (ICU hour {s.record_hour})<br>{s.why_now}<br>"
+            f"<b>Familiarity check:</b> {s.familiarity}. This does not change the human-review recommendation.</div>"
             f"<div class='sb-label'>What happened (known only in hindsight)</div>"
             f"<div>{CLASS_TEXT.get(s.review_class, s.review_class)}</div>")
     active = b[~b["recently_reviewed"]]
@@ -191,7 +194,8 @@ with gr.Blocks(title="SignalBridge", **({} if GRADIO_MAJOR >= 6 else STYLE)) as 
     gr.HTML(f"<div class='sb-banner'>{DISCLAIMER} SignalBridge orders a human review queue. "
             "It does not diagnose sepsis or recommend treatment.</div>")
     gr.Markdown("# SignalBridge\nA tele-ICU or charge nurse can deeply review **3 of 20 charts per 12-hour shift**. "
-                "SignalBridge picks which chart to open at each review slot, using only data recorded up to that hour.")
+                "SignalBridge picks which chart to open at each review slot, using only data recorded up to that hour. "
+                "A familiarity guard labels feature patterns outside the source hospital's validated range.")
     with gr.Tab("Review round"):
         gr.Markdown("Simulated 20-bed unit built from Hospital A test patients (a capacity-stress "
                     "simulation, not a real ward census).")
