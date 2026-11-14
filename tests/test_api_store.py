@@ -1,0 +1,28 @@
+from datetime import datetime, timedelta, timezone
+
+import pytest
+
+from api.store import ReplayStore
+
+
+def event(patient_id="p1", hour=0):
+    return {"patient_id": patient_id, "hospital": "A", "icu_hour": hour,
+            "observed_at": datetime(2026, 1, 1, tzinfo=timezone.utc).isoformat(),
+            "values": {"HR": 90}}
+
+
+def test_monotonic_patient_history_and_hashed_audit(tmp_path):
+    store = ReplayStore(tmp_path / "replay.sqlite3")
+    store.append_observation(event(hour=0))
+    store.append_observation(event(hour=1))
+    assert [x["icu_hour"] for x in store.history("p1")] == [0, 1]
+    with pytest.raises(ValueError):
+        store.append_observation(event(hour=0))
+
+
+def test_review_snooze_is_twelve_hours(tmp_path):
+    store = ReplayStore(tmp_path / "replay.sqlite3")
+    t0 = datetime(2026, 1, 1, tzinfo=timezone.utc)
+    store.record_review("p1", "nurse@example.test", t0.isoformat(), "opened_chart")
+    assert store.is_snoozed("p1", (t0 + timedelta(hours=11, minutes=59)).isoformat())
+    assert not store.is_snoozed("p1", (t0 + timedelta(hours=12)).isoformat())
