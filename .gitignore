@@ -24,3 +24,4 @@ data/raw/challenge2012/
 !app/artifacts/*.parquet
 outputs/septris_replay.sqlite3
 outputs/models/*.bundle.pkl
+data/external/
