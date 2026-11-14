@@ -68,7 +68,7 @@ def main():
     for T in ("A", "B"):
         o = "B" if T == "A" else "A"
         L += [f"## Hospital {T} test patients, 3 reviews per shift", "",
-              "| Policy | Trained at | Caught 6–12 h early | Missed | False reviews / shift | Late reviews / shift | Median lead (h) |",
+              "| Policy | Trained at | Caught 6–12 h early | No pre-onset review | False reviews / shift | Late reviews / shift | Median lead (h) |",
               "| --- | --- | --- | --- | --- | --- | --- |"]
         g = t[(t.test == T) & (t.k == 3) & (t.subgroup == "all")]
         for key in ORDER:
