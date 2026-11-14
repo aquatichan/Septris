@@ -58,7 +58,7 @@ const MAT = {
   pillow: new THREE.MeshStandardMaterial({ color: "#dfe6e8", roughness: 0.9 }),
   skin: new THREE.MeshStandardMaterial({ color: "#c99a7a", roughness: 0.7 }),
   pole: new THREE.MeshStandardMaterial({ color: "#8a9ba0", metalness: 0.7, roughness: 0.3 }),
-  curtain: new THREE.MeshStandardMaterial({ color: "#5e8f9c", roughness: 1, transparent: true, opacity: 0.22, side: THREE.DoubleSide }),
+  curtain: new THREE.MeshStandardMaterial({ color: "#5e8f9c", roughness: 1, transparent: true, opacity: 0.12, depthWrite: false, side: THREE.DoubleSide }),
 };
 
 function makeMonitor() {
@@ -232,7 +232,35 @@ export function createBeds(world, onSelect) {
     }
   });
 
+  // the nurse: walks from the station to whichever bed Septris picks
+  const nurse = new THREE.Group();
+  const scrubs = new THREE.MeshStandardMaterial({ color: "#2f9aa8", roughness: 0.8 });
+  const nBody = new THREE.Mesh(new THREE.CapsuleGeometry(0.24, 0.85, 6, 14), scrubs);
+  nBody.position.y = 0.9;
+  const nHead = new THREE.Mesh(new THREE.SphereGeometry(0.17, 20, 16), MAT.skin);
+  nHead.position.y = 1.72;
+  const tablet = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.22, 0.03),
+    new THREE.MeshStandardMaterial({ color: "#0d1d24", emissive: "#4fb3ff", emissiveIntensity: 0.9 }));
+  tablet.position.set(0, 1.15, 0.27);
+  tablet.rotation.x = -0.5;
+  for (const m of [nBody, nHead]) m.castShadow = true;
+  nurse.add(nBody, nHead, tablet);
+  nurse.position.set(0, 0, 1.6);
+  scene.add(nurse);
+  const nurseGoal = new THREE.Vector3(0, 0, 1.6);
+  world.onFrame((dt, t) => {
+    const d = nurseGoal.clone().sub(nurse.position);
+    const dist = d.length();
+    if (dist > 0.05) {
+      nurse.position.add(d.multiplyScalar(Math.min(1, (dt * 9) / dist)));
+      nurse.rotation.y = Math.atan2(nurseGoal.x - nurse.position.x, nurseGoal.z - nurse.position.z);
+      nBody.position.y = 0.9 + 0.04 * Math.abs(Math.sin(t * 12));
+    }
+  });
+
   function update(data, slotRow, bedRows, st) {
+    const pb = bayPosition(slotRow.bed);
+    nurseGoal.set(pb.x - 1.3, 0, pb.z + (slotRow.bed <= 10 ? 0.6 : -0.6));
     const byBed = new Map(bedRows.map((r) => [r.bed, r]));
     const missBed = st.focus?.kind === "miss" && st.focus.slot === st.slot ? st.focus.bed : null;
     for (const [bed, b] of bays) {

@@ -81,6 +81,24 @@ trained on death: **[docs/challenge2012_check.md](docs/challenge2012_check.md)**
 
 ![Results tab](docs/img/results.png)
 
+## 3D ward (web/)
+
+`web/` is a standalone 3D version of the demo: a 20-bed ICU you can orbit and
+zoom, with a risk ring and live monitor at every bed, a nurse who walks to
+the bed Septris picks, a guided tour, clickable beds, example buttons, and
+typed or spoken commands ("show bed 6", "next review", "show me a miss",
+"why?"). It is plain HTML + ES modules + three.js from a CDN, with no build
+step:
+
+```bash
+python scripts/13_web_export.py     # rebuild web/data/septris.json from app/artifacts
+cd web && python -m http.server 8000   # then open http://localhost:8000
+```
+
+Code map: `src/store.js` (shared state), `src/data.js` (loading + wording),
+`src/scene/` (room, beds, camera), `src/ui/` (panel, chart, tour),
+`src/commands.js` (one parser for typed and spoken commands), `src/voice.js`.
+
 ## How it works
 
 1. **Data:** PhysioNet/CinC Challenge 2019 training sets A (20,336 ICU

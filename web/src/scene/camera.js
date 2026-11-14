@@ -30,7 +30,10 @@ export function createCameraRig(world) {
       const narrow = window.innerWidth < 860;
       const wide = window.innerWidth / window.innerHeight;
       const d = narrow ? 1.9 : Math.max(1.08, 1.9 / wide); // pull back on tall or narrow windows
-      flyTo(new THREE.Vector3(0, 34 * d, 36 * d), new THREE.Vector3(0, 0, 2.5));
+      // on wide screens the detail panel covers the right side, so frame the unit to its left
+      const shift = narrow ? 0 : 4.5;
+      const z = narrow ? 1 : 1.12;
+      flyTo(new THREE.Vector3(shift, 34 * d * z, 36 * d * z), new THREE.Vector3(shift, 0, 1.5));
     },
     bed(bed) {
       const p = bayPosition(bed);

@@ -30,7 +30,7 @@ export function createWorld(container) {
 
   const scene = new THREE.Scene();
   scene.background = new THREE.Color("#0b1418");
-  scene.fog = new THREE.Fog("#0b1418", 45, 95);
+  scene.fog = new THREE.Fog("#0b1418", 70, 140);
   const pmrem = new THREE.PMREMGenerator(renderer);
   scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
 
