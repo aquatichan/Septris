@@ -18,6 +18,7 @@ ROOT = Path(__file__).resolve().parents[1]
 ARTIFACT_DIR = Path(os.getenv("SEPTRIS_ARTIFACT_DIR", ROOT / "outputs" / "models"))
 DB_PATH = Path(os.getenv("SEPTRIS_DB_PATH", ROOT / "outputs" / "septris_replay.sqlite3"))
 MIN_PRIORITY = float(os.getenv("SEPTRIS_MIN_PRIORITY", "0.05"))
+MAX_OBSERVATION_AGE_HOURS = float(os.getenv("SEPTRIS_MAX_OBSERVATION_AGE_HOURS", "2"))
 
 app = FastAPI(title="SEPTRIS Clinical Decision Support API", version="0.1.0")
 
@@ -80,6 +81,14 @@ def queue(hospital: str, limit: int = 3, as_of: datetime | None = None):
     candidates = []
     for score in store().candidates(hospital):
         if score["familiarity"] == "insufficient_data" or score["priority_score"] < MIN_PRIORITY:
+            continue
+        observed = datetime.fromisoformat(score["observed_at"].replace("Z", "+00:00"))
+        reference = datetime.fromisoformat(now.replace("Z", "+00:00"))
+        if observed.tzinfo is None:
+            observed = observed.replace(tzinfo=timezone.utc)
+        if reference.tzinfo is None:
+            reference = reference.replace(tzinfo=timezone.utc)
+        if (reference - observed).total_seconds() > MAX_OBSERVATION_AGE_HOURS * 3600:
             continue
         if store().is_snoozed(score["patient_id"], now):
             continue
