@@ -58,13 +58,29 @@ def cohort_summary(df: pd.DataFrame, patients: pd.DataFrame,
         add(h, "patient_hours", len(sub))
         add(h, "sepsis_patients", int(p["sepsis"].sum()))
         add(h, "sepsis_pct", round(100 * p["sepsis"].mean(), 2))
-        add(h, "sepsis_onset_in_first_6h", int(p["onset_censored"].sum()))
+        for grp, n in p["group"].value_counts().items():
+            add(h, f"group_{grp}", int(n))
+        add(h, "group_fully_observed", int(p["fully_observed"].sum()))
         add(h, "positive_label_hours_pct", round(100 * sub[LABEL].mean(), 2))
-        for q in (0.25, 0.5, 0.75):
-            add(h, f"icu_hours_p{int(q * 100)}", float(p["n_hours"].quantile(q)))
+        for q in (0.10, 0.5, 0.90):
+            add(h, f"rows_per_patient_p{int(q * 100)}", float(p["n_hours"].quantile(q)))
+        add(h, "rows_per_patient_min", int(p["n_hours"].min()))
+        # rows are consecutive hours: ICULOS increases by exactly 1
+        gaps = sub.groupby("patient_id")["ICULOS"].diff().dropna()
+        add(h, "iculos_non_unit_steps", int((gaps != 1).sum()))
+        add(h, "iculos_first_row_median", float(first["ICULOS"].median()))
         add(h, "age_median", float(first["Age"].median()))
         add(h, "age_max", float(first["Age"].max()))
-        add(h, "male_pct", round(100 * first["Gender"].mean(), 2))
+        add(h, "age_share_at_max_pct", round(100 * (first["Age"] == first["Age"].max()).mean(), 3))
+        add(h, "gender_values", "/".join(str(v) for v in sorted(first["Gender"].dropna().unique())))
+        add(h, "male_pct_gender1", round(100 * first["Gender"].mean(), 2))
+        fio2 = sub["FiO2"].dropna()
+        add(h, "fio2_median", float(fio2.median()) if len(fio2) else float("nan"))
+        add(h, "fio2_share_above_1_pct", round(100 * (fio2 > 1).mean(), 3) if len(fio2) else float("nan"))
+        temp = sub["Temp"].dropna()
+        add(h, "temp_median", float(temp.median()))
         for split, n in splits[splits["hospital"] == h].groupby("split").size().items():
             add(h, f"{split}_patients", int(n))
+        for split, s2 in splits[splits["hospital"] == h].groupby("split"):
+            add(h, f"{split}_sepsis_pct", round(100 * s2["sepsis"].mean(), 2))
     return pd.DataFrame(rows)

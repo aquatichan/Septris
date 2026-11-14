@@ -1,13 +1,16 @@
-"""Fixed, stratified, patient-level splits for each hospital."""
+"""Fixed, stratified, patient-level 70/15/15 splits for each hospital."""
 
 import pandas as pd
 from sklearn.model_selection import train_test_split
 
-def make_splits(patients: pd.DataFrame, seed: int = 42) -> pd.DataFrame:
-    """Stratified 70/15/15 train/val/test split by patient, per hospital.
+from .config import SEED
 
-    Each hospital is split on its own, so A->A, B->B, A->B and B->A all
-    test on the same fixed test patients.
+
+def make_splits(patients: pd.DataFrame, seed: int = SEED) -> pd.DataFrame:
+    """Split each hospital on its own, stratified on ever-septic.
+
+    A->A, B->B, A->B and B->A therefore all test on the same fixed test
+    patients of the target hospital.
     """
     parts = []
     for h, sub in patients.groupby("hospital"):
@@ -20,6 +23,7 @@ def make_splits(patients: pd.DataFrame, seed: int = 42) -> pd.DataFrame:
             parts.append(pd.DataFrame({"patient_id": chunk, "hospital": h, "split": name}))
     splits = pd.concat(parts, ignore_index=True)
     return splits.merge(patients[["patient_id", "sepsis"]], on="patient_id")
+
 
 def summarize(patients: pd.DataFrame, splits: pd.DataFrame) -> pd.DataFrame:
     """Patients, sepsis cases and sepsis rate for every hospital and split."""
