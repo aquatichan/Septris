@@ -25,3 +25,4 @@ data/raw/challenge2012/
 outputs/gru_train.log
 outputs/evaluate.log
 outputs/gru_seeds.log
+outputs/train_qt.log

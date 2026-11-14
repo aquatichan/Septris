@@ -47,27 +47,33 @@ export function priorityHTML(data, st) {
   const nCand = b[0]?.candidates ?? 0;
   const pick = b.find((x) => x.picked);
   const reasons = (s.reasons || "").split(" | ").filter(Boolean);
-  let driver = "";
-  if (data.meta.kind === "max" && s.pct_gru != null) {
-    const both = Math.min(s.pct_gru, s.pct_lgbm) >= 90;
-    driver = `<div class="twobars">
-      <span>Deep-learning model (GRU)</span><div class="bar"><i style="width:${s.pct_gru}%;background:var(--accent)"></i></div><span class="num">${Math.round(s.pct_gru)}</span>
-      <span>Decision-tree model (LightGBM)</span><div class="bar"><i style="width:${s.pct_lgbm}%;background:var(--accent)"></i></div><span class="num">${Math.round(s.pct_lgbm)}</span>
-    </div>
-    <p class="small muted">${both ? "Both models rate this bed as high risk." : `The ${s.driver === "GRU" ? "deep-learning" : "decision-tree"} model is the more worried one here.`} Septris uses the higher of the two scores.</p>`;
-  }
   const next = b.filter((x) => !x.snoozed && !x.picked).sort((x, y) => x.rank - y.rank).slice(0, 3);
+  let hero = "";
+  if (st.showKey && (s.review_class === "early6" || s.review_class === "early")) {
+    const lead = Math.round(s.lead_hours);
+    hero = `<div class="hero-hit"><div class="big">✓ Sepsis predicted <b>${lead}</b> hour${lead === 1 ? "" : "s"} early</div>
+      <div class="small">The patient's record shows sepsis ${lead} hour${lead === 1 ? "" : "s"} after Septris sent the nurse to this bed.</div>
+      ${s.review_class === "early6" ? `<span class="star">★ Inside the 6–12 hour early-warning window</span>` : ""}</div>`;
+  }
+  let nextNote = "";
+  const ns = data.slots[st.slot + 1];
+  if (ns) {
+    const nb = b.find((x) => x.bed === ns.bed && x.p === ns.p);
+    const was = !nb ? "a patient who hasn't arrived yet" : nb.snoozed ? "still on its 12-hour pause right now" : `${ordinal(nb.rank)} in line right now`;
+    nextNote = ` For example, the next review (${ns.clock}) goes to Bed ${ns.bed}, which is ${was}.`;
+  }
   const n = s.sepsis_so_far;
   const sbar = (v2, c) => `<div class="bar"><i style="width:${n ? (100 * v2) / n : 0}%;background:${c}"></i></div>`;
   return `
     <div class="eyebrow">Review ${s.check} of ${data.meta.k} this shift · ${s.clock}</div>
     <h2 class="pick-title">Highest priority: Bed ${s.bed}</h2>
     <p>Septris recommends reviewing <b>Bed ${s.bed}</b>'s chart now. It has the highest sepsis risk (<b>${pick ? pick.percentile : "–"} of 100</b>) of the ${nCand} beds that haven't been reviewed in the last 12 hours.</p>
+    ${hero}
     <h3>Why this bed</h3>
     ${reasons.length ? `<ul>${reasons.map((r) => `<li>${esc(cap(r))}</li>`).join("")}</ul>` : "<p>Several small changes together, none big on its own.</p>"}
-    ${driver}
-    <h3>Next in line</h3>
+    <h3>Also high right now</h3>
     <div class="qmini">${next.map((x) => `<button class="qrow" data-bed="${x.bed}"><b>Bed ${x.bed}</b><span class="pill ${TIER[x.tier].cls}">${TIER[x.tier].name}</span><span class="num">${x.percentile}</span></button>`).join("")}</div>
+    <p class="small muted">This is <b>not</b> the order of the next reviews. Septris re-ranks every bed from fresh data at each review time, so the next review goes to whoever is highest <i>then</i>.${nextNote}</p>
     <p class="small muted">Based only on data recorded up to ${s.clock}. A warning pattern, not a diagnosis: the nurse reads the chart and decides.</p>
     ${st.showKey ? outcomeBlock(s, n, sbar) : `<p class="small muted">Turn on “Show outcomes” to see what the record shows happened after this review.</p>`}`;
 }
@@ -178,6 +184,7 @@ export function queueHTML(data, st) {
         <div class="bar"><i class="${stt.cls}" style="width:${x.percentile}%"></i></div>
         <span class="num">${x.percentile}</span><span class="pill ${stt.cls}">${x.picked ? "Review now" : x.snoozed ? "Reviewed" : TIER[x.tier].name}</span></button>`;
     }).join("")}</div>
+    <p class="small"><b>This order only holds for this moment.</b> At the next review time every bed is scored again with its newest data, so the bed that is 2nd now is often not the next one reviewed.</p>
     <p class="small muted">Risk is 0–100: how this hour compares with past ICU hours (100 = most worrying). Beds reviewed in the last 12 hours go to the bottom so the nurse isn't sent back to the same patient.</p>`;
 }
 
@@ -234,12 +241,13 @@ export function modelHTML(data) {
     </ul>
     <h3>3. Two models, one score</h3>
     <p><b>A decision-tree model (LightGBM)</b> reads summaries of the last few hours. <b>A deep-learning model (GRU, three copies averaged)</b> reads the whole stay hour by hour. Each gives every bed a 0–100 risk, and Septris uses the <b>higher</b> of the two, so a bed moves up if either model is worried. The two models catch largely different patients, which is why using both helps.</p>
+    <p>We compared 10 ways of combining our models (each alone, averages, a calibrated blend, a version of the tree model tuned directly on the review queue, and "whichever is higher") using only the tuning patients. "Whichever is higher" of these two came out best, so that is what Septris uses.</p>
     <h3>4. From score to priority</h3>
     <p>At each of the nurse's ${m.k} review times per 12-hour shift, Septris sorts the ${m.beds} beds by risk, skips anyone reviewed in the last 12 hours, and recommends the top one, with the reasons that raised its score.</p>
     <h3>5. How it was tested</h3>
     <ul>
       <li>Patients were split 70 / 15 / 15: train, tune, test. Every number shown is from test patients the models never saw.</li>
-      <li>${m.patients.toLocaleString()} Hospital A test patients (${m.eligible_septic} developed sepsis) pass through this ${m.beds}-bed unit over ${Math.round(m.days)} simulated days.</li>
+      <li>${m.patients.toLocaleString()} Hospital A test patients (${m.eligible_septic} developed sepsis) pass through this ${m.beds}-bed unit over ${Math.round(m.days)} simulated days. When one leaves, the next is admitted to the free bed.</li>
       <li>Random picking and the SIRS checklist face the same beds at the same moments.</li>
       <li>The main settings were written down before any test result was seen; later changes are logged in the project repository.</li>
     </ul>

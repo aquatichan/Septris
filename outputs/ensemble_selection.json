@@ -1,0 +1,223 @@
+{
+  "name": "lgbm_gru_blend",
+  "protocol": "patient-disjoint source-validation calibration and alpha selection; selection objective is simulated caught 6\u201312h early at 3 reviews/shift",
+  "alphas": [
+    0.0,
+    0.1,
+    0.2,
+    0.30000000000000004,
+    0.4,
+    0.5,
+    0.6000000000000001,
+    0.7000000000000001,
+    0.8,
+    0.9,
+    1.0
+  ],
+  "models": {
+    "A": {
+      "calibration_patients": 1525,
+      "selection_patients": 1525,
+      "lgbm_platt": {
+        "coefficient": 1.1042428633800827,
+        "intercept": -3.4415780361347257,
+        "n_rows": 58379,
+        "positive_rows": 1391
+      },
+      "gru_platt": {
+        "coefficient": 0.6425400161258301,
+        "intercept": -2.883345911300802,
+        "n_rows": 58379,
+        "positive_rows": 1391
+      },
+      "chosen": {
+        "alpha_lgbm": 0.2,
+        "alpha_gru": 0.8,
+        "caught6": 0.33666666666666667,
+        "false_per_shift": 2.613197692010909,
+        "eligible": 120
+      },
+      "validation_grid": [
+        {
+          "alpha_lgbm": 0.0,
+          "alpha_gru": 1.0,
+          "caught6": 0.30666666666666664,
+          "false_per_shift": 2.6386452678056935,
+          "eligible": 120
+        },
+        {
+          "alpha_lgbm": 0.1,
+          "alpha_gru": 0.9,
+          "caught6": 0.2966666666666667,
+          "false_per_shift": 2.638697480734937,
+          "eligible": 120
+        },
+        {
+          "alpha_lgbm": 0.2,
+          "alpha_gru": 0.8,
+          "caught6": 0.33666666666666667,
+          "false_per_shift": 2.613197692010909,
+          "eligible": 120
+        },
+        {
+          "alpha_lgbm": 0.30000000000000004,
+          "alpha_gru": 0.7,
+          "caught6": 0.33166666666666667,
+          "false_per_shift": 2.6033163292420283,
+          "eligible": 120
+        },
+        {
+          "alpha_lgbm": 0.4,
+          "alpha_gru": 0.6,
+          "caught6": 0.3183333333333333,
+          "false_per_shift": 2.6147742364762823,
+          "eligible": 120
+        },
+        {
+          "alpha_lgbm": 0.5,
+          "alpha_gru": 0.5,
+          "caught6": 0.33,
+          "false_per_shift": 2.6023050715264966,
+          "eligible": 120
+        },
+        {
+          "alpha_lgbm": 0.6000000000000001,
+          "alpha_gru": 0.3999999999999999,
+          "caught6": 0.33499999999999996,
+          "false_per_shift": 2.584614602629931,
+          "eligible": 120
+        },
+        {
+          "alpha_lgbm": 0.7000000000000001,
+          "alpha_gru": 0.29999999999999993,
+          "caught6": 0.3333333333333333,
+          "false_per_shift": 2.5989781232050975,
+          "eligible": 120
+        },
+        {
+          "alpha_lgbm": 0.8,
+          "alpha_gru": 0.19999999999999996,
+          "caught6": 0.3,
+          "false_per_shift": 2.6136138201400767,
+          "eligible": 120
+        },
+        {
+          "alpha_lgbm": 0.9,
+          "alpha_gru": 0.09999999999999998,
+          "caught6": 0.31,
+          "false_per_shift": 2.6175423693270004,
+          "eligible": 120
+        },
+        {
+          "alpha_lgbm": 1.0,
+          "alpha_gru": 0.0,
+          "caught6": 0.27666666666666667,
+          "false_per_shift": 2.6259772774826042,
+          "eligible": 120
+        }
+      ]
+    },
+    "B": {
+      "calibration_patients": 1499,
+      "selection_patients": 1501,
+      "lgbm_platt": {
+        "coefficient": 1.0665317965364813,
+        "intercept": -3.658214699268366,
+        "n_rows": 55772,
+        "positive_rows": 835
+      },
+      "gru_platt": {
+        "coefficient": 0.762125363485604,
+        "intercept": -3.100621107105306,
+        "n_rows": 55772,
+        "positive_rows": 835
+      },
+      "chosen": {
+        "alpha_lgbm": 0.1,
+        "alpha_gru": 0.9,
+        "caught6": 0.27222222222222225,
+        "false_per_shift": 2.742112886483676,
+        "eligible": 72
+      },
+      "validation_grid": [
+        {
+          "alpha_lgbm": 0.0,
+          "alpha_gru": 1.0,
+          "caught6": 0.25,
+          "false_per_shift": 2.7505344233943823,
+          "eligible": 72
+        },
+        {
+          "alpha_lgbm": 0.1,
+          "alpha_gru": 0.9,
+          "caught6": 0.27222222222222225,
+          "false_per_shift": 2.742112886483676,
+          "eligible": 72
+        },
+        {
+          "alpha_lgbm": 0.2,
+          "alpha_gru": 0.8,
+          "caught6": 0.26944444444444443,
+          "false_per_shift": 2.753122448183227,
+          "eligible": 72
+        },
+        {
+          "alpha_lgbm": 0.30000000000000004,
+          "alpha_gru": 0.7,
+          "caught6": 0.23888888888888887,
+          "false_per_shift": 2.7547329715425044,
+          "eligible": 72
+        },
+        {
+          "alpha_lgbm": 0.4,
+          "alpha_gru": 0.6,
+          "caught6": 0.2361111111111111,
+          "false_per_shift": 2.7479919896804157,
+          "eligible": 72
+        },
+        {
+          "alpha_lgbm": 0.5,
+          "alpha_gru": 0.5,
+          "caught6": 0.22222222222222224,
+          "false_per_shift": 2.7573347667573813,
+          "eligible": 72
+        },
+        {
+          "alpha_lgbm": 0.6000000000000001,
+          "alpha_gru": 0.3999999999999999,
+          "caught6": 0.21944444444444447,
+          "false_per_shift": 2.7589909420241474,
+          "eligible": 72
+        },
+        {
+          "alpha_lgbm": 0.7000000000000001,
+          "alpha_gru": 0.29999999999999993,
+          "caught6": 0.23333333333333334,
+          "false_per_shift": 2.7564843839718827,
+          "eligible": 72
+        },
+        {
+          "alpha_lgbm": 0.8,
+          "alpha_gru": 0.19999999999999996,
+          "caught6": 0.21666666666666665,
+          "false_per_shift": 2.747274697520967,
+          "eligible": 72
+        },
+        {
+          "alpha_lgbm": 0.9,
+          "alpha_gru": 0.09999999999999998,
+          "caught6": 0.2111111111111111,
+          "false_per_shift": 2.745495390371771,
+          "eligible": 72
+        },
+        {
+          "alpha_lgbm": 1.0,
+          "alpha_gru": 0.0,
+          "caught6": 0.18333333333333332,
+          "false_per_shift": 2.7554957976535226,
+          "eligible": 72
+        }
+      ]
+    }
+  }
+}

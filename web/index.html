@@ -28,11 +28,17 @@
       <span class="brand-name">Septris</span>
       <span class="brand-tag">sepsis review priority for the ICU</span>
     </div>
+    <nav class="pages" aria-label="Sections">
+      <button class="btn pg on" data-page="">Ward</button>
+      <button class="btn pg" data-page="results">Results</button>
+      <button class="btn pg" data-page="model">How it works</button>
+      <button class="btn pg" data-page="faq">FAQ</button>
+    </nav>
     <div class="clock" id="clock" aria-live="polite"></div>
     <nav class="timebar" aria-label="Move through time">
-      <button id="prevShift" class="btn ghost" title="Previous shift">◀ Shift</button>
+      <button id="prevShift" class="btn ghost">◀ Previous shift</button>
       <div id="reviewChips" class="chips" role="group" aria-label="This shift's reviews"></div>
-      <button id="nextShift" class="btn ghost" title="Next shift">Shift ▶</button>
+      <button id="nextShift" class="btn ghost">Next shift ▶</button>
       <button id="play" class="btn" title="Play through reviews">▶ Play</button>
     </nav>
     <div class="toggles">
@@ -64,16 +70,10 @@
       <button role="tab" data-tab="priority" class="tab on">Priority</button>
       <button role="tab" data-tab="patient" class="tab">Patient</button>
       <button role="tab" data-tab="queue" class="tab">Queue</button>
-      <button role="tab" data-tab="results" class="tab">Results</button>
-      <button role="tab" data-tab="model" class="tab">How it works</button>
-      <button role="tab" data-tab="faq" class="tab">FAQ</button>
     </div>
     <div class="tabbody" id="tab-priority"></div>
     <div class="tabbody" id="tab-patient" hidden></div>
     <div class="tabbody" id="tab-queue" hidden></div>
-    <div class="tabbody" id="tab-results" hidden></div>
-    <div class="tabbody" id="tab-model" hidden></div>
-    <div class="tabbody" id="tab-faq" hidden></div>
   </aside>
 
   <form id="command" class="command" autocomplete="off">
@@ -84,6 +84,12 @@
     <div id="cmdEcho" class="cmd-echo" aria-live="polite"></div>
   </form>
 
+  <section id="page" class="page" hidden aria-label="Information">
+    <button id="pageClose" class="btn ghost pageclose">✕ Back to the ward</button>
+    <div id="pageBody" class="pagebody"></div>
+  </section>
+  <div id="tally" class="tally" hidden></div>
+  <button id="skipIntro" class="btn skipintro" hidden>Skip intro ▶</button>
   <div id="tour" class="tour" hidden role="dialog" aria-label="Guided tour"></div>
   <div id="note" class="note" hidden></div>
   <div id="loading" class="loading">Loading the ICU…</div>

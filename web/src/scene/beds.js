@@ -7,6 +7,7 @@ import { ordinal } from "../data.js";
 
 const COLOR = {
   pick: new THREE.Color("#4fb3ff"),
+  hit: new THREE.Color("#3ccf8e"),
   high: new THREE.Color("#ff6b5e"),
   med: new THREE.Color("#f5b84b"),
   low: new THREE.Color("#3ccf8e"),
@@ -114,7 +115,7 @@ function drawMonitor(m, bed, row, patient, color) {
   m.tex.needsUpdate = true;
 }
 
-export function createBeds(world, onSelect) {
+export function createBeds(world, onSelect, lobby) {
   const { scene, camera, renderer } = world;
   const bays = new Map();
   const hitboxes = [];
@@ -221,7 +222,7 @@ export function createBeds(world, onSelect) {
 
   world.onFrame((dt, t) => {
     for (const b of bays.values()) {
-      if (b.state === "pick") {
+      if (b.state === "pick" || b.state === "hit") {
         const p = 0.5 + 0.5 * Math.sin(t * 3);
         b.beamMat.opacity = 0.1 + 0.12 * p;
         b.lamp.intensity = 6 + 6 * p;
@@ -258,7 +259,31 @@ export function createBeds(world, onSelect) {
     }
   });
 
+  let lastSlot = null;
+  const occupant = new Map(); // bed -> patient index currently shown
+
   function update(data, slotRow, bedRows, st) {
+    // patients coming and going: when a bed's occupant changed since the last
+    // review shown, the old patient is wheeled to the elevator and the new one in
+    const newOcc = new Map(bedRows.map((r) => [r.bed, r.p]));
+    if (lobby && st.slot !== lastSlot) {
+      lobby.cancel();
+      const changed = [];
+      for (let bed = 1; bed <= 20; bed++) if (occupant.get(bed) !== newOcc.get(bed)) changed.push(bed);
+      const stepped = lastSlot != null && Math.abs(st.slot - lastSlot) <= 5 && st.tourStep == null;
+      if (stepped && changed.length && changed.length <= 6) {
+        for (const bed of changed) {
+          const b = bays.get(bed);
+          const arrives = newOcc.has(bed);
+          b.arriving = arrives;
+          lobby.transfer(bed, { leaves: occupant.has(bed), arrives, done: () => { b.arriving = false; b.patientGroup.visible = b.occupied; } });
+        }
+      }
+      lastSlot = st.slot;
+      occupant.clear();
+      for (const [k, v] of newOcc) occupant.set(k, v);
+    }
+
     const pb = bayPosition(slotRow.bed);
     nurseGoal.set(pb.x - 1.3, 0, pb.z + (slotRow.bed <= 10 ? 0.6 : -0.6));
     const byBed = new Map(bedRows.map((r) => [r.bed, r]));
@@ -271,20 +296,26 @@ export function createBeds(world, onSelect) {
       else if (r.picked) { color = COLOR.pick; state = "pick"; }
       else if (r.snoozed) { color = COLOR.snooze; state = "snooze"; }
       else { color = r.tier === 2 ? COLOR.high : r.tier === 1 ? COLOR.med : COLOR.low; state = "rank"; }
+      const hit = state === "pick" && st.showKey && (slotRow.review_class === "early6" || slotRow.review_class === "early");
+      if (hit) { state = "hit"; color = COLOR.hit; }
       b.state = state;
+      b.beamMat.color.copy(hit ? COLOR.hit : COLOR.pick);
+      b.lamp.color.copy(hit ? COLOR.hit : COLOR.pick);
       b.ringMat.color.copy(color).multiplyScalar(state === "snooze" || state === "empty" ? 1 : GLOW);
       b.ringMat.opacity = state === "snooze" || state === "empty" ? 0.35 : 0.85;
       b.ring.scale.setScalar(1);
       b.padMat.color.copy(color);
-      b.padMat.opacity = state === "pick" ? 0.18 : 0.07;
-      b.beam.visible = state === "pick";
+      b.padMat.opacity = state === "pick" || state === "hit" ? 0.18 : 0.07;
+      b.beam.visible = state === "pick" || state === "hit";
       b.lamp.intensity = 0;
-      b.patientGroup.visible = !!r;
+      b.occupied = !!r;
+      b.patientGroup.visible = !!r && !b.arriving;
       b.blanketMat.color.set(state === "snooze" ? "#55656a" : "#6f8f99");
       drawMonitor(b.monitor, bed, r, pat, color);
 
       const cls = ["bed-label"];
       if (state === "pick") cls.push("pick");
+      if (state === "hit") cls.push("hit");
       if (state === "snooze") cls.push("snooze");
       if (st.selectedBed === bed) cls.push("sel");
       b.el.className = cls.join(" ");
@@ -293,7 +324,7 @@ export function createBeds(world, onSelect) {
       let extra = "";
       if (r && r.picked && st.showKey) {
         const c = slotRow.review_class, lead = Math.round(slotRow.lead_hours ?? 0);
-        if (c === "early6" || c === "early") extra = `<small class='ok'>✓ <span class='long'>sepsis predicted </span>${lead} h early</small>`;
+        if (c === "early6" || c === "early") extra = `<b class='hitbig'>✓ SEPSIS PREDICTED</b><small class='ok keep'>${lead} hour${lead === 1 ? "" : "s"} before it was recorded</small>`;
         else if (c === "false") extra = "<small class='line'>false alarm</small>";
         else if (c === "late") extra = "<small class='line'>flagged too late</small>";
       }

@@ -12,6 +12,7 @@ export const state = {
   playing: false,      // auto-advance through reviews
   tab: "priority",     // right panel tab
   tourStep: null,      // null when the tour is closed
+  page: "",            // "" = the ward; "results" | "model" | "faq" = full-page sections
 };
 
 const subs = new Set();

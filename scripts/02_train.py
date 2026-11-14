@@ -27,7 +27,7 @@ from sklearn.linear_model import LogisticRegression  # noqa: E402
 from sklearn.metrics import average_precision_score, roc_auc_score  # noqa: E402
 from sklearn.preprocessing import StandardScaler  # noqa: E402
 
-from src import config as C, data_io as D, features as F, labels as L  # noqa: E402
+from src import config as C, data_io as D, features as F, labels as L, simulation as S  # noqa: E402
 
 OUT = ROOT / "outputs"
 SCORES = ROOT / "data/processed/scores"
@@ -64,6 +64,21 @@ def fit_lgbm(Xtr, ytr, Xva, yva, params):
     return booster, average_precision_score(yva, pv), roc_auc_score(yva, pv)
 
 
+def queue_validation_score(df, patients, mask, scores):
+    """Mean caught-6 rate in the actual fixed-capacity validation simulation."""
+    r = df.loc[mask]
+    ids = r["patient_id"].drop_duplicates().to_numpy()
+    n_hours = r.groupby("patient_id", sort=False).size().reindex(ids).to_numpy()
+    offsets = np.r_[0, np.cumsum(n_hours)[:-1]]
+    p = patients.set_index("patient_id").loc[ids]
+    cohort = S.Cohort(n_hours=n_hours, t_onset=p["t_onset"].to_numpy(float),
+                      group=p["group"].to_numpy(object), offsets=offsets,
+                      scores={"candidate": scores[mask]})
+    metrics = [S.sweep(cohort, ["candidate"], k=C.PRIMARY_K, seed=seed)[0]["candidate"]
+               for seed in C.SIM_SEEDS]
+    return float(np.mean([m["caught6"] for m in metrics])), float(np.mean([m["false_per_shift"] for m in metrics]))
+
+
 def main():
     SCORES.mkdir(parents=True, exist_ok=True)
     MODELS.mkdir(parents=True, exist_ok=True)
@@ -74,6 +89,7 @@ def main():
     df = df[["patient_id", "hospital", "hour", "split", "target", "in_training",
              "t_onset", "group", "hours_to_onset"]].copy()  # free raw columns
     log("causal base built")
+    patients = pd.read_csv(OUT / "patients.csv")  # needed by the queue-tuned candidate
     hosp, split = df["hospital"].to_numpy(), df["split"].to_numpy()
     in_tr, y = df["in_training"].to_numpy(), df["target"].to_numpy()
     np.save(SCORES / "sirs.npy", F.sirs_count(base).astype(np.float32))
@@ -133,6 +149,39 @@ def main():
             summary[f"{H}_lgbm_{name}"] = {"selected": params, "val_pr_auc": pr, "trials": trials,
                                            "features": list(X.columns)}
             summary_path.write_text(json.dumps(summary, indent=1))
+
+        # Exploratory queue-tuned LightGBM. The original combined model above
+        # remains unchanged; this candidate chooses its hyperparameters with the
+        # actual 20-bed/3-review validation policy outcome, never test data.
+        f_queue = SCORES / f"{H}_lgbm_queue_tuned.npy"
+        if not f_queue.exists():
+            X = sets["combined"]
+            trials, best = [], None
+            for params in C.LGBM_SEARCH:
+                t0 = time.time()
+                booster, pr, auc = fit_lgbm(X[tr], y[tr], X[va], y[va], params)
+                s = booster.predict(X, num_iteration=booster.best_iteration).astype(np.float32)
+                caught6, false_reviews = queue_validation_score(df, patients, va, s)
+                row = {**params, "val_pr_auc": pr, "val_auroc": auc,
+                       "val_queue_caught6": caught6, "val_false_reviews_per_shift": false_reviews,
+                       "rounds": booster.best_iteration, "secs": round(time.time() - t0)}
+                trials.append(row)
+                log(f"[{H}] queue-tuned {params} caught6 {caught6:.4f} PR-AUC {pr:.4f}")
+                # Primary objective is the queue outcome; deterministic tie-break
+                # favors PR-AUC, then fewer false reviews.
+                key = (caught6, pr, -false_reviews)
+                if best is None or key > best[0]:
+                    best = (key, booster, s, row)
+            _, booster, s, selected = best
+            booster.save_model(str(MODELS / f"{H}_lgbm_queue_tuned.txt"),
+                               num_iteration=booster.best_iteration)
+            np.save(f_queue, s)
+            summary[f"{H}_lgbm_queue_tuned"] = {
+                "selected": {k: selected[k] for k in ("num_leaves", "learning_rate")},
+                "selection_objective": "source validation caught 6–12h early at 3 reviews/12h shift",
+                "validation": selected, "trials": trials, "features": list(X.columns)}
+            summary_path.write_text(json.dumps(summary, indent=1))
+            log(f"[{H}] queue-tuned selected {summary[f'{H}_lgbm_queue_tuned']['selected']}")
 
         # Tier 1: shortcut ablation, same configuration as combined
         f = SCORES / f"{H}_lgbm_shortcuts.npy"

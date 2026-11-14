@@ -18,17 +18,17 @@ const RULES = [
   [/\b(miss|missed)\b/, () => ({ type: "example", kind: "miss" })],
   [/\bfalse\s*alarm\b/, () => ({ type: "example", kind: "false" })],
   [/\b(catch|caught|good)\b/, () => ({ type: "example", kind: "good" })],
-  [/\b(zoom out|overview|whole unit|everything)\b/, () => ({ type: "overview" })],
+  [/\b(zoom out|overview|whole unit|everything|ward)\b/, () => ({ type: "overview" })],
   [/\b(play|start)\b(?!.*tour)/, () => ({ type: "play", on: true })],
   [/\b(pause|stop)\b/, () => ({ type: "play", on: false })],
   [/\b(why|explain|reason)/, () => ({ type: "explain" })],
   [/\b(answer\s*key|outcomes?)\s*(off|hide)|hide\s+(the\s+)?(answer|outcomes?)/, () => ({ type: "key", on: false })],
   [/\banswer\s*key|outcomes?|show\s+(the\s+)?answer/, () => ({ type: "key", on: true })],
-  [/\bresults?\b|how well/, () => ({ type: "tab", tab: "results" })],
+  [/\bresults?\b|how well/, () => ({ type: "page", page: "results" })],
   [/\btour\b/, () => ({ type: "tour" })],
   [/\b(queue|ranking|priority list|line)\b/, () => ({ type: "tab", tab: "queue" })],
-  [/\b(how (does )?it works?|model)\b/, () => ({ type: "tab", tab: "model" })],
-  [/\b(help|what can i say|faq|questions?)\b/, () => ({ type: "tab", tab: "faq" })],
+  [/\b(how (does )?it works?|model)\b/, () => ({ type: "page", page: "model" })],
+  [/\b(help|what can i say|faq|questions?)\b/, () => ({ type: "page", page: "faq" })],
 ];
 
 export function parse(text) {

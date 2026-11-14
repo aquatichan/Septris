@@ -26,7 +26,7 @@ export function tourSteps(data, slot) {
     },
     {
       title: "Explore",
-      text: "Click any bed for its full patient card. The Queue tab lists all 20 beds in priority order, and Results and How it works explain the evidence. Use the review buttons at the top to move through the shift. You can also type or say commands like “show bed 6”, “next review” or “show me a miss”.",
+      text: "Click any bed for its full patient card. The Queue tab lists all 20 beds in priority order. Results, How it works and FAQ at the top explain the evidence. Use the review buttons to move through the shift; when a patient leaves, a new one is wheeled in from the elevator. You can also type or say commands like “show bed 6”, “next review” or “show me a miss”.",
       apply: (go) => go({ showKey: true, camera: "overview", tab: "priority" }),
     },
   ];

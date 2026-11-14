@@ -30,7 +30,7 @@ export function createWorld(container) {
 
   const scene = new THREE.Scene();
   scene.background = new THREE.Color("#0b1418");
-  scene.fog = new THREE.Fog("#0b1418", 70, 140);
+  scene.fog = new THREE.Fog("#0b1418", 90, 170);
   const pmrem = new THREE.PMREMGenerator(renderer);
   scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
 
@@ -41,7 +41,7 @@ export function createWorld(container) {
   controls.enableDamping = true;
   controls.maxPolarAngle = Math.PI * 0.47;
   controls.minDistance = 4;
-  controls.maxDistance = 80;
+  controls.maxDistance = 110;
 
   // light: dim ambient, cool ceiling panels, one shadow-casting key light
   scene.add(new THREE.HemisphereLight("#bcd7ff", "#1a2a30", 0.55));
@@ -49,7 +49,7 @@ export function createWorld(container) {
   key.position.set(-14, 26, 12);
   key.castShadow = true;
   key.shadow.mapSize.set(2048, 2048);
-  Object.assign(key.shadow.camera, { left: -28, right: 28, top: 18, bottom: -18, near: 1, far: 70 });
+  Object.assign(key.shadow.camera, { left: -28, right: 44, top: 18, bottom: -18, near: 1, far: 80 });
   key.shadow.bias = -0.0004;
   scene.add(key);
 
@@ -146,7 +146,9 @@ function buildRoom(scene) {
   };
   mk(UNIT.length, 0.25, 0, -UNIT.width / 2);
   mk(0.25, UNIT.width, -UNIT.length / 2, 0);
-  mk(0.25, UNIT.width, UNIT.length / 2, 0);
+  // right wall has a doorway (z -3.5..3.5) into the check-in lobby (lobby.js)
+  mk(0.25, 7.5, UNIT.length / 2, -7.25);
+  mk(0.25, 7.5, UNIT.length / 2, 7.25);
   const glow = new THREE.Mesh(
     new THREE.PlaneGeometry(UNIT.length - 4, 0.5),
     new THREE.MeshBasicMaterial({ color: "#16404f" }),

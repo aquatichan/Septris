@@ -5,6 +5,7 @@ import { state, set, subscribe } from "./store.js";
 import { createWorld } from "./scene/world.js";
 import { createBeds } from "./scene/beds.js";
 import { createCameraRig } from "./scene/camera.js";
+import { createLobby } from "./scene/lobby.js";
 import { priorityHTML, patientHTML, drawBedChart, queueHTML, resultsHTML, modelHTML, faqHTML } from "./ui/panel.js";
 import { tourSteps, renderTour } from "./ui/tour.js";
 import { parse } from "./commands.js";
@@ -17,13 +18,12 @@ const $ = (id) => document.getElementById(id);
 function tourSlot(data) {
   let best = null;
   data.slots.forEach((s, i) => {
-    if (s.review_class !== "early6" || s.sepsis_so_far < 20 || s.lead_hours < 7 || s.lead_hours > 11) return;
+    if (s.review_class !== "early6" || s.sepsis_so_far < 1 || s.lead_hours < 7 || s.lead_hours > 11) return;
     const p = data.patients[s.p];
     if (p.reviews.some((h) => h < s.record_hour) || s.record_hour < 12) return;
     const reasons = (s.reasons || "").split(" | ").filter(Boolean);
     if (reasons.length < 3 || reasons.filter((r) => /\d/.test(r)).length < 2) return;
-    const rise = (p.risk[s.record_hour] ?? 0) - (p.risk[s.record_hour - 12] ?? 0);
-    if (!best || rise > best[0]) best = [rise, i];
+    if (!best && s.day >= 2 && data.bedsByHour.get(s.unit_hour).length >= 19) best = [0, i]; // the first clear one
   });
   return best ? best[1] : data.examples.good[0];
 }
@@ -38,7 +38,9 @@ async function main() {
   }
   const world = createWorld($("stage"));
   const rig = createCameraRig(world);
-  const bedsView = createBeds(world, (bed) => selectBed(bed));
+  const lobby = createLobby(world);
+  window.__septris = { lobby, rig, state };
+  const bedsView = createBeds(world, (bed) => selectBed(bed), lobby);
   const voice = createVoice({
     onText: (t) => runCommand(t, true),
     onState: (s) => {
@@ -95,7 +97,8 @@ async function main() {
       case "reviewN": goSlot(shiftIdx[Math.min(a.n, shiftIdx.length) - 1], { focus: null }); break;
       case "shift": goShift(a.delta); break;
       case "example": example(a.kind); break;
-      case "overview": rig.overview(); break;
+      case "overview": set({ page: "" }); rig.overview(); break;
+      case "page": set({ page: a.page }); break;
       case "play": set({ playing: a.on }); break;
       case "explain": speakPick(); set({ tab: "priority" }); break;
       case "key": set({ showKey: a.on }); break;
@@ -120,27 +123,41 @@ async function main() {
   }
   function renderPanel() {
     document.querySelectorAll(".tab").forEach((t) => t.classList.toggle("on", t.dataset.tab === state.tab));
-    for (const t of ["priority", "patient", "queue", "results", "model", "faq"]) $(`tab-${t}`).hidden = t !== state.tab;
+    for (const t of ["priority", "patient", "queue"]) $(`tab-${t}`).hidden = t !== state.tab;
     if (state.tab === "priority") $("tab-priority").innerHTML = priorityHTML(data, state);
     if (state.tab === "patient") { $("tab-patient").innerHTML = patientHTML(data, state); requestAnimationFrame(() => drawBedChart(data, state)); }
     if (state.tab === "queue") $("tab-queue").innerHTML = queueHTML(data, state);
-    if (state.tab === "results") $("tab-results").innerHTML = resultsHTML(data, resultsK);
-    if (state.tab === "model") $("tab-model").innerHTML = modelHTML(data);
-    if (state.tab === "faq") $("tab-faq").innerHTML = faqHTML(data);
+    // full-page sections
+    $("page").hidden = !state.page;
+    document.querySelectorAll(".btn.pg").forEach((b) => b.classList.toggle("on", b.dataset.page === state.page));
+    if (state.page === "results") $("pageBody").innerHTML = resultsHTML(data, resultsK);
+    if (state.page === "model") $("pageBody").innerHTML = modelHTML(data);
+    if (state.page === "faq") $("pageBody").innerHTML = faqHTML(data);
+    // running tally of early predictions
+    const s = data.slots[state.slot];
+    const tally = $("tally");
+    tally.hidden = !state.showKey || !s.sepsis_so_far;
+    tally.innerHTML = `<b>${s.sb_caught_so_far} of ${s.sepsis_so_far}</b>sepsis cases so far were flagged 6–12 hours early by Septris (random picking: ${s.random_caught_so_far}).`;
   }
   function renderNote() {
     const f = state.focus;
     const el = $("note");
-    if (!f || f.slot !== state.slot) { el.hidden = true; return; }
     const s = data.slots[state.slot];
-    const b = beds(data, state.slot).find((x) => x.bed === f.bed);
-    const text = {
-      good: `Example: Septris put Bed ${s.bed} first, and the record shows sepsis ${Math.round(s.lead_hours)} hours later. An accurate early flag.`,
-      false: `Example of a false alarm: Septris put Bed ${s.bed} first, but no sepsis followed. This is the most common outcome, because only about 8% of ICU patients develop sepsis.`,
-      miss: b ? `Example of a miss: the record shows Bed ${f.bed} developed sepsis ${Math.round(b.hours_to_sepsis)} hours after this point, but Septris had it ${b.rank ? `${ordinal(b.rank)} in line` : "marked as recently reviewed"}, so it wasn't reviewed in time.` : "",
-    }[f.kind];
+    const hit = state.showKey && (s.review_class === "early6" || s.review_class === "early");
+    el.className = "note" + (hit ? " hit" : "");
+    let text = "";
+    if (f && f.slot === state.slot && f.kind !== "good") {
+      const b = beds(data, state.slot).find((x) => x.bed === f.bed);
+      text = f.kind === "false"
+        ? `Example of a false alarm: Septris put Bed ${s.bed} first, but no sepsis followed. This is the most common outcome, because only about 8% of ICU patients develop sepsis.`
+        : b ? `Example of a miss: the record shows Bed ${f.bed} developed sepsis ${Math.round(b.hours_to_sepsis)} hours after this point, but Septris had it ${b.rank ? `${ordinal(b.rank)} in line` : "marked as recently reviewed"}, so it wasn't reviewed in time.` : "";
+      el.className = "note";
+    } else if (hit && state.tourStep == null) {
+      const lead = Math.round(s.lead_hours);
+      text = `<b>✓ Sepsis predicted ${lead} hour${lead === 1 ? "" : "s"} early.</b> Septris sent the nurse to Bed ${s.bed} at ${s.clock}; the record shows sepsis ${lead} hour${lead === 1 ? "" : "s"} later${s.review_class === "early6" ? ", inside the 6–12 hour early-warning window" : ""}.`;
+    }
     el.innerHTML = text;
-    el.hidden = !text;
+    el.hidden = !text || !!state.page;
   }
   function render(patch) {
     const s = data.slots[state.slot];
@@ -185,7 +202,9 @@ async function main() {
     const b = e.target.closest("[data-bed]");
     if (b) selectBed(Number(b.dataset.bed));
   };
-  $("tab-results").onclick = (e) => {
+  document.querySelectorAll(".btn.pg").forEach((b) => (b.onclick = () => set({ page: b.dataset.page })));
+  $("pageClose").onclick = () => set({ page: "" });
+  $("pageBody").onclick = (e) => {
     const b = e.target.closest("[data-k]");
     if (b) { resultsK = Number(b.dataset.k); renderPanel(); }
   };
@@ -208,10 +227,17 @@ async function main() {
   setInterval(() => { if (state.playing && state.tourStep == null) goSlot(state.slot + 1, { focus: null }); }, 3500);
 
   // start: the tour moment, overview camera, tour open
+  // start: ride the elevator into the lobby, through to the ward, then open the tour
   $("loading").hidden = true;
   set({ data, slot: TOUR });
-  rig.overview();
-  set({ tourStep: 0 });
+  document.body.classList.add("intro");
+  $("skipIntro").hidden = false;
+  $("skipIntro").onclick = () => rig.skipIntro();
+  rig.intro(lobby, () => {
+    document.body.classList.remove("intro");
+    $("skipIntro").hidden = true;
+    set({ tourStep: 0 });
+  });
 }
 
 main();

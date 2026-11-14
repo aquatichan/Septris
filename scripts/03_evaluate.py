@@ -25,7 +25,7 @@ from src.labels import ELIGIBLE  # noqa: E402
 
 RES = ROOT / "outputs/results"
 SC = ROOT / "data/processed/scores"
-MODELS = ["lr", "lgbm_values", "lgbm_missing", "lgbm_combined", "temporal_gru", "blend", "lgbm_shortcuts"]
+MODELS = ["lr", "lgbm_values", "lgbm_missing", "lgbm_combined", "lgbm_queue_tuned", "temporal_gru", "lgbm_gru_blend", "blend", "lgbm_shortcuts"]
 SHARED = ["sirs", "news"]
 METRICS = ["caught6", "caught_any", "caught3", "missed", "median_lead",
            "false_per_shift", "late_per_shift", "precision"]
