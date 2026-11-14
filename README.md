@@ -63,7 +63,10 @@ These findings replicate known results about cross-hospital transfer and
 missingness in this dataset. Our contribution is evaluating them as a
 budgeted review decision.
 
-Full results: **[docs/results.md](docs/results.md)**. Pre-registration
+Full results: **[docs/results.md](docs/results.md)**. A post-hoc version 2
+(SOFA scores, 24-hour trends, baseline changes, local adaptation) gave no
+reliable gain on validation patients, so it was never run on the test set:
+**[docs/version2_attempt.md](docs/version2_attempt.md)**. Pre-registration
 (committed before any test-set number): **[docs/preregistration.md](docs/preregistration.md)**.
 
 ![Results tab](docs/img/results.png)
