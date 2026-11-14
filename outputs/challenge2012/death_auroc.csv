@@ -1,0 +1,19 @@
+window,score,auroc_death
+first 24 h,sirs,0.583838294844478
+first 24 h,news,0.5914330787481566
+first 24 h,A:lgbm_values,0.6013207285469544
+first 24 h,A:lgbm_missing,0.4887228629964535
+first 24 h,A:lgbm_combined,0.6017180501180668
+first 24 h,B:lgbm_values,0.6338115705437022
+first 24 h,B:lgbm_missing,0.5810064751293259
+first 24 h,B:lgbm_combined,0.6309756814269838
+first 48 h,sirs,0.5880121064412025
+first 48 h,news,0.6077586925690053
+first 48 h,A:lgbm_values,0.6121033336594547
+first 48 h,A:lgbm_missing,0.5156133262599736
+first 48 h,A:lgbm_combined,0.6333046312464816
+first 48 h,B:lgbm_values,0.6531206248597408
+first 48 h,B:lgbm_missing,0.5867875011432742
+first 48 h,B:lgbm_combined,0.6573262233204484
+first 24 h (dataset field),SOFA,0.6376366138750512
+first 24 h (dataset field),SAPS-I,0.6596112237887131

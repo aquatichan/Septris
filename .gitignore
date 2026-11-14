@@ -18,3 +18,4 @@ venv/
 .DS_Store
 logs/
 outputs/eicu/patients.csv
+data/raw/challenge2012/

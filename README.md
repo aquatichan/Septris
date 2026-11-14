@@ -70,7 +70,11 @@ reliable gain on validation patients, so it was never run on the test set:
 zero-shot test on a third hospital system (eICU demo, 186 hospitals) was
 inconclusive for early warning because its approximate label leaves only 52
 usable cases, but a label-free check again shows the measurement-pattern
-signal transfers worst: **[docs/eicu_external.md](docs/eicu_external.md)**. Pre-registration
+signal transfers worst: **[docs/eicu_external.md](docs/eicu_external.md)**.
+At a further hospital with real outcomes (PhysioNet 2012, 12,000 stays), the
+frozen model ranks patients who die in hospital about as well as SOFA and
+SAPS-I (AUROC 0.63–0.66 vs 0.64–0.66), better than SIRS and NEWS, though it was never
+trained on death: **[docs/challenge2012_check.md](docs/challenge2012_check.md)**. Pre-registration
 (committed before any test-set number): **[docs/preregistration.md](docs/preregistration.md)**.
 
 ![Results tab](docs/img/results.png)
@@ -169,6 +173,10 @@ vendor/     official PhysioNet 2019 scoring code (BSD-2)
   Collaborative Research Database, a freely available multi-center database
   for critical care research. *Scientific Data* 5:180178 (2018). Demo v2.0.1,
   ODbL 1.0: https://physionet.org/content/eicu-crd-demo/2.0.1/
+- Silva I, Moody G, Scott DJ, Celi LA, Mark RG. Predicting In-Hospital
+  Mortality of ICU Patients: The PhysioNet/Computing in Cardiology Challenge
+  2012. *Computing in Cardiology* 39:245–248 (2012). Data, ODC-By 1.0:
+  https://physionet.org/content/challenge-2012/1.0.0/
 - Reyna MA et al. Early Prediction of Sepsis From Clinical Data: The
   PhysioNet/Computing in Cardiology Challenge 2019. *Critical Care Medicine*
   48(2):210–217 (2020). https://doi.org/10.1097/CCM.0000000000004145
