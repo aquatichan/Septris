@@ -82,11 +82,12 @@ def main():
             values = base["current"][train, j]
             values = values[~np.isnan(values)]
             familiarity[variable] = tuple(np.quantile(values, [0.01, 0.99])) if len(values) else (-np.inf, np.inf)
-        digest = hashlib.sha256(model_path.read_bytes()).hexdigest()[:16]
+        model_sha256 = hashlib.sha256(model_path.read_bytes()).hexdigest()
         bundle = {
             "schema_version": 2,
             "model_name": "lgbm_combined",
-            "model_version": f"{H}-lgbm-combined-{digest}",
+            "model_version": f"{H}-lgbm-combined-{model_sha256[:16]}",
+            "model_sha256": model_sha256,
             "hospital": H,
             "variables": variables,
             "features": item["features"],
