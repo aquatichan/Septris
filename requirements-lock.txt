@@ -6,3 +6,4 @@ gradio==6.32.0
 matplotlib==3.11.2
 pyarrow==26.0.1
 pytest==9.1.1
+torch==2.2.2
