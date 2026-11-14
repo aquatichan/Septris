@@ -5,6 +5,7 @@ No modelling happens here. Works per hospital ("A" or "B").
 
 from __future__ import annotations
 
+import shutil
 import subprocess
 from pathlib import Path
 
@@ -40,12 +41,24 @@ def download(data_dir: str | Path, hospitals=("A", "B")) -> Path:
     data_dir = Path(data_dir)
     data_dir.mkdir(parents=True, exist_ok=True)
     for h in hospitals:
-        url = f"{PHYSIONET_BASE}/{HOSPITAL_DIRS[h]}/"
-        subprocess.run(
-            ["wget", "-q", "-r", "-N", "-c", "-np", "-nH", "--cut-dirs=4",
-             "-A", "*.psv", "-P", str(data_dir), url],
-            check=True,
-        )
+        destination = data_dir / HOSPITAL_DIRS[h]
+        # S3's concurrent sync is substantially faster than one HTTPS request
+        # per patient file on fresh CI machines. Keep the documented wget
+        # implementation as a portable fallback.
+        if shutil.which("aws"):
+            subprocess.run(
+                ["aws", "s3", "sync", "--no-sign-request", "--only-show-errors",
+                 f"s3://physionet-open/challenge-2019/1.0.0/training/{HOSPITAL_DIRS[h]}",
+                 str(destination)],
+                check=True,
+            )
+        else:
+            url = f"{PHYSIONET_BASE}/{HOSPITAL_DIRS[h]}/"
+            subprocess.run(
+                ["wget", "-q", "-r", "-N", "-c", "-np", "-nH", "--cut-dirs=4",
+                 "-A", "*.psv", "-P", str(data_dir), url],
+                check=True,
+            )
     return data_dir
 
 
