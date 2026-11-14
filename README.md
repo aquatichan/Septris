@@ -112,6 +112,14 @@ trained on death: **[docs/challenge2012_check.md](docs/challenge2012_check.md)**
    replicates (resample patients, new admission order, all policies on the
    same replicate); paired differences.
 
+## External-validation contracts
+
+SEPTRIS includes a credentialed-data-safe external-validation gate for authorized local eICU, MIMIC-IV, or HiRID extracts. It never downloads, commits, or merges those sources into development training. The contract rejects suspected treatment/label leakage and reports only aggregate coverage. See [docs/external_validation_protocol.md](docs/external_validation_protocol.md).
+
+```bash
+make external-audit SOURCE=eicu INPUT=/secure/hourly.parquet REPORT=outputs/external/eicu_audit.json
+```
+
 ## Clinical decision-support replay API
 
 A separate FastAPI backend turns frozen, locally generated artifacts into a replayable clinical-review service. It validates timestamped hourly observations, rejects out-of-order data, scores only from a trusted local model bundle, excludes charts with insufficient critical vitals, enforces a three-chart queue and 12-hour snooze, and writes hashed audit events. It is not connected to an EHR and makes no diagnosis or treatment recommendation. See [docs/clinical_api.md](docs/clinical_api.md).
