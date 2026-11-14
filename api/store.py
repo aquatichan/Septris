@@ -1,11 +1,14 @@
-"""Small transactional SQLite store for replay/demo use.
+"""Transactional local replay store for the SEPTRIS prototype.
 
-This is intentionally local and stores no raw values in the audit table.
-Do not treat it as production EHR storage.
+Raw observations remain in this local SQLite file solely to make an individual
+replay deterministic. Audit rows contain keyed hashes, never raw payloads.
+This is not production EHR storage.
 """
 
 import hashlib
+import hmac
 import json
+import os
 import sqlite3
 from contextlib import contextmanager
 from pathlib import Path
@@ -31,17 +34,22 @@ class ReplayStore:
             con.executescript(
                 """
                 PRAGMA journal_mode=WAL;
+                PRAGMA foreign_keys=ON;
+                CREATE TABLE IF NOT EXISTS metadata (
+                    key TEXT PRIMARY KEY,
+                    value TEXT NOT NULL
+                );
                 CREATE TABLE IF NOT EXISTS observations (
                     patient_id TEXT NOT NULL,
-                    hospital TEXT NOT NULL,
-                    icu_hour INTEGER NOT NULL,
+                    hospital TEXT NOT NULL CHECK(hospital IN ('A', 'B')),
+                    icu_hour INTEGER NOT NULL CHECK(icu_hour >= 0),
                     observed_at TEXT NOT NULL,
                     payload_json TEXT NOT NULL,
                     PRIMARY KEY (patient_id, icu_hour)
                 );
                 CREATE TABLE IF NOT EXISTS scores (
                     patient_id TEXT PRIMARY KEY,
-                    hospital TEXT NOT NULL,
+                    hospital TEXT NOT NULL CHECK(hospital IN ('A', 'B')),
                     icu_hour INTEGER NOT NULL,
                     observed_at TEXT NOT NULL,
                     payload_json TEXT NOT NULL
@@ -63,21 +71,39 @@ class ReplayStore:
                 );
                 """
             )
+            row = con.execute("SELECT value FROM metadata WHERE key='audit_hmac_key'").fetchone()
+            if row is None:
+                con.execute("INSERT INTO metadata(key, value) VALUES (?, ?)",
+                            ("audit_hmac_key", os.urandom(32).hex()))
+                self._audit_key = con.execute(
+                    "SELECT value FROM metadata WHERE key='audit_hmac_key'"
+                ).fetchone()["value"]
+            else:
+                self._audit_key = row["value"]
 
-    @staticmethod
-    def _hash(value: str) -> str:
-        return hashlib.sha256(value.encode()).hexdigest()
+    def _hash(self, value: str) -> str:
+        return hmac.new(bytes.fromhex(self._audit_key), value.encode(), hashlib.sha256).hexdigest()
+
+    def validate_append(self, payload: dict):
+        """Reject mutation, cross-hospital identity switches, and time reversal."""
+        with self.connect() as con:
+            rows = con.execute(
+                "SELECT hospital, icu_hour FROM observations WHERE patient_id=? ORDER BY icu_hour",
+                (payload["patient_id"],),
+            ).fetchall()
+        if not rows:
+            return
+        if rows[0]["hospital"] != payload["hospital"]:
+            raise ValueError("patient_id is already bound to a different source hospital")
+        latest = rows[-1]["icu_hour"]
+        if payload["icu_hour"] <= latest:
+            raise ValueError("ICU hour must be strictly newer than the stored patient history")
 
     def append_observation(self, payload: dict):
+        self.validate_append(payload)
         with self.connect() as con:
-            prior = con.execute(
-                "SELECT MAX(icu_hour) AS hour FROM observations WHERE patient_id=?",
-                (payload["patient_id"],),
-            ).fetchone()["hour"]
-            if prior is not None and payload["icu_hour"] < prior:
-                raise ValueError("out-of-order ICU hour; replay must be monotonic per patient")
             con.execute(
-                "INSERT OR REPLACE INTO observations VALUES (?, ?, ?, ?, ?)",
+                "INSERT INTO observations VALUES (?, ?, ?, ?, ?)",
                 (payload["patient_id"], payload["hospital"], payload["icu_hour"],
                  payload["observed_at"], json.dumps(payload, sort_keys=True)),
             )
@@ -90,6 +116,10 @@ class ReplayStore:
                 (patient_id,),
             ).fetchall()
         return [json.loads(r["payload_json"]) for r in rows]
+
+    def has_patient(self, patient_id: str) -> bool:
+        with self.connect() as con:
+            return con.execute("SELECT 1 FROM observations WHERE patient_id=? LIMIT 1", (patient_id,)).fetchone() is not None
 
     def save_score(self, score: dict):
         with self.connect() as con:
@@ -106,6 +136,8 @@ class ReplayStore:
         return [json.loads(r["payload_json"]) for r in rows]
 
     def record_review(self, patient_id: str, reviewer_id: str, reviewed_at: str, action: str):
+        if not self.has_patient(patient_id):
+            raise ValueError("cannot review an unknown patient")
         with self.connect() as con:
             con.execute("INSERT INTO reviews(patient_id, reviewed_at, reviewer_hash, action) VALUES (?, ?, ?, ?)",
                         (patient_id, reviewed_at, self._hash(reviewer_id), action))
@@ -127,7 +159,7 @@ class ReplayStore:
             now = now.replace(tzinfo=timezone.utc)
         if then.tzinfo is None:
             then = then.replace(tzinfo=timezone.utc)
-        return (now - then).total_seconds() < snooze_hours * 3600
+        return 0 <= (now - then).total_seconds() < snooze_hours * 3600
 
     def _audit(self, con, event_type: str, patient_id: str, payload: dict, model_version: str | None = None):
         con.execute(
