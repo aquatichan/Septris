@@ -8,3 +8,5 @@ matplotlib>=3.8
 gradio>=4.44
 pytest>=8.0
 torch>=2.2
+fastapi>=0.110,<1.0
+uvicorn>=0.27
