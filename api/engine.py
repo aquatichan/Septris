@@ -39,7 +39,8 @@ class FrozenLightGBMEngine:
         if not history:
             raise ValueError("no observation history")
         values = list(D.MEASURED)
-        first, last = history[0], history[-1]
+        age = next((x.get("age") for x in reversed(history) if x.get("age") is not None), np.nan)
+        sex = next((x.get("sex") for x in reversed(history) if x.get("sex") is not None), np.nan)
         rows = []
         by_hour = {x["icu_hour"]: x for x in history}
         for h in range(min(by_hour), max(by_hour) + 1):
@@ -49,8 +50,8 @@ class FrozenLightGBMEngine:
             row.update({
                 "patient_id": "inference_patient",
                 "hour": h,
-                "Age": event.get("age", last.get("age", first.get("age", np.nan))),
-                "Gender": event.get("sex", last.get("sex", first.get("sex", np.nan))),
+                "Age": age,
+                "Gender": sex,
             })
             for shortcut in D.SHORTCUTS:
                 row[shortcut] = np.nan
