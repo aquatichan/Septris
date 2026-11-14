@@ -65,8 +65,8 @@ def patient_bounds(pid):
 class PatientSequences:
     """Creates causal sequence features lazily, keeping padded batches small."""
 
-    def __init__(self, base, target, bounds, indices, median, scale):
-        self.base, self.target, self.bounds = base, target, bounds
+    def __init__(self, base, target, supervised, bounds, indices, median, scale):
+        self.base, self.target, self.supervised, self.bounds = base, target, supervised, bounds
         self.indices, self.median, self.scale = np.asarray(indices), median, scale
 
     def __len__(self):
@@ -78,26 +78,32 @@ class PatientSequences:
         obs = (~np.isnan(cur)).astype(np.float32)
         val = np.nan_to_num((cur - self.median) / self.scale, nan=0.0, posinf=0.0, neginf=0.0)
         since = np.log1p(np.minimum(self.base["since"][a:b], 48.0)).astype(np.float32) / np.log(49.0)
+        age = float(np.nan_to_num(self.base["age"][a], nan=0.0)) / 100.0
+        sex = float(np.nan_to_num(self.base["gender"][a], nan=0.0))
         demo = np.column_stack([
-            np.full(b - a, np.nan_to_num(self.base["age"][a:b][0], nan=0.0) / 100.0, np.float32),
-            np.full(b - a, np.nan_to_num(self.base["gender"][a:b][0], nan=0.0), np.float32),
+            np.full(b - a, age, dtype=np.float32),
+            np.full(b - a, sex, dtype=np.float32),
         ])
-        return np.concatenate([val, obs, since, demo], axis=1), self.target[a:b].astype(np.float32)
+        return (np.concatenate([val, obs, since, demo], axis=1),
+                self.target[a:b].astype(np.float32), self.supervised[a:b])
 
 
 def collate(batch):
     import torch
     n = len(batch)
-    lengths = np.asarray([len(x) for x, _ in batch], dtype=np.int64)
+    lengths = np.asarray([len(x) for x, _, _ in batch], dtype=np.int64)
     width = batch[0][0].shape[1]
     x = np.zeros((n, lengths.max(), width), dtype=np.float32)
     y = np.zeros((n, lengths.max()), dtype=np.float32)
     valid = np.zeros((n, lengths.max()), dtype=bool)
-    for i, (xi, yi) in enumerate(batch):
+    supervised = np.zeros((n, lengths.max()), dtype=bool)
+    for i, (xi, yi, si) in enumerate(batch):
         x[i, :len(xi)] = xi
         y[i, :len(yi)] = yi
         valid[i, :len(xi)] = True
-    return torch.from_numpy(x), torch.from_numpy(y), torch.from_numpy(valid), torch.from_numpy(lengths)
+        supervised[i, :len(si)] = si
+    return (torch.from_numpy(x), torch.from_numpy(y), torch.from_numpy(valid),
+            torch.from_numpy(supervised), torch.from_numpy(lengths))
 
 
 def build_model(width):
@@ -121,17 +127,17 @@ def build_model(width):
     return TemporalGRU()
 
 
-def score(model, dataset, device):
+def score(model, dataset, device, supervised_only=False):
     import torch
     from torch.utils.data import DataLoader
     loader = DataLoader(dataset, batch_size=BATCH_SIZE, shuffle=False, collate_fn=collate)
     model.eval()
     out = []
     with torch.no_grad():
-        for x, _, _, lengths in loader:
-            logits = model(x.to(device), lengths.to(device))
-            for z, n in zip(torch.sigmoid(logits).cpu().numpy(), lengths.numpy()):
-                out.append(z[:n])
+        for x, _, _, supervised, lengths in loader:
+            prob = torch.sigmoid(model(x.to(device), lengths.to(device))).cpu().numpy()
+            for z, use, n in zip(prob, supervised.numpy(), lengths.numpy()):
+                out.append(z[:n][use[:n]] if supervised_only else z[:n])
     return np.concatenate(out).astype(np.float32)
 
 
@@ -166,8 +172,8 @@ def main():
         median = np.nanmedian(raw, axis=0).astype(np.float32)
         scale = np.nanstd(raw, axis=0).astype(np.float32)
         scale = np.where(scale < 1e-4, 1.0, scale)
-        train_ds = PatientSequences(base, y, (starts, ends), train_patients, median, scale)
-        val_ds = PatientSequences(base, y, (starts, ends), val_patients, median, scale)
+        train_ds = PatientSequences(base, y, tr_rows, (starts, ends), train_patients, median, scale)
+        val_ds = PatientSequences(base, y, va_rows, (starts, ends), val_patients, median, scale)
         width = train_ds[0][0].shape[1]
         model = build_model(width).to(device)
         optimizer = torch.optim.AdamW(model.parameters(), lr=1e-3, weight_decay=1e-4)
@@ -179,16 +185,17 @@ def main():
         for epoch in range(1, EPOCHS + 1):
             model.train()
             losses = []
-            for x, yy, valid, lengths in train_loader:
+            for x, yy, _, supervised, lengths in train_loader:
                 optimizer.zero_grad()
                 logits = model(x.to(device), lengths.to(device))
-                loss = nnf.binary_cross_entropy_with_logits(logits[valid.to(device)], yy.to(device)[valid.to(device)],
+                sup = supervised.to(device)
+                loss = nnf.binary_cross_entropy_with_logits(logits[sup], yy.to(device)[sup],
                                                             pos_weight=pos_weight)
                 loss.backward()
                 torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
                 optimizer.step()
                 losses.append(float(loss.detach().cpu()))
-            val_score = score(model, val_ds, device)
+            val_score = score(model, val_ds, device, supervised_only=True)
             val_y = y[va_rows]
             pr = average_precision_score(val_y, val_score)
             auc = roc_auc_score(val_y, val_score)
@@ -203,7 +210,7 @@ def main():
                     break
         model.load_state_dict(best_state)
         all_patients = np.arange(len(starts))
-        all_ds = PatientSequences(base, y, (starts, ends), all_patients, median, scale)
+        all_ds = PatientSequences(base, y, np.ones(len(y), dtype=bool), (starts, ends), all_patients, median, scale)
         scores = score(model, all_ds, device)
         np.save(SCORES / f"{H}_{NAME}.npy", scores)
         torch.save({"state_dict": best_state, "median": median, "scale": scale, "variables": variables}, MODELS / f"{H}_{NAME}.pt")
