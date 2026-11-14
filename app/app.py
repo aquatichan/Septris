@@ -273,17 +273,22 @@ def chart(i, bed):
         ax.plot([h], [y], marker="v", ms=12, color=BLUE, mec="white", zorder=5,
                 label="Septris had the nurse review this chart" if first else None, ls="none")
         first = False
-    ax.set_ylim(0, 112)
+    x0 = max(0, now - 48)
+    x1 = min(end + 1, max(now, 0 if np.isnan(onset) else onset) + 8)
+    ax.set_ylim(0, 122)
     ax.set_yticks([0, 25, 50, 75, 100])
     ax.set_ylabel("Septris risk\n(0–100)")
-    ax.text(now, 104, "◀ before this moment | after ▶", ha="center", fontsize=9.5, fontweight="bold")
-    if end > now + 2:
-        ax.text((now + end) / 2 + 0.5, 6, "after this moment:\nfrom the records,\nhidden from Septris",
+    ax.text(now, 112, "now ", ha="right", fontsize=10, fontweight="bold")
+    if x1 - now > 10:
+        ax.text((now + x1) / 2, 6, "the future:\nfrom the records,\nhidden from Septris",
                 ha="center", fontsize=9, color="#475467")
     if not np.isnan(onset):
-        ax.text(onset, 104, "  sepsis recorded", fontsize=10, color=RED, fontweight="bold", ha="left")
-        if onset - 6 > 0:
-            ax.text(max(0, onset - 12) + 0.2, 92, "caught-in-time\nwindow", fontsize=8.5, color=GREEN, va="top")
+        ax.text(onset, 103, " sepsis recorded", fontsize=10, color=RED, fontweight="bold", ha="left"
+                if onset < x1 - 6 else "right")
+        if onset - 6 > x0:
+            ax.text(onset - 9, 96, "caught-in-\ntime window", fontsize=8.5, color=GREEN, va="top", ha="center")
+    for a in axes:
+        a.set_xlim(x0 - 0.5, x1)
     ax.legend(loc="lower left", fontsize=8.5, frameon=False)
     for a, col, lab in ((axes[1], "HR", "Heart rate\n(beats/min)"), (axes[2], "MAP", "Blood pressure\n(MAP, mmHg)")):
         a.plot(t["hour"], t[col], marker="o", ms=2.5, lw=1, color="#344054", zorder=4)
@@ -515,7 +520,7 @@ def tour(step):
     head = f"<div class='sp-steps'>{dots_}</div>"
     fig = None
     if step == 0:
-        body = (f"<h2>Meet the ICU</h2><p class='big'>It's <b>{s.clock}</b> on a night shift. One nurse is "
+        body = (f"<h2>Meet the ICU</h2><p class='big'>It's <b>{s.clock}</b> on the {s.shift_name.lower()}. One nurse is "
                 f"responsible for these {NBEDS} patients. A careful sepsis review of one chart takes a lot of time, so "
                 f"the nurse can only do about <b>{K} per 12-hour shift</b>.</p><p class='big'>Sepsis is the body's "
                 "extreme reaction to an infection. It is much easier to treat when it is spotted early. "
@@ -557,7 +562,8 @@ def tour(step):
                 f"same amount of time.</p>{dots(rnd.caught6, '#98a2b3')}</div></div>"
                 "<p class='big' style='margin-top:10px'>Now try it yourself: step through shifts, click any bed, and "
                 "use the example buttons to see catches, misses and false alarms.</p>")
-    return head + f"<div class='sp sp-box sp-tour'>{body}</div>", fig, gr.update(interactive=step > 0), \
+    return head + f"<div class='sp sp-box sp-tour'>{body}</div>", gr.update(value=fig, visible=fig is not None), \
+        gr.update(interactive=step > 0), \
         gr.update(value="Next ▶" if step < len(TOUR_STEPS) - 1 else "Try it yourself ▶")
 
 
@@ -606,7 +612,26 @@ started to work up. It does not show that the model is ahead of doctors.</li>
 GRADIO_MAJOR = int(gr.__version__.split(".")[0])
 STYLE = {"css": CSS, "theme": gr.themes.Soft(primary_hue="blue"), "js": FORCE_LIGHT}
 START = next(i for i in examples["good"] if slots.loc[i, "sepsis_so_far"] >= 40)
-TOUR = START
+
+
+def _tour_slot():
+    """A clear first example: a catch 7-11 h ahead, the patient's first review, risk rising over the last 12 h."""
+    best = None
+    for i in slots.index[(slots["review_class"] == "early6") & (slots["sepsis_so_far"] >= 20)]:
+        r = slots.loc[i]
+        if not 7 <= r.lead_hours <= 11 or min(rev_by_pid.get(r.patient_id, [10**6])) < r.record_hour:
+            continue
+        t = tl_by_pid[r.patient_id].set_index("hour")["percentile"]
+        values = sum(any(c.isdigit() for c in x) for x in r.reasons.split(" | "))
+        if r.record_hour < 12 or len(r.reasons.split(" | ")) < 3 or values < 2:
+            continue
+        rise = t.loc[r.record_hour] - t.loc[r.record_hour - 12]
+        if best is None or rise > best[0]:
+            best = (rise, int(i))
+    return best[1] if best else START
+
+
+TOUR = _tour_slot()
 for _k, _v in examples.items():
     _cut = next((j for j, x in enumerate(_v) if (x["slot"] if isinstance(x, dict) else x) >= START), 0)
     examples[_k] = _v[_cut:] + _v[:_cut]

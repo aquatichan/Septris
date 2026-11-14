@@ -24,3 +24,4 @@ data/raw/challenge2012/
 !app/artifacts/*.parquet
 outputs/gru_train.log
 outputs/evaluate.log
+outputs/gru_seeds.log

@@ -346,7 +346,7 @@ def main():
     else:
         w, label = 1.0, "LightGBM"
         model_text = "A LightGBM model reading summaries of each patient's last few hours."
-    demo = {"policy_key": DEPLOY, "policy_label": label, "lightgbm_weight": w, "model_text": model_text,
+    demo = {"policy_key": DEPLOY, "policy_label": label, "kind": sel.get("kind", "average"), "lightgbm_weight": w, "model_text": model_text,
             "comparison_html": comparison_html(DEPLOY),
             "k": K_DEMO, "seed": SEED_DEMO, "beds": C.BEDS, "patients": int(len(ids)),
             "eligible_septic": int(eligible_pos.sum()), "days": round(end / 24, 1),

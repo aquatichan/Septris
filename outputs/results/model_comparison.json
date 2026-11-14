@@ -1,0 +1,806 @@
+{
+ "overlap": [
+  {
+   "test": "A",
+   "trained": "A",
+   "k": 3,
+   "LightGBM only": 30.4,
+   "GRU only": 32.6,
+   "both": 29.4,
+   "neither": 145.6,
+   "mix": 61.0
+  },
+  {
+   "test": "A",
+   "trained": "A",
+   "k": 5,
+   "LightGBM only": 38.8,
+   "GRU only": 40.2,
+   "both": 39.4,
+   "neither": 119.6,
+   "mix": 78.8
+  },
+  {
+   "test": "A",
+   "trained": "B",
+   "k": 3,
+   "LightGBM only": 24.6,
+   "GRU only": 38.8,
+   "both": 12.4,
+   "neither": 162.2,
+   "mix": 49.4
+  },
+  {
+   "test": "A",
+   "trained": "B",
+   "k": 5,
+   "LightGBM only": 36.4,
+   "GRU only": 44.0,
+   "both": 22.8,
+   "neither": 134.8,
+   "mix": 68.6
+  },
+  {
+   "test": "B",
+   "trained": "A",
+   "k": 3,
+   "LightGBM only": 17.2,
+   "GRU only": 20.6,
+   "both": 14.6,
+   "neither": 81.6,
+   "mix": 34.0
+  },
+  {
+   "test": "B",
+   "trained": "A",
+   "k": 5,
+   "LightGBM only": 21.2,
+   "GRU only": 21.4,
+   "both": 19.4,
+   "neither": 72.0,
+   "mix": 43.2
+  },
+  {
+   "test": "B",
+   "trained": "B",
+   "k": 3,
+   "LightGBM only": 17.6,
+   "GRU only": 22.0,
+   "both": 17.6,
+   "neither": 76.8,
+   "mix": 39.0
+  },
+  {
+   "test": "B",
+   "trained": "B",
+   "k": 5,
+   "LightGBM only": 21.0,
+   "GRU only": 22.2,
+   "both": 26.0,
+   "neither": 64.8,
+   "mix": 49.8
+  }
+ ],
+ "by_onset": [
+  {
+   "test": "A",
+   "trained": "A",
+   "k": 3,
+   "onset_after": "24-72 h",
+   "model": "blend",
+   "n": 87.0,
+   "caught": 15.4,
+   "pct": 17.7
+  },
+  {
+   "test": "A",
+   "trained": "A",
+   "k": 3,
+   "onset_after": "24-72 h",
+   "model": "lgbm_combined",
+   "n": 87.0,
+   "caught": 18.8,
+   "pct": 21.6
+  },
+  {
+   "test": "A",
+   "trained": "A",
+   "k": 3,
+   "onset_after": "24-72 h",
+   "model": "temporal_gru",
+   "n": 87.0,
+   "caught": 14.8,
+   "pct": 17.0
+  },
+  {
+   "test": "A",
+   "trained": "A",
+   "k": 3,
+   "onset_after": "over 72 h",
+   "model": "blend",
+   "n": 68.0,
+   "caught": 33.0,
+   "pct": 48.5
+  },
+  {
+   "test": "A",
+   "trained": "A",
+   "k": 3,
+   "onset_after": "over 72 h",
+   "model": "lgbm_combined",
+   "n": 68.0,
+   "caught": 28.6,
+   "pct": 42.1
+  },
+  {
+   "test": "A",
+   "trained": "A",
+   "k": 3,
+   "onset_after": "over 72 h",
+   "model": "temporal_gru",
+   "n": 68.0,
+   "caught": 35.0,
+   "pct": 51.5
+  },
+  {
+   "test": "A",
+   "trained": "A",
+   "k": 3,
+   "onset_after": "under 24 h",
+   "model": "blend",
+   "n": 83.0,
+   "caught": 12.6,
+   "pct": 15.2
+  },
+  {
+   "test": "A",
+   "trained": "A",
+   "k": 3,
+   "onset_after": "under 24 h",
+   "model": "lgbm_combined",
+   "n": 83.0,
+   "caught": 12.4,
+   "pct": 14.9
+  },
+  {
+   "test": "A",
+   "trained": "A",
+   "k": 3,
+   "onset_after": "under 24 h",
+   "model": "temporal_gru",
+   "n": 83.0,
+   "caught": 12.2,
+   "pct": 14.7
+  },
+  {
+   "test": "A",
+   "trained": "A",
+   "k": 5,
+   "onset_after": "24-72 h",
+   "model": "blend",
+   "n": 87.0,
+   "caught": 24.8,
+   "pct": 28.5
+  },
+  {
+   "test": "A",
+   "trained": "A",
+   "k": 5,
+   "onset_after": "24-72 h",
+   "model": "lgbm_combined",
+   "n": 87.0,
+   "caught": 28.0,
+   "pct": 32.2
+  },
+  {
+   "test": "A",
+   "trained": "A",
+   "k": 5,
+   "onset_after": "24-72 h",
+   "model": "temporal_gru",
+   "n": 87.0,
+   "caught": 22.0,
+   "pct": 25.3
+  },
+  {
+   "test": "A",
+   "trained": "A",
+   "k": 5,
+   "onset_after": "over 72 h",
+   "model": "blend",
+   "n": 68.0,
+   "caught": 36.2,
+   "pct": 53.2
+  },
+  {
+   "test": "A",
+   "trained": "A",
+   "k": 5,
+   "onset_after": "over 72 h",
+   "model": "lgbm_combined",
+   "n": 68.0,
+   "caught": 33.8,
+   "pct": 49.7
+  },
+  {
+   "test": "A",
+   "trained": "A",
+   "k": 5,
+   "onset_after": "over 72 h",
+   "model": "temporal_gru",
+   "n": 68.0,
+   "caught": 37.0,
+   "pct": 54.4
+  },
+  {
+   "test": "A",
+   "trained": "A",
+   "k": 5,
+   "onset_after": "under 24 h",
+   "model": "blend",
+   "n": 83.0,
+   "caught": 17.8,
+   "pct": 21.4
+  },
+  {
+   "test": "A",
+   "trained": "A",
+   "k": 5,
+   "onset_after": "under 24 h",
+   "model": "lgbm_combined",
+   "n": 83.0,
+   "caught": 16.4,
+   "pct": 19.8
+  },
+  {
+   "test": "A",
+   "trained": "A",
+   "k": 5,
+   "onset_after": "under 24 h",
+   "model": "temporal_gru",
+   "n": 83.0,
+   "caught": 20.6,
+   "pct": 24.8
+  },
+  {
+   "test": "A",
+   "trained": "B",
+   "k": 3,
+   "onset_after": "24-72 h",
+   "model": "blend",
+   "n": 87.0,
+   "caught": 11.0,
+   "pct": 12.6
+  },
+  {
+   "test": "A",
+   "trained": "B",
+   "k": 3,
+   "onset_after": "24-72 h",
+   "model": "lgbm_combined",
+   "n": 87.0,
+   "caught": 11.6,
+   "pct": 13.3
+  },
+  {
+   "test": "A",
+   "trained": "B",
+   "k": 3,
+   "onset_after": "24-72 h",
+   "model": "temporal_gru",
+   "n": 87.0,
+   "caught": 10.8,
+   "pct": 12.4
+  },
+  {
+   "test": "A",
+   "trained": "B",
+   "k": 3,
+   "onset_after": "over 72 h",
+   "model": "blend",
+   "n": 68.0,
+   "caught": 32.2,
+   "pct": 47.4
+  },
+  {
+   "test": "A",
+   "trained": "B",
+   "k": 3,
+   "onset_after": "over 72 h",
+   "model": "lgbm_combined",
+   "n": 68.0,
+   "caught": 14.0,
+   "pct": 20.6
+  },
+  {
+   "test": "A",
+   "trained": "B",
+   "k": 3,
+   "onset_after": "over 72 h",
+   "model": "temporal_gru",
+   "n": 68.0,
+   "caught": 38.6,
+   "pct": 56.8
+  },
+  {
+   "test": "A",
+   "trained": "B",
+   "k": 3,
+   "onset_after": "under 24 h",
+   "model": "blend",
+   "n": 83.0,
+   "caught": 6.2,
+   "pct": 7.5
+  },
+  {
+   "test": "A",
+   "trained": "B",
+   "k": 3,
+   "onset_after": "under 24 h",
+   "model": "lgbm_combined",
+   "n": 83.0,
+   "caught": 11.4,
+   "pct": 13.7
+  },
+  {
+   "test": "A",
+   "trained": "B",
+   "k": 3,
+   "onset_after": "under 24 h",
+   "model": "temporal_gru",
+   "n": 83.0,
+   "caught": 1.8,
+   "pct": 2.2
+  },
+  {
+   "test": "A",
+   "trained": "B",
+   "k": 5,
+   "onset_after": "24-72 h",
+   "model": "blend",
+   "n": 87.0,
+   "caught": 19.2,
+   "pct": 22.1
+  },
+  {
+   "test": "A",
+   "trained": "B",
+   "k": 5,
+   "onset_after": "24-72 h",
+   "model": "lgbm_combined",
+   "n": 87.0,
+   "caught": 17.4,
+   "pct": 20.0
+  },
+  {
+   "test": "A",
+   "trained": "B",
+   "k": 5,
+   "onset_after": "24-72 h",
+   "model": "temporal_gru",
+   "n": 87.0,
+   "caught": 20.8,
+   "pct": 23.9
+  },
+  {
+   "test": "A",
+   "trained": "B",
+   "k": 5,
+   "onset_after": "over 72 h",
+   "model": "blend",
+   "n": 68.0,
+   "caught": 38.0,
+   "pct": 55.9
+  },
+  {
+   "test": "A",
+   "trained": "B",
+   "k": 5,
+   "onset_after": "over 72 h",
+   "model": "lgbm_combined",
+   "n": 68.0,
+   "caught": 23.2,
+   "pct": 34.1
+  },
+  {
+   "test": "A",
+   "trained": "B",
+   "k": 5,
+   "onset_after": "over 72 h",
+   "model": "temporal_gru",
+   "n": 68.0,
+   "caught": 39.4,
+   "pct": 57.9
+  },
+  {
+   "test": "A",
+   "trained": "B",
+   "k": 5,
+   "onset_after": "under 24 h",
+   "model": "blend",
+   "n": 83.0,
+   "caught": 11.4,
+   "pct": 13.7
+  },
+  {
+   "test": "A",
+   "trained": "B",
+   "k": 5,
+   "onset_after": "under 24 h",
+   "model": "lgbm_combined",
+   "n": 83.0,
+   "caught": 18.6,
+   "pct": 22.4
+  },
+  {
+   "test": "A",
+   "trained": "B",
+   "k": 5,
+   "onset_after": "under 24 h",
+   "model": "temporal_gru",
+   "n": 83.0,
+   "caught": 6.6,
+   "pct": 8.0
+  },
+  {
+   "test": "B",
+   "trained": "A",
+   "k": 3,
+   "onset_after": "24-72 h",
+   "model": "blend",
+   "n": 52.0,
+   "caught": 6.2,
+   "pct": 11.9
+  },
+  {
+   "test": "B",
+   "trained": "A",
+   "k": 3,
+   "onset_after": "24-72 h",
+   "model": "lgbm_combined",
+   "n": 52.0,
+   "caught": 8.2,
+   "pct": 15.8
+  },
+  {
+   "test": "B",
+   "trained": "A",
+   "k": 3,
+   "onset_after": "24-72 h",
+   "model": "temporal_gru",
+   "n": 52.0,
+   "caught": 4.4,
+   "pct": 8.5
+  },
+  {
+   "test": "B",
+   "trained": "A",
+   "k": 3,
+   "onset_after": "over 72 h",
+   "model": "blend",
+   "n": 43.0,
+   "caught": 24.0,
+   "pct": 55.8
+  },
+  {
+   "test": "B",
+   "trained": "A",
+   "k": 3,
+   "onset_after": "over 72 h",
+   "model": "lgbm_combined",
+   "n": 43.0,
+   "caught": 18.2,
+   "pct": 42.3
+  },
+  {
+   "test": "B",
+   "trained": "A",
+   "k": 3,
+   "onset_after": "over 72 h",
+   "model": "temporal_gru",
+   "n": 43.0,
+   "caught": 24.4,
+   "pct": 56.7
+  },
+  {
+   "test": "B",
+   "trained": "A",
+   "k": 3,
+   "onset_after": "under 24 h",
+   "model": "blend",
+   "n": 39.0,
+   "caught": 3.8,
+   "pct": 9.7
+  },
+  {
+   "test": "B",
+   "trained": "A",
+   "k": 3,
+   "onset_after": "under 24 h",
+   "model": "lgbm_combined",
+   "n": 39.0,
+   "caught": 5.4,
+   "pct": 13.8
+  },
+  {
+   "test": "B",
+   "trained": "A",
+   "k": 3,
+   "onset_after": "under 24 h",
+   "model": "temporal_gru",
+   "n": 39.0,
+   "caught": 6.4,
+   "pct": 16.4
+  },
+  {
+   "test": "B",
+   "trained": "A",
+   "k": 5,
+   "onset_after": "24-72 h",
+   "model": "blend",
+   "n": 52.0,
+   "caught": 10.6,
+   "pct": 20.4
+  },
+  {
+   "test": "B",
+   "trained": "A",
+   "k": 5,
+   "onset_after": "24-72 h",
+   "model": "lgbm_combined",
+   "n": 52.0,
+   "caught": 11.6,
+   "pct": 22.3
+  },
+  {
+   "test": "B",
+   "trained": "A",
+   "k": 5,
+   "onset_after": "24-72 h",
+   "model": "temporal_gru",
+   "n": 52.0,
+   "caught": 5.8,
+   "pct": 11.2
+  },
+  {
+   "test": "B",
+   "trained": "A",
+   "k": 5,
+   "onset_after": "over 72 h",
+   "model": "blend",
+   "n": 43.0,
+   "caught": 24.2,
+   "pct": 56.3
+  },
+  {
+   "test": "B",
+   "trained": "A",
+   "k": 5,
+   "onset_after": "over 72 h",
+   "model": "lgbm_combined",
+   "n": 43.0,
+   "caught": 20.0,
+   "pct": 46.5
+  },
+  {
+   "test": "B",
+   "trained": "A",
+   "k": 5,
+   "onset_after": "over 72 h",
+   "model": "temporal_gru",
+   "n": 43.0,
+   "caught": 23.8,
+   "pct": 55.3
+  },
+  {
+   "test": "B",
+   "trained": "A",
+   "k": 5,
+   "onset_after": "under 24 h",
+   "model": "blend",
+   "n": 39.0,
+   "caught": 8.4,
+   "pct": 21.5
+  },
+  {
+   "test": "B",
+   "trained": "A",
+   "k": 5,
+   "onset_after": "under 24 h",
+   "model": "lgbm_combined",
+   "n": 39.0,
+   "caught": 9.0,
+   "pct": 23.1
+  },
+  {
+   "test": "B",
+   "trained": "A",
+   "k": 5,
+   "onset_after": "under 24 h",
+   "model": "temporal_gru",
+   "n": 39.0,
+   "caught": 11.2,
+   "pct": 28.7
+  },
+  {
+   "test": "B",
+   "trained": "B",
+   "k": 3,
+   "onset_after": "24-72 h",
+   "model": "blend",
+   "n": 52.0,
+   "caught": 12.8,
+   "pct": 24.6
+  },
+  {
+   "test": "B",
+   "trained": "B",
+   "k": 3,
+   "onset_after": "24-72 h",
+   "model": "lgbm_combined",
+   "n": 52.0,
+   "caught": 13.8,
+   "pct": 26.5
+  },
+  {
+   "test": "B",
+   "trained": "B",
+   "k": 3,
+   "onset_after": "24-72 h",
+   "model": "temporal_gru",
+   "n": 52.0,
+   "caught": 13.6,
+   "pct": 26.2
+  },
+  {
+   "test": "B",
+   "trained": "B",
+   "k": 3,
+   "onset_after": "over 72 h",
+   "model": "blend",
+   "n": 43.0,
+   "caught": 23.2,
+   "pct": 54.0
+  },
+  {
+   "test": "B",
+   "trained": "B",
+   "k": 3,
+   "onset_after": "over 72 h",
+   "model": "lgbm_combined",
+   "n": 43.0,
+   "caught": 17.8,
+   "pct": 41.4
+  },
+  {
+   "test": "B",
+   "trained": "B",
+   "k": 3,
+   "onset_after": "over 72 h",
+   "model": "temporal_gru",
+   "n": 43.0,
+   "caught": 23.4,
+   "pct": 54.4
+  },
+  {
+   "test": "B",
+   "trained": "B",
+   "k": 3,
+   "onset_after": "under 24 h",
+   "model": "blend",
+   "n": 39.0,
+   "caught": 3.0,
+   "pct": 7.7
+  },
+  {
+   "test": "B",
+   "trained": "B",
+   "k": 3,
+   "onset_after": "under 24 h",
+   "model": "lgbm_combined",
+   "n": 39.0,
+   "caught": 3.6,
+   "pct": 9.2
+  },
+  {
+   "test": "B",
+   "trained": "B",
+   "k": 3,
+   "onset_after": "under 24 h",
+   "model": "temporal_gru",
+   "n": 39.0,
+   "caught": 2.6,
+   "pct": 6.7
+  },
+  {
+   "test": "B",
+   "trained": "B",
+   "k": 5,
+   "onset_after": "24-72 h",
+   "model": "blend",
+   "n": 52.0,
+   "caught": 18.0,
+   "pct": 34.6
+  },
+  {
+   "test": "B",
+   "trained": "B",
+   "k": 5,
+   "onset_after": "24-72 h",
+   "model": "lgbm_combined",
+   "n": 52.0,
+   "caught": 15.6,
+   "pct": 30.0
+  },
+  {
+   "test": "B",
+   "trained": "B",
+   "k": 5,
+   "onset_after": "24-72 h",
+   "model": "temporal_gru",
+   "n": 52.0,
+   "caught": 18.2,
+   "pct": 35.0
+  },
+  {
+   "test": "B",
+   "trained": "B",
+   "k": 5,
+   "onset_after": "over 72 h",
+   "model": "blend",
+   "n": 43.0,
+   "caught": 25.8,
+   "pct": 60.0
+  },
+  {
+   "test": "B",
+   "trained": "B",
+   "k": 5,
+   "onset_after": "over 72 h",
+   "model": "lgbm_combined",
+   "n": 43.0,
+   "caught": 22.2,
+   "pct": 51.6
+  },
+  {
+   "test": "B",
+   "trained": "B",
+   "k": 5,
+   "onset_after": "over 72 h",
+   "model": "temporal_gru",
+   "n": 43.0,
+   "caught": 23.4,
+   "pct": 54.4
+  },
+  {
+   "test": "B",
+   "trained": "B",
+   "k": 5,
+   "onset_after": "under 24 h",
+   "model": "blend",
+   "n": 39.0,
+   "caught": 6.0,
+   "pct": 15.4
+  },
+  {
+   "test": "B",
+   "trained": "B",
+   "k": 5,
+   "onset_after": "under 24 h",
+   "model": "lgbm_combined",
+   "n": 39.0,
+   "caught": 9.2,
+   "pct": 23.6
+  },
+  {
+   "test": "B",
+   "trained": "B",
+   "k": 5,
+   "onset_after": "under 24 h",
+   "model": "temporal_gru",
+   "n": 39.0,
+   "caught": 6.6,
+   "pct": 16.9
+  }
+ ]
+}

@@ -63,6 +63,8 @@ These findings replicate known results about cross-hospital transfer and
 missingness in this dataset. Our contribution is evaluating them as a
 budgeted review decision.
 
+**Update (post hoc): Septris now mixes LightGBM with Miheer's temporal GRU.** Each bed gets the higher of the two models' risks, a rule chosen on validation patients only. At 5 reviews per shift it catches 33.1% (Hospital A) and 37.2% (Hospital B) of sepsis patients 6–12 hours early (LightGBM alone: 32.9% and 35.1%; random: 15.6% and 13.7%), ranks hours best at every train→test pair (AUROC up to 0.804) and does best on the official Challenge utility. The two models catch largely different patients, and the GRU transfers better to an unseen hospital. Details: **[docs/model_mix.md](docs/model_mix.md)**.
+
 Full results: **[docs/results.md](docs/results.md)**. The isolated exploratory sequence-model protocol and its completed-run results are in **[docs/masked_temporal_gru.md](docs/masked_temporal_gru.md)**. A post-hoc version 2
 (SOFA scores, 24-hour trends, baseline changes, local adaptation) gave no
 reliable gain on validation patients, so it was never run on the test set:
