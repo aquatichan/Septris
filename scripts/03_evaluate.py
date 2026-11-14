@@ -25,7 +25,7 @@ from src.labels import ELIGIBLE  # noqa: E402
 
 RES = ROOT / "outputs/results"
 SC = ROOT / "data/processed/scores"
-MODELS = ["lr", "lgbm_values", "lgbm_missing", "lgbm_combined", "temporal_gru", "lgbm_gru_blend", "lgbm_shortcuts"]
+MODELS = ["lr", "lgbm_values", "lgbm_missing", "lgbm_combined", "lgbm_queue_tuned", "temporal_gru", "lgbm_gru_blend", "lgbm_shortcuts"]
 SHARED = ["sirs", "news"]
 TIER1_K_POLICIES = ["random", "sirs", "{H}:lgbm_combined"]
 METRICS = ["caught6", "caught_any", "caught3", "missed", "median_lead",
@@ -216,6 +216,8 @@ def summarize(pmean, boot):
                     f"{T}:temporal_gru", f"{T}:lgbm_combined")
                 add(T, k, "temporal GRU minus combined (external)",
                     f"{other}:temporal_gru", f"{other}:lgbm_combined")
+                add(T, k, "queue-tuned LightGBM minus combined (home)",
+                    f"{T}:lgbm_queue_tuned", f"{T}:lgbm_combined")
                 add(T, k, "validated blend minus combined (home)",
                     f"{T}:lgbm_gru_blend", f"{T}:lgbm_combined")
                 add(T, k, "validated blend minus GRU (home)",
