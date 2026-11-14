@@ -1,5 +1,5 @@
 # One command reproduces every number from the raw PhysioNet files.
-# Expected runtime on a 2-core, 8 GB machine: about 1 hour (most of it the bootstrap).
+# Runtime on a 2-core, 8 GB machine: about 17 minutes after the data is downloaded.
 
 PY ?= python3
 

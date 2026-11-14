@@ -108,7 +108,9 @@ python app/app.py                       # http://127.0.0.1:7860 (add --share for
 ```
 
 Or open [notebooks/reproduce.ipynb](notebooks/reproduce.ipynb) in Colab and
-run all cells. Expected runtime: about 1 hour on a 2-core, 8 GB machine. The
+run all cells. Runtime: about 17 minutes for `make reproduce` on a 2-core,
+8 GB machine, plus the download. A fresh clone run with `make reproduce`
+produced byte-identical audit, split, result and app files (checked 14 Nov 2026). The
 app only reads `app/artifacts/`, so it runs offline and cannot change any
 result. Exact package versions: `requirements-lock.txt`.
 

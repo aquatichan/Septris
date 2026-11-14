@@ -1,0 +1,5 @@
+gradio>=4.44
+pandas>=2.1
+pyarrow>=14
+numpy>=1.26
+matplotlib>=3.8
