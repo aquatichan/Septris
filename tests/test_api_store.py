@@ -37,3 +37,29 @@ def test_score_storage_replaces_latest_score(tmp_path):
     score["priority_score"] = 0.8
     store.save_score(score)
     assert store.candidates("A")[0]["priority_score"] == 0.8
+
+
+def test_rejects_patient_hospital_switch_and_duplicate_hour(tmp_path):
+    store = ReplayStore(tmp_path / "replay.sqlite3")
+    store.append_observation(event(hour=0))
+    switched = event(hour=1)
+    switched["hospital"] = "B"
+    with pytest.raises(ValueError, match="different source hospital"):
+        store.append_observation(switched)
+    with pytest.raises(ValueError, match="strictly newer"):
+        store.append_observation(event(hour=0))
+
+
+def test_rejects_review_for_unknown_patient(tmp_path):
+    store = ReplayStore(tmp_path / "replay.sqlite3")
+    with pytest.raises(ValueError, match="unknown patient"):
+        store.record_review("not-present", "reviewer", datetime.now(timezone.utc).isoformat(), "opened_chart")
+
+
+def test_audit_contains_keyed_hashes_not_raw_identifier(tmp_path):
+    store = ReplayStore(tmp_path / "replay.sqlite3")
+    store.append_observation(event(patient_id="identifiable-patient", hour=0))
+    with store.connect() as con:
+        row = con.execute("SELECT patient_id_hash, payload_hash FROM audit_events").fetchone()
+    assert "identifiable-patient" not in row["patient_id_hash"]
+    assert "identifiable-patient" not in row["payload_hash"]
