@@ -26,3 +26,14 @@ def test_review_snooze_is_twelve_hours(tmp_path):
     store.record_review("p1", "nurse@example.test", t0.isoformat(), "opened_chart")
     assert store.is_snoozed("p1", (t0 + timedelta(hours=11, minutes=59)).isoformat())
     assert not store.is_snoozed("p1", (t0 + timedelta(hours=12)).isoformat())
+
+
+def test_score_storage_replaces_latest_score(tmp_path):
+    store = ReplayStore(tmp_path / "replay.sqlite3")
+    score = {"patient_id": "p1", "hospital": "A", "icu_hour": 2,
+             "observed_at": datetime(2026, 1, 1, tzinfo=timezone.utc).isoformat(),
+             "priority_score": 0.4}
+    store.save_score(score)
+    score["priority_score"] = 0.8
+    store.save_score(score)
+    assert store.candidates("A")[0]["priority_score"] == 0.8
