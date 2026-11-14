@@ -1,5 +1,6 @@
 """Frozen-artifact LightGBM inference with causal, replay-safe features."""
 
+import hashlib
 import pickle
 from pathlib import Path
 
@@ -23,8 +24,12 @@ def _logit(probability):
     return np.log(p / (1 - p))
 
 
+def _sha256(path: Path) -> str:
+    return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
 class FrozenLightGBMEngine:
-    """Loads only trusted local artifacts exported by script 11."""
+    """Loads only a matching, locally exported immutable model bundle."""
 
     def __init__(self, artifact_dir: str | Path, hospital: str):
         artifact_dir = Path(artifact_dir)
@@ -36,13 +41,18 @@ class FrozenLightGBMEngine:
             )
         with bundle_path.open("rb") as f:
             self.bundle = pickle.load(f)
-        required = {"schema_version", "hospital", "variables", "features", "pools", "familiarity", "platt"}
+        required = {
+            "schema_version", "hospital", "variables", "features", "pools",
+            "familiarity", "platt", "minimum_queue_priority", "model_sha256",
+        }
         if self.bundle.get("schema_version") != 2 or self.bundle.get("hospital") != hospital:
             raise ModelUnavailable("artifact bundle schema or hospital does not match request")
         if not required.issubset(self.bundle):
             raise ModelUnavailable("artifact bundle is incomplete")
         if self.bundle["platt"]["coefficient"] <= 0:
             raise ModelUnavailable("artifact calibration is invalid")
+        if _sha256(model_path) != self.bundle["model_sha256"]:
+            raise ModelUnavailable("model file digest does not match its frozen bundle")
         self.model = lgb.Booster(model_file=str(model_path))
         self.hospital = hospital
 
