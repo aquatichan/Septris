@@ -659,7 +659,7 @@ with gr.Blocks(title="Septris", **({} if GRADIO_MAJOR >= 6 else STYLE)) as demo:
         t_back.click(lambda st: t_go(st, -1), step, t_outs)
         demo.load(lambda: tour(0), None, [tour_html, tour_plot, t_back, t_next])
      with gr.Tab("🏥 Try it yourself", id="try"):
-        cur = gr.State(START)
+        cur = gr.State(TOUR)
         sel = gr.State(None)
         focus = gr.State(None)
         counter = gr.State({})
