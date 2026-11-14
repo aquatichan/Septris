@@ -159,7 +159,7 @@ def results(test, which, k):
         out.append({
             "Policy": name,
             "Caught 6–12 h early": f"{r.caught6_n:.0f} of {r.eligible:.0f} · " + fmt(r.caught6, r.caught6_lo, r.caught6_hi),
-            "Missed": f"{r.missed_n:.0f} · " + fmt(r.missed, r.missed_lo, r.missed_hi),
+            "No pre-onset review": f"{r.missed_n:.0f} · " + fmt(r.missed, r.missed_lo, r.missed_hi),
             "False reviews / shift": fmt(r.false_per_shift, r.false_per_shift_lo, r.false_per_shift_hi, False),
             "Median lead (h)": "–" if pd.isna(r.median_lead) else f"{r.median_lead:.1f}",
         })
