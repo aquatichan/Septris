@@ -1,12 +1,12 @@
 """Public request/response schemas for the SEPTRIS replay API."""
 
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 from typing import Dict, List, Literal, Optional
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
-class ObservationIn(BaseModel):
+VITAL_RANGES = {\n    "HR": (10, 300), "O2Sat": (0, 100), "Temp": (20, 45),\n    "SBP": (20, 300), "MAP": (10, 250), "DBP": (10, 200),\n    "Resp": (1, 100), "EtCO2": (0, 150), "FiO2": (0.0, 1.0),\n}\n\n\nclass ObservationIn(BaseModel):
     """One complete or partial chart update at a patient ICU hour."""
 
     model_config = ConfigDict(extra="forbid")
