@@ -3,9 +3,9 @@
 
 PY ?= python3
 
-.PHONY: reproduce data audit train deep evaluate secondary artifacts test app
+.PHONY: reproduce data audit train deep ensemble evaluate secondary artifacts test app
 
-reproduce: audit train deep evaluate secondary artifacts test
+reproduce: audit train deep ensemble evaluate secondary artifacts test
 
 data:
 	$(PY) scripts/01_audit.py --download
@@ -18,6 +18,9 @@ train:
 
 deep:
 	$(PY) scripts/08_temporal_gru.py
+
+ensemble:
+	$(PY) scripts/09_validated_ensemble.py
 
 evaluate:
 	$(PY) scripts/03_evaluate.py
