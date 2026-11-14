@@ -10,7 +10,7 @@ connected to hourly EHR observations without changing the research result.
 
 ## Safety properties
 
-- **Fail closed:** no score is returned if the source-hospital model bundle is absent.
+- **Fail closed:** no score is returned if the source-hospital model bundle is absent or its model-file SHA-256 digest does not match.
 - **Immutable causal input:** observations are stored by ICU hour; corrections, duplicate hours, time reversal, and a source-hospital change are rejected rather than silently rewriting history.
 - **Schema validation:** unknown fields, non-finite values, invalid ages, and malformed identifiers are rejected.
 - **No automatic intervention:** the only output is a ranked clinician-review queue.
@@ -36,7 +36,11 @@ The API only trusts local artifacts produced by this repository:
 - equivalents for hospital B.
 
 The pickle bundle is a trusted local model artifact, never an uploaded API
-input. It includes the exact feature order, training-hospital imputation pools, source-validation Platt calibration, utility-selected queue threshold, and familiarity ranges used at training time.
+input. It includes the exact feature order, training-hospital imputation pools,
+source-validation Platt calibration, utility-selected queue threshold,
+familiarity ranges, and the full SHA-256 digest of its paired model file.
+The engine refuses a mismatched file, preventing a silently swapped or stale
+model from being scored with the wrong calibration and threshold.
 
 ## Endpoints
 
@@ -48,7 +52,8 @@ input. It includes the exact feature order, training-hospital imputation pools, 
 
 ## What a real deployment still requires
 
-Authentication/authorization, encrypted managed storage, FHIR/EHR integration, hospital privacy/security review, prospectively defined
-workflow, clinician ownership, independent calibration, fairness assessment,
-silent-mode monitoring, and a prospective outcome study. This prototype does
-not establish clinical effectiveness.
+Authentication/authorization, encrypted managed storage, FHIR/EHR integration,
+hospital privacy/security review, prospectively defined workflow, clinician
+ownership, independent calibration, fairness assessment, silent-mode
+monitoring, and a prospective outcome study. This prototype does not
+establish clinical effectiveness.
