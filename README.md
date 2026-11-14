@@ -63,7 +63,7 @@ These findings replicate known results about cross-hospital transfer and
 missingness in this dataset. Our contribution is evaluating them as a
 budgeted review decision.
 
-Full results: **[docs/results.md](docs/results.md)**. A post-hoc version 2
+Full results: **[docs/results.md](docs/results.md)**. The isolated exploratory sequence-model protocol and its completed-run results are in **[docs/masked_temporal_gru.md](docs/masked_temporal_gru.md)**. A post-hoc version 2
 (SOFA scores, 24-hour trends, baseline changes, local adaptation) gave no
 reliable gain on validation patients, so it was never run on the test set:
 **[docs/version2_attempt.md](docs/version2_attempt.md)**. An exploratory
@@ -126,7 +126,7 @@ run all cells. Runtime: about 17 minutes for `make reproduce` on a 2-core,
 8 GB machine, plus the download. A fresh clone run with `make reproduce`
 produced byte-identical audit, split, result and app files (checked 14 Nov 2026). The
 app only reads `app/artifacts/`, so it runs offline and cannot change any
-result. Exact package versions: `requirements-lock.txt`.
+result. The non-PyTorch stack is pinned in `requirements-lock.txt`; PyTorch is platform-specific and is installed from `requirements.txt`.
 
 ```
 src/        data_io, labels, splits, audit, features, simulation, utility, explanations
