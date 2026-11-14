@@ -10,7 +10,6 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass
 
-import numpy as np
 import pandas as pd
 
 from .data_io import MEASURED
@@ -48,7 +47,9 @@ def validate_canonical_hourly(frame: pd.DataFrame, source: str) -> ExternalAudit
     Required fields are patient_id and hour. Values must already be in the
     PhysioNet-compatible units documented in external_validation_protocol.md.
     This function does not impute, construct labels, or discard problematic
-    patients, because those choices must be reported.
+    patients, because those choices must be reported. Rows must be provided in
+    chronological order within each patient: silently sorting malformed input
+    would conceal a timestamp-mapping defect.
     """
     missing = [c for c in REQUIRED if c not in frame.columns]
     if missing:
@@ -60,8 +61,9 @@ def validate_canonical_hourly(frame: pd.DataFrame, source: str) -> ExternalAudit
     if f["hour"].isna().any() or (f["hour"] < 0).any() or (f["hour"] % 1 != 0).any():
         raise ValueError(f"{source}: hour must be a non-negative integer")
     duplicate = int(f.duplicated(["patient_id", "hour"]).sum())
-    ordered = f.sort_values(["patient_id", "hour"], kind="stable")
-    reversals = int((ordered.groupby("patient_id", sort=False)["hour"].diff() <= 0).fillna(False).sum())
+    reversals = int(
+        f.groupby("patient_id", sort=False)["hour"].diff().lt(0).fillna(False).sum()
+    )
     measured = [c for c in MEASURED if c in f.columns]
     coverage = {c: float(f[c].notna().mean()) for c in measured}
     prohibited = prohibited_columns(f.columns)
