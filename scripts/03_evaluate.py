@@ -25,9 +25,8 @@ from src.labels import ELIGIBLE  # noqa: E402
 
 RES = ROOT / "outputs/results"
 SC = ROOT / "data/processed/scores"
-MODELS = ["lr", "lgbm_values", "lgbm_missing", "lgbm_combined", "temporal_gru", "lgbm_shortcuts"]
+MODELS = ["lr", "lgbm_values", "lgbm_missing", "lgbm_combined", "temporal_gru", "blend", "lgbm_shortcuts"]
 SHARED = ["sirs", "news"]
-TIER1_K_POLICIES = ["random", "sirs", "{H}:lgbm_combined"]
 METRICS = ["caught6", "caught_any", "caught3", "missed", "median_lead",
            "false_per_shift", "late_per_shift", "precision"]
 
@@ -78,7 +77,7 @@ def hourly_metrics(rows, scores):
 def policies_for(k):
     if k == C.PRIMARY_K:
         return ["random"] + SHARED + [f"{H}:{m}" for H in C.HOSPITALS for m in MODELS]
-    return ["random", "sirs"] + [f"{H}:lgbm_combined" for H in C.HOSPITALS]
+    return ["random", "sirs"] + [f"{H}:{m}" for H in C.HOSPITALS for m in ("lgbm_combined", "temporal_gru", "blend")]
 
 
 def subgroup_masks(p):
@@ -199,12 +198,16 @@ def summarize(pmean, boot):
     for T in C.HOSPITALS:
         other = [h for h in C.HOSPITALS if h != T][0]
         for k in (C.PRIMARY_K,) + C.TIER1_BUDGETS:
-            for m in (MODELS if k == C.PRIMARY_K else ["lgbm_combined"]):
+            for m in (MODELS if k == C.PRIMARY_K else ["lgbm_combined", "temporal_gru", "blend"]):
                 home = f"{T}:{m}"
                 add(T, k, f"{m} (home) minus random", home, "random")
                 add(T, k, f"{m} (external, trained {other}) minus random", f"{other}:{m}", "random")
                 add(T, k, f"{m}: home minus external", home, f"{other}:{m}")
                 add(T, k, f"{m} (home) minus SIRS", home, "sirs")
+            for side, H in (("home", T), ("external", other)):
+                add(T, k, f"temporal GRU minus combined ({side})", f"{H}:temporal_gru", f"{H}:lgbm_combined")
+                add(T, k, f"blend minus combined ({side})", f"{H}:blend", f"{H}:lgbm_combined")
+                add(T, k, f"blend minus temporal GRU ({side})", f"{H}:blend", f"{H}:temporal_gru")
             if k == C.PRIMARY_K:
                 add(T, k, "SIRS minus random", "sirs", "random")
                 add(T, k, "NEWS minus random", "news", "random")
@@ -212,10 +215,6 @@ def summarize(pmean, boot):
                     f"{T}:lgbm_combined", f"{T}:lgbm_values")
                 add(T, k, "missingness-only (home) minus random", f"{T}:lgbm_missing", "random")
                 add(T, k, "combined minus LR (home)", f"{T}:lgbm_combined", f"{T}:lr")
-                add(T, k, "temporal GRU minus combined (home)",
-                    f"{T}:temporal_gru", f"{T}:lgbm_combined")
-                add(T, k, "temporal GRU minus combined (external)",
-                    f"{other}:temporal_gru", f"{other}:lgbm_combined")
                 add(T, k, "shortcuts minus combined (home)", f"{T}:lgbm_shortcuts", f"{T}:lgbm_combined")
                 pmf = pmean[pmean.subgroup == "all"].pivot_table(index=["test", "k"], columns="policy",
                                                                  values="false_per_shift")

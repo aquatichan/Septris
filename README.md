@@ -1,11 +1,11 @@
-# SignalBridge
+# Septris
 
 **A safety-aware sepsis review queue for a capacity-limited ICU.**
 Veritas AI International High School Hackathon 2026 · AI + Health track ·
 Team: Miheer Parasnis, Aaron Qin, Reyansh Maheshwari.
 
 > **This project is a prototype and is not medical advice.**
-> SignalBridge does not diagnose sepsis or recommend treatment. It only
+> Septris does not diagnose sepsis or recommend treatment. It only
 > orders a human review queue.
 
 ![Review round tab](docs/img/review_round.png)
@@ -20,7 +20,7 @@ A widely used commercial sepsis model, when validated externally, missed about
 two-thirds of sepsis cases while alerting on 18% of hospitalizations (Wong et
 al., *JAMA Internal Medicine*, 2021).
 
-SignalBridge fills a fixed number of review slots using only data recorded up
+Septris fills a fixed number of review slots using only data recorded up
 to that hour, and explains each pick with a fixed-template "why now" line.
 
 ## Headline result
@@ -29,8 +29,8 @@ With 3 reviews per 12-hour shift, on test patients the model never saw:
 
 | | Hospital A | Hospital B |
 | --- | --- | --- |
-| **SignalBridge, home model** | **25.1%** (21.2–31.2) · 60 of 238 | **26.3%** (19.8–33.8) · 35 of 134 |
-| SignalBridge, model from the other hospital | 15.5% (12.1–21.0) | 23.7% (17.0–29.6) |
+| **Septris, home model** | **25.1%** (21.2–31.2) · 60 of 238 | **26.3%** (19.8–33.8) · 35 of 134 |
+| Septris, model from the other hospital | 15.5% (12.1–21.0) | 23.7% (17.0–29.6) |
 | SIRS ranking | 12.5% (8.6–18.1) | 16.9% (10.6–22.6) |
 | Random review, same budget | 8.0% (5.3–12.6) | 9.3% (4.2–13.7) |
 
@@ -52,7 +52,7 @@ Share of eligible sepsis patients reviewed **6–12 hours before recorded onset*
   orders and from labs that must be drawn, so order patterns predict the
   label. We report this as a mechanism, not a discovery.
 - **Most early catches came after a new round of labs appeared** (11 of 106 at
-  A were ahead of new lab results). SignalBridge mostly prioritizes patients
+  A were ahead of new lab results). Septris mostly prioritizes patients
   the record shows were already being worked up; it does not show the model
   beating clinicians.
 - **False reviews stay high:** about 2.7 of every 3 reviews go to a patient
@@ -121,14 +121,15 @@ make reproduce                          # train, temporal GRU, evaluate, seconda
 python app/app.py                       # http://127.0.0.1:7860 (add --share for a public link)
 ```
 
-The app has three tabs. **Replay** steps through one simulated run of the
-Hospital A test patients at 5 chart checks per shift (the budget the team
-chose for the demo; 3 per shift stays the pre-registered primary result):
-which bed SignalBridge says to open and why, what actually happened, what
-random checking opened at the same moment, and a running scoreboard.
-Buttons jump to a good catch, a miss or a false alarm. **Results** shows
-every test patient at both hospitals for 1, 2, 3 or 5 checks per shift.
-**How it works** is a plain-language FAQ.
+The app has three tabs. **Try it** replays the Hospital A test patients
+through a 20-bed unit at 5 reviews per 12-hour shift (the budget the team
+chose for the demo; 3 per shift stays the pre-registered primary result).
+You move shift by shift, click one of the shift's 5 review times to see which
+bed Septris picks and why, and click any of the 20 beds to open its chart.
+Because these are past patients, an answer key shows what really happened,
+which Septris never sees. Example buttons jump to a catch, a miss or a false
+alarm. **How well does it work?** covers every test patient at both
+hospitals for 1, 2, 3 or 5 reviews per shift. **Questions** is a plain FAQ.
 
 Or open [notebooks/reproduce.ipynb](notebooks/reproduce.ipynb) in Colab and
 run all cells. Runtime: about 17 minutes for `make reproduce` on a 2-core,

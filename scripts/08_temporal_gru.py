@@ -1,4 +1,4 @@
-"""Step 08: train a masked temporal GRU on exactly the frozen SignalBridge split.
+"""Step 08: train a masked temporal GRU on exactly the frozen Septris split.
 
 The model receives, at every ICU hour, (1) current physiologic values,
 (2) measurement masks, and (3) log time since each measurement. This makes

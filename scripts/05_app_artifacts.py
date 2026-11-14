@@ -3,7 +3,7 @@
 The app never trains, downloads or scores anything; it only reads
 app/artifacts/. The demo replays Hospital A test patients through the
 20-bed unit with 5 reviews per 12-hour shift (admission order seed 1).
-SignalBridge (A-trained LightGBM, combined features) and random review face
+Septris (A-trained LightGBM, combined features) and random review face
 the same beds at the same moments, so the app can show both side by side.
 
 Artifacts:
@@ -12,7 +12,7 @@ Artifacts:
                      running scoreboard
   beds.parquet       the 20 beds at every review (rank, tier, snooze, hindsight)
   timelines.parquet  hourly risk percentile and a few vitals per patient
-  reviews.parquet    every SignalBridge review per patient
+  reviews.parquet    every Septris review per patient
   patients.parquet   onset hour and basics per patient
   examples.json      review indices for good catches, misses and false alarms
   demo.json          the run's settings and totals
@@ -34,7 +34,9 @@ from src.labels import ELIGIBLE  # noqa: E402
 
 RES = ROOT / "outputs/results"
 ART = ROOT / "app/artifacts"
-POLICY = "A:lgbm_combined"
+SEL = ROOT / "outputs/blend_selection.json"
+DEPLOY = "blend" if SEL.exists() else "lgbm_combined"
+POLICY = f"A:{DEPLOY}"
 K_DEMO = 5
 SEED_DEMO = 1
 START_CLOCK = 7  # unit hour 0 is 7:00 AM on day 1; shifts run 7 AM-7 PM and 7 PM-7 AM
@@ -68,6 +70,34 @@ def verdict(cls: str, lead: float, group: str) -> tuple[str, str]:
     return "False alarm", "This patient did not develop sepsis in the next 12 hours."
 
 
+def comparison_html(deploy):
+    """Plain sentences on where LightGBM, the GRU and the mix win (from 03's results)."""
+    t = pd.read_csv(RES / "results_table.csv")
+    t = t[t.subgroup == "all"]
+    if "A:temporal_gru" not in set(t.policy):
+        return "<p>The GRU comparison has not been run.</p>"
+
+    def v(T, H, m, k):
+        r = t[(t.test == T) & (t.k == k) & (t.policy == f"{H}:{m}")]
+        return 100 * float(r.caught6.iloc[0]) if len(r) else float("nan")
+
+    rows = ""
+    for k in (3, 5):
+        for T in C.HOSPITALS:
+            for H in (T, "B" if T == "A" else "A"):
+                cells = [v(T, H, m, k) for m in ("lgbm_combined", "temporal_gru", deploy)]
+                best = max(cells[:2])
+                fmt = [f"<b>{c:.1f}</b>" if c == best and i < 2 else f"{c:.1f}" for i, c in enumerate(cells)]
+                where = "trained there" if H == T else f"trained at {H} (never saw {T})"
+                rows += (f"<tr><td>{k}</td><td>Hospital {T}, {where}</td><td>{fmt[0]}</td><td>{fmt[1]}</td>"
+                         f"<td style='color:#1d4ed8'><b>{cells[2]:.1f}</b></td></tr>")
+    return ("<p><b>LightGBM vs Miheer's GRU vs the Septris mix</b>, caught in time out of 100 sepsis patients "
+            "(bold = the better of the two single models):</p>"
+            "<table style='width:100%; border-collapse:collapse; font-size:15px'>"
+            "<tr style='text-align:left; border-bottom:1px solid #d0d5dd'><th>Reviews per shift</th><th>Tested on</th>"
+            "<th>LightGBM</th><th>GRU</th><th>Septris mix</th></tr>" + rows + "</table>")
+
+
 def main():
     ART.mkdir(parents=True, exist_ok=True)
     rows = pd.read_parquet(ROOT / "data/processed/rows.parquet")
@@ -75,7 +105,7 @@ def main():
         ["patient_id", "hour"], kind="stable").reset_index(drop=True)
     patients = pd.read_csv(ROOT / "outputs/patients.csv").set_index("patient_id")
     variables = json.loads((ROOT / "outputs/variables_used.json").read_text())["used"]
-    score = np.load(ROOT / "data/processed/scores/A_lgbm_combined.npy")
+    score = np.load(ROOT / f"data/processed/scores/A_{DEPLOY}.npy")
     hosp, split = rows["hospital"].to_numpy(), rows["split"].to_numpy()
 
     # priority tiers and percentiles from home validation scores (fixed before test)
@@ -110,7 +140,7 @@ def main():
     sb_reviews = sb.groupby("queue_pos")["unit_hour"].apply(list).to_dict()
     offs = S.slot_hours(K_DEMO)
 
-    # why-now reasons for every SignalBridge pick
+    # why-now reasons for every Septris pick
     tr = (hosp == "A") & (split == "train") & rows["in_training"].to_numpy()
     base = F.causal_base(hourly, variables)
     pools = F.fit_pools(base, tr)
@@ -241,7 +271,23 @@ def main():
             (ART / f).write_bytes(src.read_bytes())
     (ART / "failure_cases.json").unlink(missing_ok=True)
     (ART / "tiers.json").write_text(json.dumps({"high": float(hi_cut), "medium": float(med_cut)}))
-    demo = {"k": K_DEMO, "seed": SEED_DEMO, "beds": C.BEDS, "patients": int(len(ids)),
+    if DEPLOY == "blend":
+        w = json.loads(SEL.read_text())["lightgbm_weight"]
+        label = ("LightGBM alone" if w == 1 else "GRU alone" if w == 0 else
+                 f"mix: {100 * w:.0f}% LightGBM + {100 * (1 - w):.0f}% GRU")
+        model_text = (f"Two models, mixed {100 * w:.0f}/{100 * (1 - w):.0f}. LightGBM (a gradient-boosted decision-tree "
+                      "model) reads hand-made summaries of each patient's last few hours: current values, recent "
+                      "changes, 6-hour highs and lows, and which tests were done when. A GRU (a deep-learning model "
+                      "that reads each patient's hours in order, built by Miheer) reads the raw hour-by-hour values "
+                      "and which ones were measured. Each model's score is turned into a 0-100 ranking and the two "
+                      "rankings are averaged with these weights, which were chosen on validation patients only. "
+                      "The 'what stood out' reasons come from the LightGBM part.")
+    else:
+        w, label = 1.0, "LightGBM"
+        model_text = "A LightGBM model reading summaries of each patient's last few hours."
+    demo = {"policy_key": DEPLOY, "policy_label": label, "lightgbm_weight": w, "model_text": model_text,
+            "comparison_html": comparison_html(DEPLOY),
+            "k": K_DEMO, "seed": SEED_DEMO, "beds": C.BEDS, "patients": int(len(ids)),
             "eligible_septic": int(eligible_pos.sum()), "days": round(end / 24, 1),
             "reviews": int(len(slots_df)),
             "sb_caught6": int(caught[POLICY][eligible_pos].sum()),

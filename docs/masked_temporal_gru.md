@@ -4,7 +4,7 @@
 
 ## Purpose
 
-The original SignalBridge candidate is a LightGBM ranking model over causal,
+The original Septris candidate is a LightGBM ranking model over causal,
 engineered hourly features. This branch tests whether a causal sequence model can
 use the order of measurements and physiologic changes more effectively without
 using a future hour.
@@ -38,7 +38,7 @@ the differences above should be described as statistically distinguishable.
 ## Interpretation
 
 The result supports further evaluation, not deployment. It is a modest absolute
-gain at the fixed review budget and does not demonstrate that SignalBridge
+gain at the fixed review budget and does not demonstrate that Septris
 detects sepsis before clinicians, saves lives, or transfers safely. The target
 is partially entangled with testing and treatment workflow, and the model has
 only retrospective data from two systems.

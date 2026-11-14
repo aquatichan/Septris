@@ -1,4 +1,4 @@
-"""SignalBridge demo app (Gradio). Reads only app/artifacts/.
+"""Septris demo app (Gradio). Reads only app/artifacts/.
 
     python app/app.py            # local, http://127.0.0.1:7860
     python app/app.py --share    # public link (Colab)
@@ -30,88 +30,97 @@ meta = pd.read_parquet(ART / "patients.parquet").set_index("patient_id")
 table = pd.read_csv(ART / "results_table.csv")
 diffs = pd.read_csv(ART / "paired_differences.csv")
 examples = json.loads((ART / "examples.json").read_text())
-demo_info = json.loads((ART / "demo.json").read_text())
-K = demo_info["k"]
-beds_by_hour = {h: g.sort_values("bed") for h, g in beds.groupby("unit_hour")}
+info = json.loads((ART / "demo.json").read_text())
+K, NBEDS = info["k"], info["beds"]
+beds_by_hour = {h: g for h, g in beds.groupby("unit_hour")}
 tl_by_pid = {p: g for p, g in timelines.groupby("patient_id")}
 rev_by_pid = reviews.groupby("patient_id")["record_hour"].apply(list).to_dict()
+shift_ids = sorted(slots["shift"].unique())
+slots_in_shift = {s: list(g.index) for s, g in slots.groupby("shift")}
 
 BLUE, RED, GREEN, AMBER, GREY = "#1d4ed8", "#b42318", "#067647", "#b54708", "#475467"
-VERDICT_STYLE = {  # icon, text colour, background
-    "Good catch": ("✅", GREEN, "#ecfdf3"),
-    "Caught, but close": ("🟡", AMBER, "#fffaeb"),
-    "Too late": ("🟠", "#c4320a", "#fff4ed"),
-    "False alarm": ("⚪", GREY, "#f2f4f7"),
-    "Not counted": ("➖", GREY, "#f2f4f7"),
+
+# plain-language verdicts: icon, headline, colour, background
+VERDICT = {
+    "early6": ("✅", "Caught in time", GREEN, "#ecfdf3"),
+    "early": ("🟡", "Caught, but with little warning", AMBER, "#fffaeb"),
+    "late": ("🟠", "Too late", "#c4320a", "#fff4ed"),
+    "false": ("⚪", "False alarm: this patient turned out fine", GREY, "#f2f4f7"),
+    "uncertain": ("➖", "Doesn't count", GREY, "#f2f4f7"),
 }
-TIER = {"High": (RED, "#fef3f2", "High risk"), "Medium": (AMBER, "#fffaeb", "Medium risk"),
-        "Low": (GREY, "#ffffff", "Low risk")}
+
+
+def ordinal(n):
+    return f"{n}{'th' if 10 <= n % 100 <= 20 else {1: 'st', 2: 'nd', 3: 'rd'}.get(n % 10, 'th')}"
+
+
+def what_happened(cls, lead, bed):
+    """One plain sentence about what happened to the reviewed patient."""
+    if cls == "early6":
+        return f"Bed {bed} developed sepsis {lead:.0f} hours after this review. That's enough warning for the team to act early."
+    if cls == "early":
+        return (f"Bed {bed} developed sepsis {lead:.0f} hour{'s' if lead != 1 else ''} after this review: "
+                "caught before it happened, but with less than the 6 hours of warning we aim for.")
+    if cls == "late":
+        ago = -lead
+        return (f"Bed {bed} already had sepsis when it was reviewed (it was recorded "
+                f"{'in the same hour' if ago == 0 else f'{ago:.0f} hours earlier'}).")
+    if cls == "uncertain":
+        return f"Bed {bed} already had sepsis when they arrived in the ICU, so this review is not scored either way."
+    if not np.isnan(lead) and lead > 12:
+        return (f"Bed {bed} did not develop sepsis until {lead:.0f} hours later, too far ahead for this review to "
+                "count as a catch.")
+    return f"Bed {bed} did not develop sepsis in the next 12 hours."
+
 
 CSS = """
 .gradio-container {max-width: 1180px !important; margin: auto; background: #f8fafc;}
-.sb, .sb * {box-sizing: border-box; font-family: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;}
-.sb {color: #101828;}
-.sb-banner {background: #fff4e5; border: 1px solid #f79009; border-radius: 10px; padding: 8px 14px;
+.sp, .sp * {box-sizing: border-box; font-family: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;}
+.sp {color: #101828; font-size: 16px; line-height: 1.5;}
+.sp-banner {background: #fff4e5; border: 1px solid #f79009; border-radius: 10px; padding: 8px 14px;
              color: #7a2e0e; font-weight: 600; font-size: 14px;}
-.sb-hero h1 {font-size: 30px; margin: 6px 0 2px; color: #101828;}
-.sb-hero p {font-size: 17px; margin: 0 0 10px; color: #344054;}
-.sb-steps {display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px;}
-.sb-step {background: #fff; border: 1px solid #e4e7ec; border-radius: 12px; padding: 12px 14px; font-size: 15px;
-           line-height: 1.45; color: #344054;}
-.sb-step b.n {display: inline-block; width: 26px; height: 26px; border-radius: 50%; background: #1d4ed8; color: #fff;
-              text-align: center; line-height: 26px; margin-right: 6px; font-size: 14px;}
-.sb-step .t {font-weight: 700; color: #101828; font-size: 16px;}
-.sb-card {background: #fff; border: 1px solid #e4e7ec; border-radius: 12px; padding: 14px 16px; height: 100%;}
-.sb-when {display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px;
-           background: #101828; color: #fff; border-radius: 12px; padding: 12px 18px;}
-.sb-when .big {font-size: 22px; font-weight: 700; color: #fff;}
-.sb-when .sub {font-size: 15px; color: #d0d5dd;}
-.sb-dots span {display: inline-block; width: 16px; height: 16px; border-radius: 50%; margin-left: 5px;
-                border: 2px solid #98a2b3;}
-.sb-dots span.used {background: #84adff; border-color: #84adff;}
-.sb-dots span.now {background: #fff; border-color: #fff;}
-.sb-label {font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: #667085; font-weight: 700;
-            margin: 0 0 6px;}
-.sb-pick-title {font-size: 24px; font-weight: 800; color: #1d4ed8; margin: 0 0 8px;}
-.sb-pick ul {margin: 4px 0 6px 20px; padding: 0; font-size: 16px; line-height: 1.5;}
-.sb-small {font-size: 13px; color: #667085;}
-.sb-verdict {border-radius: 10px; padding: 10px 12px; margin-top: 12px; font-size: 15px; line-height: 1.45;}
-.sb-verdict b {font-size: 17px;}
-.sb-score-row {display: grid; grid-template-columns: 118px 1fr 58px; align-items: center; gap: 8px; margin: 8px 0;
-                font-size: 15px;}
-.sb-bar {background: #eef2f6; border-radius: 6px; height: 18px; overflow: hidden;}
-.sb-bar div {height: 100%; border-radius: 6px;}
-.sb-grid {display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px;}
-.sb-bed {border: 2px solid #d0d5dd; border-radius: 10px; padding: 8px 10px; font-size: 13.5px; line-height: 1.4;
-          background: #fff; min-height: 112px; position: relative;}
-.sb-bed .name {font-weight: 800; font-size: 16px;}
-.sb-bed .state {font-weight: 700; margin: 2px 0;}
-.sb-bed .meter {background: #eef2f6; border-radius: 4px; height: 7px; margin: 3px 0 4px; overflow: hidden;}
-.sb-bed .meter div {height: 100%;}
-.sb-bed.pick {border: 4px solid #1d4ed8; box-shadow: 0 0 0 3px #c7d7fe;}
-.sb-bed.snooze {background: #f2f4f7; color: #667085; border-style: dashed;}
-.sb-bed.focus {outline: 4px solid #b42318; outline-offset: 2px;}
-.sb-tag {display: inline-block; border-radius: 999px; padding: 1px 8px; font-size: 12px; font-weight: 700;
-          margin-top: 3px;}
-.sb-legend {display: flex; flex-wrap: wrap; gap: 14px; font-size: 13px; color: #475467; margin-top: 8px;}
-.sb-note {background: #fef3f2; border: 1px solid #fda29b; border-radius: 10px; padding: 10px 14px; font-size: 15px;
-           color: #7a271a; margin-bottom: 8px;}
-.sb-kpis {display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px;}
-.sb-kpi {background: #fff; border: 1px solid #e4e7ec; border-radius: 12px; padding: 14px 16px;}
-.sb-kpi .v {font-size: 34px; font-weight: 800; line-height: 1.1;}
-.sb-kpi .l {font-size: 15px; color: #344054; margin-top: 4px;}
-.sb-faq h3 {font-size: 18px; margin: 16px 0 4px; color: #101828;}
-.sb-faq p, .sb-faq li {font-size: 15.5px; line-height: 1.55; color: #344054;}
+.sp-hero h1 {font-size: 34px; margin: 8px 0 0; letter-spacing: -0.02em;}
+.sp-hero .lead {font-size: 18px; color: #344054; margin: 2px 0 10px;}
+.sp-box {background: #fff; border: 1px solid #e4e7ec; border-radius: 12px; padding: 14px 18px;}
+.sp-box p {margin: 4px 0;}
+.sp-label {font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: #667085; font-weight: 700;
+            margin: 0 0 4px;}
+.sp-shift {background: #101828; color: #fff; border-radius: 12px; padding: 10px 16px; text-align: center;}
+.sp-shift .big {font-size: 21px; font-weight: 800; color: #fff;}
+.sp-shift .sub {font-size: 14px; color: #d0d5dd;}
+.sp-pick h2 {font-size: 24px; color: #1d4ed8; margin: 0 0 6px;}
+.sp-pick ul {margin: 4px 0 6px 20px; padding: 0;}
+.sp-small {font-size: 13.5px; color: #667085;}
+.sp-key {background: #fffcf5; border: 2px dashed #f79009; border-radius: 12px; padding: 14px 18px;}
+.sp-key .verdict {border-radius: 10px; padding: 10px 12px; margin: 8px 0; font-size: 16px;}
+.sp-key .verdict b {font-size: 18px;}
+.sp-note {background: #eff8ff; border: 1px solid #84caff; border-radius: 10px; padding: 10px 14px; color: #1849a9;}
+.sp-sec {font-size: 19px; font-weight: 800; margin: 14px 0 0; color: #101828;}
+.sp-sechelp {font-size: 14.5px; color: #475467; margin: 0 0 4px;}
+button.bedbtn {display: block !important; white-space: pre-line !important; text-align: left !important; justify-content: flex-start !important;
+               align-items: flex-start !important; min-height: 96px; line-height: 1.35 !important;
+               font-weight: 500 !important; font-size: 14px !important; border: 2px solid #d0d5dd !important;
+               background: #fff !important; color: #101828 !important; padding: 8px 10px !important;}
+button.bedbtn::first-line {font-weight: 800; font-size: 16px;}
+button.bed-high {background: #fef3f2 !important; border-color: #fda29b !important;}
+button.bed-med {background: #fffaeb !important; border-color: #fec84b !important;}
+button.bed-snooze {background: #f2f4f7 !important; color: #667085 !important; border-style: dashed !important;}
+button.bed-empty {background: #f9fafb !important; color: #98a2b3 !important;}
+button.bed-pick {border: 4px solid #1d4ed8 !important; box-shadow: 0 0 0 3px #c7d7fe !important;}
+button.bed-sel {outline: 3px solid #101828 !important; outline-offset: 2px;}
+button.bed-miss {border: 4px solid #b42318 !important;}
+button.revbtn {white-space: pre-line !important; line-height: 1.3 !important;}
+.sp-results .num {font-size: 40px; font-weight: 800; line-height: 1;}
+.sp-dots {display: grid; grid-template-columns: repeat(20, 1fr); gap: 3px; max-width: 420px; margin: 8px 0;}
+.sp-dots span {aspect-ratio: 1; border-radius: 50%; background: #e4e7ec;}
+.sp-row {display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px;}
+.sp-faq h3 {font-size: 18px; margin: 18px 0 4px;}
+.sp-faq p, .sp-faq li {color: #344054;}
 @media (max-width: 760px) {
-  .gradio-container, .gradio-container .main {width: 100% !important; max-width: 100vw !important;
-    min-width: 0 !important;}
+  .gradio-container, .gradio-container .main {width: 100% !important; max-width: 100vw !important; min-width: 0 !important;}
   body {overflow-x: hidden;}
-  .gradio-container .row {flex-wrap: wrap !important;}
-  .gradio-container .row > * {min-width: 0 !important; flex: 1 1 100% !important;}
-  .sb-steps, .sb-kpis {grid-template-columns: 1fr;}
-  .sb-hero h1 {font-size: 24px;}
-  .sb-when .big {font-size: 18px;}
-  .sb-grid {grid-template-columns: repeat(2, 1fr);}
+  .sp-hero h1 {font-size: 26px;}
+  button.bedbtn {min-height: 84px; font-size: 13px !important;}
 }
 """
 
@@ -125,126 +134,103 @@ def esc(s):
     return html.escape(str(s))
 
 
-# ---------------------------------------------------------------- review tab
-def header_html(s):
-    dots = "".join(f"<span class='{'now' if c == s.check else 'used' if c < s.check else ''}'></span>"
-                   for c in range(1, K + 1))
-    return (f"<div class='sb sb-when'><div><div class='big'>Day {s.day} · {s.clock}</div>"
-            f"<div class='sub'>{s.shift_name} · check {s.check} of {K} this shift · "
-            f"the nurse can only open {K} charts per 12-hour shift</div></div>"
-            f"<div class='sb-dots' title='checks used this shift'>{dots}</div></div>")
+# ------------------------------------------------------------------ the ICU tab
+def shift_html(i):
+    s = slots.iloc[i]
+    first = slots.iloc[slots_in_shift[s["shift"]][0]]
+    night = s.shift_name == "Night shift"
+    hours = "7 PM to 7 AM" if night else "7 AM to 7 PM"
+    return (f"<div class='sp sp-shift'><div class='big'>Day {first.day} · {s.shift_name} ({hours})</div>"
+            f"<div class='sub'>Shift {s['shift']} of {len(shift_ids)} in this replay</div></div>")
 
 
-def verdict_html(label, text, title="What really happened (SignalBridge could not know this)"):
-    icon, fg, bg = VERDICT_STYLE[label]
-    return (f"<div class='sb-verdict' style='background:{bg}; border:1px solid {fg}33'>"
-            f"<div class='sb-label' style='margin-bottom:2px'>{title}</div>"
-            f"<b style='color:{fg}'>{icon} {label}.</b> {esc(text)}</div>")
-
-
-def pick_html(s, n_candidates):
+def pick_html(s, n_cand):
     reasons = [r for r in s.reasons.split(" | ") if r]
     why = ("<ul>" + "".join(f"<li>{esc(r[0].upper() + r[1:])}</li>" for r in reasons) + "</ul>") if reasons \
-        else "<p>Several small signals together, none large on its own.</p>"
+        else "<p>Several small changes together, none big on its own.</p>"
+    return (f"<div class='sp sp-box sp-pick'><div class='sp-label'>Review {s.check} of {K} · {s.clock}</div>"
+            f"<h2>👉 Septris says: review Bed {s.bed} now</h2>"
+            f"<p>Of the {n_cand} beds that haven't had a review in the last 12 hours, Bed {s.bed} has the "
+            f"highest risk right now.</p><p><b>What stood out in Bed {s.bed}'s chart:</b></p>{why}"
+            f"<p class='sp-small'>Septris only uses data recorded up to {s.clock}. These are warning patterns, "
+            f"not a diagnosis: the nurse reads the chart and decides.</p></div>")
+
+
+def key_html(s):
+    icon, head, fg, bg = VERDICT[s.review_class]
     rnd = ""
     if s.random_bed is not None and not pd.isna(s.random_bed):
-        icon, fg, _ = VERDICT_STYLE[s.random_verdict]
-        rnd = (f"<div class='sb-small' style='margin-top:10px; font-size:14px'>For comparison, "
-               f"<b>random checking</b> opened <b>Bed {int(s.random_bed)}</b> at this moment: "
-               f"<b style='color:{fg}'>{icon} {s.random_verdict}</b>.</div>")
-    return (f"<div class='sb sb-card sb-pick'><div class='sb-label'>SignalBridge says</div>"
-            f"<div class='sb-pick-title'>👉 Open Bed {s.bed}'s chart now</div>"
-            f"<div style='font-size:15px'>It ranks <b>#1 of the {n_candidates} beds</b> not checked in the last "
-            f"12 hours. Why it ranks first:</div>{why}"
-            f"<div class='sb-small'>These are patterns the model learned from past patients, not a diagnosis. "
-            f"The nurse decides what to do.</div>"
-            f"{verdict_html(s.verdict, s.verdict_text)}{rnd}</div>")
-
-
-def score_html(s):
+        ri, rh, rfg, _ = VERDICT[s.random_class]
+        rnd = (f"<p>🎲 <b>If the nurse had picked a bed at random</b>, they would have reviewed Bed "
+               f"{int(s.random_bed)}: <b style='color:{rfg}'>{ri} {rh}</b>.</p>")
     n = s.sepsis_so_far
-    rows = ""
-    for name, v, col in (("SignalBridge", s.sb_caught_so_far, BLUE), ("Random checks", s.random_caught_so_far, GREY)):
-        w = 100 * v / n if n else 0
-        rows += (f"<div class='sb-score-row'><b style='color:{col}'>{name}</b>"
-                 f"<div class='sb-bar'><div style='width:{w:.0f}%; background:{col}'></div></div>"
-                 f"<b>{v}</b></div>")
-    pct = f" ({100 * s.sb_caught_so_far / n:.0f}% vs {100 * s.random_caught_so_far / n:.0f}%)" if n else ""
-    return (f"<div class='sb sb-card'><div class='sb-label'>Scoreboard so far (day 1 to day {s.day})</div>"
-            f"<div style='font-size:15px'><b>{n}</b> patient{'' if n == 1 else 's'} in this replay "
-            f"{'has' if n == 1 else 'have'} developed sepsis so far. "
-            f"How many had their chart opened <b>6–12 hours before</b> sepsis was recorded?{pct}</div>"
-            f"{rows}<div class='sb-small'>Same beds, same number of checks. Random checking is what a nurse "
-            f"would do with no guidance at all.</div></div>")
+    score = (f"<p class='sp-small' style='margin-top:8px'><b>Score so far in this replay</b> (day 1 to day {s.day}): "
+             f"{n} patients developed sepsis. Septris caught <b>{s.sb_caught_so_far}</b> of them in time; "
+             f"random picking caught <b>{s.random_caught_so_far}</b>.</p>") if n else ""
+    return (f"<div class='sp sp-key'><div class='sp-label'>📖 Answer key: what really happened</div>"
+            f"<p class='sp-small'>Septris could not see this. We can, because these are real patients from past "
+            f"hospital records, so we know how their stay turned out.</p>"
+            f"<div class='verdict' style='background:{bg}; border:1px solid {fg}55'>"
+            f"<b style='color:{fg}'>{icon} {head}.</b><br>{esc(what_happened(s.review_class, s.lead_hours, s.bed))}"
+            f"</div>{rnd}{score}</div>")
 
 
-def bed_tile(r, show_hindsight, focus_bed):
-    fg, bg, word = TIER[r.tier]
-    cls = "sb-bed"
+def bed_label(r, show_key):
+    if r is None:
+        return "Empty bed", ["bedbtn", "bed-empty"]
+    cls = ["bedbtn"]
     if r.picked:
-        state, color = "👉 CHECK NOW", BLUE
-        cls += " pick"
+        lines = [f"Bed {r.bed}", "👉 Septris's pick", f"Risk {r.percentile:.0f} of 100"]
+        cls.append("bed-pick")
     elif r.snoozed:
-        state, color = f"✓ Checked {r.hours_since_check} h ago", GREY
-        cls += " snooze"
+        lines = [f"Bed {r.bed}", f"✓ Reviewed {r.hours_since_check} h ago", "(skipped for now)"]
+        cls.append("bed-snooze")
     else:
-        state, color = f"#{r.rank} in line" + ("" if r.tier == "Low" else f" · {word}"), fg
-    if focus_bed == r.bed:
-        cls += " focus"
-    bar = (f"<div class='meter'><div style='width:{r.percentile:.0f}%; background:{fg}'></div></div>"
-           f"<div>Risk {r.percentile:.0f}/100 · in ICU {r.hours_in_icu} h</div>")
-    tags = ""
-    if r.random_pick:
-        tags += "<span class='sb-tag' style='background:#eef2f6; color:#344054'>🎲 random pick</span> "
-    if show_hindsight:
+        lines = [f"Bed {r.bed}", f"{ordinal(int(r.rank))} in line", f"Risk {r.percentile:.0f} of 100"]
+    if not r.snoozed:
+        cls.append("bed-high" if r.tier == "High" else "bed-med" if r.tier == "Medium" else "bed-low")
+    if show_key:
         h = r.hours_to_sepsis
-        g = meta.loc[r.patient_id, "group"]
-        if g == "uncertain_onset":
-            tags += "<span class='sb-tag' style='background:#f2f4f7; color:#475467'>septic on arrival</span>"
+        if meta.loc[r.patient_id, "group"] == "uncertain_onset":
+            lines.append("📖 septic on arrival")
         elif not pd.isna(h) and 0 < h <= 12:
-            tags += (f"<span class='sb-tag' style='background:#fee4e2; color:{RED}'>"
-                     f"⚠ sepsis in {h:.0f} h</span>")
+            lines.append(f"📖 ⚠ sepsis in {h:.0f} h")
         elif not pd.isna(h) and h <= 0:
-            tags += f"<span class='sb-tag' style='background:#fff4ed; color:#c4320a'>sepsis already recorded</span>"
-    style = "" if (r.picked or r.snoozed) else f"style='background:{bg}; border-color:{fg}66'"
-    return (f"<div class='{cls}' {style}><div class='name'>Bed {r.bed}</div>"
-            f"<div class='state' style='color:{color}'>{state}</div>{bar}{tags}</div>")
+            lines.append("📖 already has sepsis")
+    return "\n".join(lines), cls
 
 
-def grid_html(b, show_hindsight, focus_bed):
-    tiles = {int(r.bed): bed_tile(r, show_hindsight, focus_bed) for r in b.itertuples()}
-    cells = "".join(tiles.get(i, f"<div class='sb-bed snooze'><div class='name'>Bed {i}</div>Empty</div>")
-                    for i in range(1, 21))
-    legend = ("<div class='sb-legend'><span><b style='color:#1d4ed8'>Blue border</b> = SignalBridge's pick</span>"
-              "<span><b>#N in line</b> = SignalBridge's ranking right now (#1 gets checked)</span>"
-              "<span><b>Risk N/100</b> = how this hour compares with past ICU hours (100 = most worrying)</span>"
-              "<span><b>Grey, dashed</b> = checked in the last 12 h, so skipped for now</span>"
-              + ("<span><b style='color:#b42318'>⚠ sepsis in N h</b> = hindsight only, hidden from the model</span>"
-                 if show_hindsight else "") + "</div>")
-    return (f"<div class='sb sb-card'><div class='sb-label'>The unit right now: 20 beds</div>"
-            f"<div class='sb-grid'>{cells}</div>{legend}</div>")
+def bed_updates(b, show_key, sel_bed, miss_bed):
+    by_bed = {int(r.bed): r for r in b.itertuples()}
+    out = []
+    for i in range(1, NBEDS + 1):
+        r = by_bed.get(i)
+        label, cls = bed_label(r, show_key)
+        if r is None:
+            label = f"Bed {i}\nEmpty"
+        if i == sel_bed:
+            cls.append("bed-sel")
+        if i == miss_bed:
+            cls.append("bed-miss")
+        out.append(gr.update(value=label, elem_classes=cls))
+    return out
 
 
-def timeline(i, bed_choice):
-    i = int(i)
+def chart(i, bed):
     s = slots.iloc[i]
     b = beds_by_hour[s.unit_hour]
-    try:
-        bed = int(str(bed_choice).split()[1])
-    except (IndexError, ValueError):
-        bed = int(s.bed)
     row = b[b["bed"] == bed]
     if row.empty:
-        return None
+        return f"### Bed {bed} is empty right now", None
     row = row.iloc[0]
     pid, now = row.patient_id, int(row.record_hour)
     t = tl_by_pid[pid]
     m = meta.loc[pid]
     onset = m["t_onset"]
-    fig, axes = plt.subplots(3, 1, figsize=(10, 6.4), sharex=True, gridspec_kw={"height_ratios": [1.6, 1, 1]})
-    end = t["hour"].max()
+    end = int(t["hour"].max())
+    fig, axes = plt.subplots(3, 1, figsize=(10, 6.6), sharex=True, gridspec_kw={"height_ratios": [1.7, 1, 1]})
     for a in axes:
-        a.axvspan(now + 0.5, end + 1, color="#f2f4f7", lw=0, zorder=0)
+        a.axvspan(now + 0.5, end + 1, color="#eaecf0", lw=0, zorder=0)
         a.axvline(now, color="#101828", lw=2, zorder=3)
         if not np.isnan(onset):
             a.axvspan(max(0, onset - 12), onset - 6, color="#d1fadf", lw=0, zorder=0)
@@ -252,289 +238,342 @@ def timeline(i, bed_choice):
         a.spines[["top", "right"]].set_visible(False)
         a.grid(axis="y", color="#eaecf0")
     ax = axes[0]
-    ax.axhspan(95, 100, color="#fee4e2", lw=0, zorder=0)
-    ax.axhspan(80, 95, color="#fef0c7", lw=0, zorder=0)
-    ax.plot(t["hour"], t["percentile"], color=BLUE, lw=2.2, zorder=4)
+    ax.plot(t["hour"], t["percentile"], color=BLUE, lw=2.4, zorder=4, label="Septris risk (0–100)")
+    first = True
     for h in rev_by_pid.get(pid, []):
         y = float(t.loc[t["hour"] == h, "percentile"].iloc[0])
-        ax.plot([h], [y], marker="v", ms=11, color=BLUE, mec="white", zorder=5)
-    ax.set_ylim(0, 100)
-    ax.set_ylabel("Risk (0–100)")
-    ax.text(now, 101, "  now", fontsize=10, fontweight="bold", va="bottom")
+        ax.plot([h], [y], marker="v", ms=12, color=BLUE, mec="white", zorder=5,
+                label="Septris had the nurse review this chart" if first else None, ls="none")
+        first = False
+    ax.set_ylim(0, 112)
+    ax.set_yticks([0, 25, 50, 75, 100])
+    ax.set_ylabel("Septris risk\n(0–100)")
+    ax.text(now, 104, "◀ before this moment | after ▶", ha="center", fontsize=9.5, fontweight="bold")
+    if end > now + 2:
+        ax.text((now + end) / 2 + 0.5, 6, "after this moment:\nfrom the records,\nhidden from Septris",
+                ha="center", fontsize=9, color="#475467")
     if not np.isnan(onset):
-        ax.text(onset, 101, " sepsis recorded", fontsize=10, color=RED, fontweight="bold", va="bottom")
-    ax.text(0.3, 97.5, "high risk zone", fontsize=8.5, va="center", color=RED)
-    ax.text(0.3, 87.5, "medium risk zone", fontsize=8.5, va="center", color=AMBER)
-    title = f"Bed {bed} · age {m['age']:.0f} · in ICU {now + 1} h so far"
-    ax.set_title(title, loc="left", fontsize=13, fontweight="bold", pad=18)
-    for a, col, lab in ((axes[1], "HR", "Heart rate"), (axes[2], "MAP", "Blood pressure\n(MAP)")):
+        ax.text(onset, 104, "  sepsis recorded", fontsize=10, color=RED, fontweight="bold", ha="left")
+        if onset - 6 > 0:
+            ax.text(max(0, onset - 12) + 0.2, 92, "caught-in-time\nwindow", fontsize=8.5, color=GREEN, va="top")
+    ax.legend(loc="lower left", fontsize=8.5, frameon=False)
+    for a, col, lab in ((axes[1], "HR", "Heart rate\n(beats/min)"), (axes[2], "MAP", "Blood pressure\n(MAP, mmHg)")):
         a.plot(t["hour"], t[col], marker="o", ms=2.5, lw=1, color="#344054", zorder=4)
         a.set_ylabel(lab, fontsize=10)
     axes[-1].set_xlabel("Hours since this patient arrived in the ICU")
-    parts = ["Blue line: SignalBridge risk", "▼ = SignalBridge opened the chart", "grey area = the future"]
-    if not np.isnan(onset):
-        parts.append("green band = good-catch window (6–12 h before sepsis was recorded)")
-    fig.text(0.01, 0.01, " · ".join(parts) + ".", fontsize=9, color="#475467")
-    fig.tight_layout(rect=(0, 0.035, 1, 1))
-    return fig
+    fig.tight_layout()
+    title = (f"### Bed {bed}'s chart\nAge {m['age']:.0f}, in the ICU for {now + 1} hours so far. "
+             "The black line is this moment. Everything in the grey area happened later: we know it from the "
+             "records, but Septris could not see it.")
+    return title, fig
 
 
-def render(i, focus, show_hindsight):
+def render(i, sel_bed, focus, show_key):
     i = int(i)
     s = slots.iloc[i]
     b = beds_by_hour[s.unit_hour]
     n_cand = int(b["candidates"].iloc[0])
     focus = focus if (focus and focus.get("slot") == i) else None
-    focus_bed = focus["bed"] if focus else None
+    miss_bed = focus["bed"] if focus and focus.get("kind") == "miss" else None
+    if sel_bed is None or b[b["bed"] == sel_bed].empty:
+        sel_bed = miss_bed or int(s.bed)
     note = ""
     if focus:
-        r = b[b["bed"] == focus_bed].iloc[0]
-        rank = f"ranked it #{int(r['rank'])} of {n_cand}" if r["rank"] else "had checked it recently"
-        note = (f"<div class='sb sb-note'><b>❌ This is a miss.</b> Bed {focus_bed} (red outline) will develop "
-                f"sepsis in {r['hours_to_sepsis']:.0f} hours, but SignalBridge {rank}, so with only {K} checks per "
-                f"shift its chart was not opened in time. Its timeline is shown below.</div>")
-    choices = [f"Bed {int(x)}" for x in b["bed"]]
-    show = f"Bed {focus_bed}" if focus_bed else f"Bed {s.bed}"
-    return (note + header_html(s), pick_html(s, n_cand), score_html(s), grid_html(b, show_hindsight, focus_bed),
-            gr.update(choices=choices, value=show), timeline(i, show))
+        if focus["kind"] == "miss":
+            r = b[b["bed"] == miss_bed].iloc[0]
+            place = f"{ordinal(int(r['rank']))} in line" if r["rank"] else "recently reviewed"
+            note = (f"<div class='sp sp-note'><b>❌ Example of a miss.</b> Bed {miss_bed} (red border) will develop "
+                    f"sepsis {r['hours_to_sepsis']:.0f} hours after this moment. But right now Septris has it "
+                    f"<b>{place}</b>, and the nurse only has time for one review at {s.clock}, so Bed {miss_bed} "
+                    f"is not reviewed in time. Its chart is open below.</div>")
+        else:
+            note = {"good": f"<div class='sp sp-note'><b>✅ Example of a catch.</b> Septris points the nurse to Bed "
+                            f"{s.bed}, which develops sepsis {s.lead_hours:.0f} hours later. "
+                            "Click the other example buttons to see more.</div>",
+                    "false": f"<div class='sp sp-note'><b>⚪ Example of a false alarm.</b> Septris points the nurse "
+                             f"to Bed {s.bed}, but that patient turns out fine. This is the most common outcome: "
+                             "only about 8% of ICU patients ever develop sepsis.</div>"}[focus["kind"]]
+    rev = []
+    ids = slots_in_shift[s["shift"]]
+    for j in range(K):
+        if j < len(ids):
+            sj = slots.iloc[ids[j]]
+            rev.append(gr.update(value=f"Review {sj.check}\n{sj.clock}", visible=True,
+                                 variant="primary" if ids[j] == i else "secondary"))
+        else:
+            rev.append(gr.update(visible=False))
+    title, fig = chart(i, sel_bed)
+    return [i, sel_bed, note, shift_html(i), *rev, pick_html(s, n_cand), key_html(s),
+            f"<div class='sp sp-sec'>All {NBEDS} beds at {s.clock}</div>"
+            f"<div class='sp sp-sechelp'>Click any bed to open its chart below. Beds are numbered like a real "
+            f"unit; when a patient leaves, a new patient takes the bed.</div>",
+            *bed_updates(b, show_key, sel_bed, miss_bed), title, fig]
+
+
+def go_shift(i, d):
+    sh = slots.iloc[int(i)]["shift"]
+    k = shift_ids.index(sh) + d
+    k = min(max(k, 0), len(shift_ids) - 1)
+    return slots_in_shift[shift_ids[k]][0]
+
+
+def go_review(i, j):
+    ids = slots_in_shift[slots.iloc[int(i)]["shift"]]
+    return ids[min(j, len(ids) - 1)]
 
 
 def jump(kind, counter):
     xs = examples[kind]
-    c = (counter or {}).copy()
-    n = c.get(kind, -1) + 1
-    c[kind] = n
-    x = xs[n % len(xs)]
+    c = dict(counter or {})
+    c[kind] = c.get(kind, -1) + 1
+    x = xs[c[kind] % len(xs)]
     if kind == "miss":
-        return x["slot"], {"slot": x["slot"], "bed": x["bed"]}, c
-    return int(x), None, c
+        return x["slot"], {"slot": x["slot"], "bed": x["bed"], "kind": "miss"}, c
+    return int(x), {"slot": int(x), "kind": kind}, c
 
 
-# ---------------------------------------------------------------- results tab
-def res_row(test, pol, k):
-    r = table[(table.test == test) & (table.k == k) & (table.subgroup == "all") & (table.policy == pol)]
+# ------------------------------------------------------------------ results tab
+NAMES = {"septris": f"Septris ({info['policy_label']})", "lgbm_combined": "LightGBM alone (our first model)",
+         "temporal_gru": "Miheer's GRU alone (deep learning)", "sirs": "SIRS checklist (used in hospitals)",
+         "random": "Random picking"}
+COLORS = {"septris": BLUE, "lgbm_combined": "#84adff", "temporal_gru": "#7a5af8", "sirs": AMBER, "random": "#98a2b3"}
+
+
+def pol_name(key, T, home=True):
+    if key in ("sirs", "random"):
+        return key
+    H = T if home else ("B" if T == "A" else "A")
+    return f"{H}:{info['policy_key']}" if key == "septris" else f"{H}:{key}"
+
+
+def res(T, key, k, home=True):
+    r = table[(table.test == T) & (table.k == k) & (table.subgroup == "all") & (table.policy == pol_name(key, T, home))]
     return None if r.empty else r.iloc[0]
 
 
-def results_chart(k):
+def dots(share, color):
+    n = int(round(100 * share))
+    return "<div class='sp-dots'>" + "".join(
+        f"<span style='background:{color if j < n else '#e4e7ec'}'></span>" for j in range(100)) + "</div>"
+
+
+def results_html(k):
     k = int(k)
-    names = [("SignalBridge\n(trained at this hospital)", BLUE, lambda T: f"{T}:lgbm_combined"),
-             ("SignalBridge\n(trained at the other hospital)", "#84adff",
-              lambda T: f"{'B' if T == 'A' else 'A'}:lgbm_combined"),
-             ("SIRS rule\n(standard checklist)", AMBER, lambda T: "sirs"),
-             ("Random checks\n(no guidance)", "#98a2b3", lambda T: "random")]
-    fig, ax = plt.subplots(figsize=(10, 4.6))
-    w = 0.2
-    for j, (name, col, pol) in enumerate(names):
+    cards = []
+    for T in ("A", "B"):
+        sp, rnd = res(T, "septris", k), res(T, "random", k)
+        if sp is None:
+            continue
+        cards.append(
+            f"<div class='sp-box'><div class='sp-label'>Hospital {T} · {int(sp.eligible)} patients who got sepsis</div>"
+            f"<p>Out of every <b>100</b> patients who developed sepsis, Septris had the nurse review about</p>"
+            f"<div class='num' style='color:{BLUE}'>{100 * sp.caught6:.0f}</div>{dots(sp.caught6, BLUE)}"
+            f"<p>of them <b>6 to 12 hours before</b> sepsis was recorded. Picking at random: about "
+            f"<b>{100 * rnd.caught6:.0f}</b>.</p>{dots(rnd.caught6, '#98a2b3')}</div>")
+    fa = res("A", "septris", k).false_per_shift
+    cards.append(f"<div class='sp-box'><div class='sp-label'>The honest part</div>"
+                 f"<div class='num' style='color:{GREY}'>{fa:.1f} of {k}</div>"
+                 f"<p>reviews per shift still go to a patient who turns out fine (random picking: "
+                 f"{res('A', 'random', k).false_per_shift:.1f}). Only about 8% of ICU patients develop sepsis, so "
+                 "most reviews cannot be catches, even for a perfect model. What matters is catching more of the "
+                 "real cases with the same amount of nurse time.</p></div>")
+    return "<div class='sp sp-results sp-row'>" + "".join(cards) + "</div>"
+
+
+def results_chart(k, home):
+    k = int(k)
+    home = home.startswith("Same")
+    keys = [x for x in NAMES if res("A", x, k, home) is not None]
+    fig, ax = plt.subplots(figsize=(10, 4.4))
+    w = 0.8 / len(keys)
+    for j, key in enumerate(keys):
         for g, T in enumerate(("A", "B")):
-            r = res_row(T, pol(T), k)
+            r = res(T, key, k, home)
             if r is None:
                 continue
-            x = g + (j - 1.5) * w
+            x = g + (j - (len(keys) - 1) / 2) * w
             v = 100 * r.caught6
-            ax.bar(x, v, w * 0.92, color=col, label=name if g == 0 else None, zorder=3)
+            ax.bar(x, v, w * 0.9, color=COLORS[key], label=NAMES[key] if g == 0 else None, zorder=3)
             ax.errorbar(x, v, yerr=[[v - 100 * r.caught6_lo], [100 * r.caught6_hi - v]], color="#344054",
                         capsize=3, lw=1, zorder=4)
-            ax.text(x, 100 * r.caught6_hi + 1, f"{v:.0f}%", ha="center", fontsize=10.5, fontweight="bold")
-    ax.set_xticks([0, 1], [f"Hospital A\n({int(res_row('A', 'random', k).eligible)} sepsis patients)",
-                           f"Hospital B\n({int(res_row('B', 'random', k).eligible)} sepsis patients)"], fontsize=11)
-    ax.set_ylabel("% of sepsis patients\nflagged 6–12 h early")
-    ax.set_ylim(0, 55)
+            ax.text(x, 100 * r.caught6_hi + 1, f"{v:.0f}", ha="center", fontsize=10.5, fontweight="bold")
+    ax.set_xticks([0, 1], ["Hospital A", "Hospital B"], fontsize=12)
+    ax.set_ylabel("Caught in time\n(out of 100 sepsis patients)")
+    ax.set_ylim(0, 58)
     ax.spines[["top", "right"]].set_visible(False)
     ax.grid(axis="y", color="#eaecf0", zorder=0)
-    ax.legend(loc="upper left", bbox_to_anchor=(1.0, 1.0), frameon=False, fontsize=10, labelspacing=1.1)
-    ax.set_title(f"With {k} chart check{'s' if k > 1 else ''} per 12-hour shift (20 beds)", loc="left",
-                 fontsize=13, fontweight="bold")
-    fig.text(0.01, 0.01, "Black whiskers: 95% range from 200 re-samples of the test patients. "
-             "Test patients were never used for training.", fontsize=9, color="#475467")
+    ax.legend(loc="upper left", bbox_to_anchor=(1.0, 1.0), frameon=False, fontsize=10, labelspacing=1.0)
+    where = "trained at the same hospital" if home else "trained at the OTHER hospital (a hospital it has never seen)"
+    ax.set_title(f"{k} reviews per 12-hour shift · models {where}", loc="left", fontsize=12, fontweight="bold")
+    fig.text(0.01, 0.01, "Black whiskers: the range the number could reasonably be in (95% interval from 200 "
+             "re-samples). Test patients were never used for training.", fontsize=8.5, color="#475467")
     fig.tight_layout(rect=(0, 0.04, 1, 1))
     return fig
 
 
-def results_cards(k):
+def detail_table(k):
     k = int(k)
     out = []
     for T in ("A", "B"):
-        sb, rnd, sirs = res_row(T, f"{T}:lgbm_combined", k), res_row(T, "random", k), res_row(T, "sirs", k)
-        d = diffs[(diffs.test == T) & (diffs.k == k) & (diffs.comparison == "lgbm_combined (home) minus random")]
-        sure = (" The gap is larger than chance (95% range "
-                f"+{100 * d.iloc[0].lo:.0f} to +{100 * d.iloc[0].hi:.0f} points).") if len(d) and d.iloc[0].excludes_zero \
-            else ""
-        out.append(f"<div class='sb-kpi'><div class='sb-label'>Hospital {T}</div>"
-                   f"<div class='v' style='color:{BLUE}'>{100 * sb.caught6:.0f}%</div>"
-                   f"<div class='l'>of sepsis patients (about {sb.caught6_n:.0f} of {sb.eligible:.0f}) had their chart "
-                   f"opened 6–12 hours early by SignalBridge, versus <b>{100 * rnd.caught6:.0f}%</b> with random "
-                   f"checks and <b>{100 * sirs.caught6:.0f}%</b> with the SIRS rule.{sure}</div></div>")
-    fa = res_row("A", "A:lgbm_combined", k).false_per_shift
-    fr = res_row("A", "random", k).false_per_shift
-    out.append(f"<div class='sb-kpi'><div class='sb-label'>The honest catch</div>"
-               f"<div class='v' style='color:{GREY}'>{fa:.1f} of {k}</div>"
-               f"<div class='l'>checks per shift still go to a patient who will not develop sepsis in the next "
-               f"12 hours (random: {fr:.1f}). Only about 8% of ICU patients develop sepsis, so most checks "
-               f"can't be hits.</div></div>")
-    return "<div class='sb sb-kpis'>" + "".join(out) + "</div>"
-
-
-POLICY_NAMES = [("random", "Random checks"), ("sirs", "SIRS rule"), ("news", "NEWS-inspired score"),
-                ("lr", "Logistic regression"), ("lgbm_values", "LightGBM, vital/lab values only"),
-                ("lgbm_missing", "LightGBM, which tests were done only"),
-                ("lgbm_combined", "SignalBridge (LightGBM, combined)")]
-
-
-def detail_table(test, k):
-    k = int(k)
-    out = []
-    for train in (test, "B" if test == "A" else "A"):
-        for key, name in POLICY_NAMES:
-            if key in ("random", "sirs", "news") and train != test:
-                continue
-            pol = key if key in ("random", "sirs", "news") else f"{train}:{key}"
-            r = res_row(test, pol, k)
-            if r is None:
-                continue
-            where = "" if key in ("random", "sirs", "news") else \
-                (" · trained here" if train == test else " · trained at other hospital")
-            out.append({"Method": name + where,
-                        "Flagged 6–12 h early": f"{100 * r.caught6:.1f}% ({100 * r.caught6_lo:.1f}–{100 * r.caught6_hi:.1f})",
-                        "Flagged at all before onset": f"{100 * r.caught_any:.1f}%",
-                        "False alarms per shift": f"{r.false_per_shift:.2f}",
-                        "Median head start (h)": "–" if pd.isna(r.median_lead) else f"{r.median_lead:.1f}"})
+        for key in NAMES:
+            for home in ((True, False) if key not in ("sirs", "random") else (True,)):
+                r = res(T, key, k, home)
+                if r is None:
+                    continue
+                out.append({"Hospital tested": T,
+                            "Method": NAMES[key] + ("" if key in ("sirs", "random") else
+                                                    (" · trained here" if home else " · trained at other hospital")),
+                            "Caught in time (6–12 h early)": f"{100 * r.caught6:.1f}% ({100 * r.caught6_lo:.1f}–{100 * r.caught6_hi:.1f})",
+                            "Caught at all before sepsis": f"{100 * r.caught_any:.1f}%",
+                            "False alarms per shift": f"{r.false_per_shift:.2f}"})
     return pd.DataFrame(out)
 
 
 def intro_html():
     return f"""
-<div class='sb'>
- <div class='sb-banner'>⚠️ {DISCLAIMER} SignalBridge never diagnoses sepsis or recommends treatment.
- It only suggests which chart a nurse should look at next.</div>
- <div class='sb-hero'><h1>SignalBridge</h1>
- <p>Helping an ICU nurse decide <b>whose chart to check next</b> for early signs of sepsis.</p></div>
- <div class='sb-steps'>
-  <div class='sb-step'><b class='n'>1</b><span class='t'>The problem</span><br>One nurse watches 20 ICU beds
-   but only has time to carefully check about <b>{K} charts per 12-hour shift</b>. Sepsis is deadly and easy to
-   miss early.</div>
-  <div class='sb-step'><b class='n'>2</b><span class='t'>What SignalBridge does</span><br>At each check it ranks
-   the beds using only the vitals and lab results recorded <i>so far</i>, and says which chart to open, and why.
-   </div>
-  <div class='sb-step'><b class='n'>3</b><span class='t'>How we test it</span><br>We replay
-   {demo_info['patients']:,} real past ICU patients it never trained on. We know who later got sepsis, so a
-   <b>good catch</b> = chart opened 6–12 hours before sepsis was recorded.</div>
+<div class='sp'>
+ <div class='sp-banner'>⚠️ {DISCLAIMER} Septris never diagnoses sepsis or recommends treatment.
+ It only suggests which patient's chart a nurse should review next.</div>
+ <div class='sp-hero'><h1>Septris</h1>
+ <div class='lead'>An early-warning helper that tells a busy ICU nurse <b>whose chart to review next</b> for
+ signs of sepsis.</div></div>
+ <div class='sp-box'>
+ <p><b>The situation:</b> one nurse is responsible for {NBEDS} ICU beds, but only has time to do a careful
+ sepsis review of <b>{K} patients' charts per 12-hour shift</b>. Sepsis (a life-threatening reaction to an
+ infection) is much easier to treat when it is spotted early.</p>
+ <p><b>What you are looking at:</b> a replay of {info['patients']:,} real ICU patients from past hospital records
+ (anonymized; Septris never trained on them). At each of the {K} review times in a shift, Septris looks at
+ every bed's data <i>up to that moment</i> and says which chart to review.</p>
+ <p><b>Why we can see what happens next:</b> because these patients were treated years ago, their records show
+ who went on to develop sepsis. We show that as an <b>📖 answer key</b> so you can judge whether Septris
+ pointed the nurse to the right patient. Septris itself never sees the answer key.</p>
  </div>
 </div>"""
 
 
-FAQ = f"""
-<div class='sb sb-faq sb-card'>
-<h3>What is sepsis, and why does timing matter?</h3>
-<p>Sepsis is the body's extreme reaction to an infection. It can damage organs within hours, and every hour of
-delayed treatment raises the risk of death. Spotting it a few hours earlier gives the care team time to act.</p>
-<h3>Why only {K} checks per shift?</h3>
-<p>A careful sepsis review of one chart takes real time. A nurse covering 20 beds cannot do that for everyone,
-so the useful question is not "who might be septic?" but "with my next check, whose chart should I open?".
-We tested 1, 2, 3 and 5 checks per shift; this demo shows {K}.</p>
-<h3>What counts as a good catch?</h3>
-<p>The chart was opened 6 to 12 hours <b>before</b> sepsis was recorded in the patient's data. Opening it
-less than 6 hours before is shown as "caught, but close"; after is "too late". Opening the chart of someone
-who does not develop sepsis in the next 12 hours is a "false alarm".</p>
-<h3>Why are most checks false alarms?</h3>
-<p>Only about 8% of these ICU patients ever develop sepsis, and at any given hour far fewer are in the
-6–12 hour window. Even a perfect ranking would usually have no one in that window to find. What matters is
-how many real cases get caught compared with checking at random using the same time.</p>
-<h3>What does the model look at?</h3>
-<p>Hourly vital signs (heart rate, blood pressure, breathing rate, temperature, oxygen), lab results (such as
-lactate and white cell count), age and sex, and <i>which</i> tests were done recently. It only ever sees data
-recorded up to the current hour. It does not see length of stay or which unit the patient is on.</p>
+def faq_html():
+    return f"""
+<div class='sp sp-faq sp-box'>
+<h3>How can the app show what happens in the future?</h3>
+<p>It isn't predicting the future live. These are real patients from past hospital records (the PhysioNet 2019
+sepsis dataset), so their whole stay is already written down. At each moment we only give Septris the data up to
+that moment, then use the rest of the record as an answer key to grade it. That is the standard way to test an
+early-warning tool before anyone uses it on real patients.</p>
+<h3>What does "Risk 92 of 100" mean?</h3>
+<p>The patient's current data looks more worrying than about 92% of patient-hours in our training hospital. It is a
+ranking, not a probability of having sepsis.</p>
+<h3>What does "2nd in line" mean?</h3>
+<p>Septris's ranking at that moment. The bed that is 1st in line is the one Septris says to review now. Beds
+reviewed in the last 12 hours are skipped so the nurse doesn't keep looking at the same patient.</p>
+<h3>Why only {K} reviews per shift?</h3>
+<p>A careful sepsis review takes real time, and the nurse has other work. So the useful question isn't "who might
+have sepsis?" but "with the time I have, whose chart should I open next?". We tested 1, 2, 3 and 5 reviews per
+shift; the app shows {K}.</p>
+<h3>What counts as "caught in time"?</h3>
+<p>The patient's chart was reviewed 6 to 12 hours before sepsis was recorded. Less than 6 hours is "caught, but with
+little warning". After is "too late". Reviewing someone who doesn't develop sepsis in the next 12 hours is a
+"false alarm".</p>
+<h3>What is a "miss"?</h3>
+<p>A patient who developed sepsis but whose chart was never reviewed in the 6 to 12 hours before it. Usually that's
+because other beds looked more worrying at the time.</p>
+<h3>Why are most reviews false alarms?</h3>
+<p>Only about 8% of these ICU patients ever develop sepsis, and at any given moment very few are in the 6 to 12 hour
+window before it. Most of the time there is simply no one to catch. The fair comparison is how many real cases are
+caught with the same nurse time, compared with picking at random.</p>
+<h3>What is inside Septris?</h3>
+<p>{info['model_text']}</p>
 <h3>Honest limits</h3>
 <ul>
-<li>Built and tested on past records from two hospital systems; it has never been used on real patients.</li>
-<li>It works less well at a hospital it was not trained on.</li>
-<li>Many of its good catches came right after new lab tests were ordered, so it mostly highlights patients the
-team had already started working up. It does not prove the model is ahead of clinicians.</li>
+<li>Built and tested only on past records from two hospital systems. It has never been used on real patients.</li>
+<li>It works less well at a hospital it wasn't trained on.</li>
+<li>Many catches came right after new lab tests were ordered, so it mostly highlights patients the team had already
+started to work up. It does not show that the model is ahead of doctors.</li>
 <li>The 20-bed unit is a simulation: patients from different times are placed side by side.</li>
 </ul>
-<p class='sb-small'>Data: PhysioNet/CinC Challenge 2019 (CC BY 4.0). Full methods and pre-registration are in
-the project repository.</p>
 </div>"""
 
 
 GRADIO_MAJOR = int(gr.__version__.split(".")[0])
 STYLE = {"css": CSS, "theme": gr.themes.Soft(primary_hue="blue"), "js": FORCE_LIGHT}
-# open on a good catch once the replay is well under way, and start every example list from there
 START = next(i for i in examples["good"] if slots.loc[i, "sepsis_so_far"] >= 40)
 for _k, _v in examples.items():
     _cut = next((j for j, x in enumerate(_v) if (x["slot"] if isinstance(x, dict) else x) >= START), 0)
     examples[_k] = _v[_cut:] + _v[:_cut]
 
-with gr.Blocks(title="SignalBridge", **({} if GRADIO_MAJOR >= 6 else STYLE)) as demo:
+with gr.Blocks(title="Septris", **({} if GRADIO_MAJOR >= 6 else STYLE)) as demo:
     gr.HTML(intro_html())
-    with gr.Tab("▶ Replay"):
-        gr.Markdown("Step through the replay one check at a time, or jump straight to an example.")
-        with gr.Row():
-            prev_b = gr.Button("◀ Previous check")
-            next_b = gr.Button("Next check ▶", variant="primary")
-            shift_b = gr.Button("Skip to next shift ⏭")
-        with gr.Row():
-            good_b = gr.Button("✅ Show me a good catch")
-            miss_b = gr.Button("❌ Show me a miss")
-            fa_b = gr.Button("⚪ Show me a false alarm")
-        head = gr.HTML()
-        with gr.Row(equal_height=True):
-            with gr.Column(scale=3):
-                pick = gr.HTML()
-            with gr.Column(scale=2):
-                score = gr.HTML()
-        hind = gr.Checkbox(value=True, label="Show what happened later on the bed map (hidden from SignalBridge)")
-        grid = gr.HTML()
-        gr.Markdown("### Look inside a bed's chart")
-        bed = gr.Dropdown(label="Pick a bed", choices=[])
-        plot = gr.Plot(show_label=False)
-        with gr.Accordion("Jump to any check in the replay", open=False):
-            slot = gr.Slider(0, len(slots) - 1, value=START, step=1,
-                             label=f"Check number (the replay covers {demo_info['days']:.0f} days)")
+    with gr.Tab("🏥 Try it: the ICU replay"):
+        cur = gr.State(START)
+        sel = gr.State(None)
         focus = gr.State(None)
         counter = gr.State({})
-        outs = [head, pick, score, grid, bed, plot]
+        gr.HTML("<div class='sp sp-sec'>Not sure where to start? Jump to an example:</div>")
+        with gr.Row():
+            good_b = gr.Button("✅ Septris catches sepsis in time")
+            miss_b = gr.Button("❌ Septris misses a sepsis patient")
+            fa_b = gr.Button("⚪ A false alarm (patient turns out fine)")
+        note = gr.HTML()
+        gr.HTML("<div class='sp sp-sec'>Or move through time yourself</div>")
+        with gr.Row(equal_height=True):
+            prev_s = gr.Button("◀ Previous shift", scale=1)
+            shift_box = gr.HTML()
+            next_s = gr.Button("Next shift ▶", scale=1)
+        gr.HTML(f"<div class='sp sp-sechelp'>The nurse's {K} review times in this shift. Click one to see who "
+                "Septris picked at that time.</div>")
+        with gr.Row():
+            rev_btns = [gr.Button(f"Review {j + 1}", elem_classes=["revbtn"]) for j in range(K)]
+        with gr.Row(equal_height=True):
+            with gr.Column(scale=1):
+                pick = gr.HTML()
+            with gr.Column(scale=1):
+                key = gr.HTML()
+        bed_head = gr.HTML()
+        show_key = gr.Checkbox(value=True, label="Show the 📖 answer key on the beds (who later develops sepsis)")
+        bed_btns = []
+        for row in range(NBEDS // 5):
+            with gr.Row():
+                for c in range(5):
+                    bed_btns.append(gr.Button(f"Bed {row * 5 + c + 1}", elem_classes=["bedbtn"]))
+        chart_title = gr.Markdown()
+        plot = gr.Plot(show_label=False)
+        outs = [cur, sel, note, shift_box, *rev_btns, pick, key, bed_head, *bed_btns, chart_title, plot]
+        ins = [cur, sel, focus, show_key]
 
-        def step(i, d):
-            return min(len(slots) - 1, max(0, int(i) + d))
-
-        def next_shift(i):
-            sh = slots.iloc[int(i)]["shift"]
-            later = slots.index[slots["shift"] > sh]
-            return int(later[0]) if len(later) else int(i)
-
-        slot.change(render, [slot, focus, hind], outs)
-        hind.change(render, [slot, focus, hind], outs)
-        prev_b.click(lambda i: step(i, -1), slot, slot)
-        next_b.click(lambda i: step(i, 1), slot, slot)
-        shift_b.click(next_shift, slot, slot)
+        prev_s.click(lambda i: (go_shift(i, -1), None, None), cur, [cur, sel, focus]).then(render, ins, outs)
+        next_s.click(lambda i: (go_shift(i, 1), None, None), cur, [cur, sel, focus]).then(render, ins, outs)
+        for j, btn in enumerate(rev_btns):
+            btn.click(lambda i, j=j: (go_review(i, j), None), cur, [cur, sel]).then(render, ins, outs)
+        for b_i, btn in enumerate(bed_btns):
+            btn.click(lambda b=b_i + 1: b, None, sel).then(render, ins, outs)
         for btn, kind in ((good_b, "good"), (miss_b, "miss"), (fa_b, "false")):
-            btn.click(lambda c, k=kind: jump(k, c), counter, [slot, focus, counter]).then(
-                render, [slot, focus, hind], outs)
-        bed.input(timeline, [slot, bed], plot)
-        demo.load(render, [slot, focus, hind], outs)
-    with gr.Tab("📊 Results"):
-        gr.Markdown(f"Results over **every** test patient (Hospital A and Hospital B), averaged over 5 different "
-                    f"admission orders. The replay tab shows one of these runs at {K} checks per shift.")
-        k_res = gr.Radio([1, 2, 3, 5], value=K, label="Chart checks per 12-hour shift")
+            btn.click(lambda c, k=kind: (*jump(k, c), None), counter, [cur, focus, counter, sel]).then(
+                render, ins, outs)
+        show_key.change(render, ins, outs)
+        demo.load(render, ins, outs)
+    with gr.Tab("📊 How well does it work?"):
+        gr.HTML(f"<div class='sp sp-box'><p>These numbers cover <b>every</b> test patient from two hospital systems "
+                f"(A and B), not just the replay, averaged over 5 different orders of patient arrivals.</p>"
+                f"<p><b>Caught in time</b> = the patient's chart was reviewed 6 to 12 hours before sepsis was "
+                f"recorded.</p></div>")
+        k_res = gr.Radio([1, 2, 3, 5], value=K, label="Reviews per 12-hour shift")
         cards = gr.HTML()
-        chart = gr.Plot(show_label=False)
-        gr.Markdown("**Trained at the other hospital** shows what happens when the model is moved to a hospital "
-                    "it has never seen: it still beats random checks, but loses some of its edge, especially at "
-                    "Hospital A.")
-        with gr.Accordion("Detailed numbers", open=False):
-            test_h = gr.Radio(["A", "B"], value="A", label="Test hospital")
+        gr.HTML("<div class='sp sp-sec'>Septris compared with the alternatives</div>")
+        home = gr.Radio(["Same hospital it was trained at", "A hospital it has never seen"],
+                        value="Same hospital it was trained at", label="Where the models are tested")
+        rchart = gr.Plot(show_label=False)
+        gr.HTML(f"<div class='sp sp-box'>{info['comparison_html']}</div>")
+        with gr.Accordion("All the numbers", open=False):
             det = gr.Dataframe(wrap=True)
-            gr.Markdown("At 1, 2 and 5 checks per shift only the main methods were run; 3 checks per shift was the "
-                        "budget fixed in advance, with every method.")
-        k_res.change(lambda k: (results_cards(k), results_chart(k)), k_res, [cards, chart])
-        for c in (k_res, test_h):
-            c.change(detail_table, [test_h, k_res], det)
-        demo.load(lambda k: (results_cards(k), results_chart(k)), k_res, [cards, chart])
-        demo.load(detail_table, [test_h, k_res], det)
-    with gr.Tab("❓ How it works"):
-        gr.HTML(FAQ)
-    gr.HTML(f"<div class='sb sb-banner' style='margin-top:8px'>⚠️ {DISCLAIMER}</div>")
+        k_res.change(results_html, k_res, cards)
+        for c in (k_res, home):
+            c.change(results_chart, [k_res, home], rchart)
+        k_res.change(detail_table, k_res, det)
+        demo.load(results_html, k_res, cards)
+        demo.load(results_chart, [k_res, home], rchart)
+        demo.load(detail_table, k_res, det)
+    with gr.Tab("❓ Questions"):
+        gr.HTML(faq_html())
+    gr.HTML(f"<div class='sp sp-banner' style='margin-top:8px'>⚠️ {DISCLAIMER}</div>")
 
 
 if __name__ == "__main__":

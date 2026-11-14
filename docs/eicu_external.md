@@ -60,8 +60,8 @@ intervals from 200 patient-level bootstrap replicates.
 | NEWS-inspired | 11.2% (3.8–21.1) | 0.578 |
 | LightGBM values-only, trained at A | 11.5% (2.1–17.9) | 0.545 |
 | LightGBM values-only, trained at B | 10.4% (3.8–22.2) | 0.577 |
-| SignalBridge (combined), trained at A | 7.7% (0.0–14.3) | 0.518 |
-| SignalBridge (combined), trained at B | 7.3% (0.0–16.2) | 0.515 |
+| Septris (combined), trained at A | 7.7% (0.0–14.3) | 0.518 |
+| Septris (combined), trained at B | 7.3% (0.0–16.2) | 0.515 |
 | Measurement-pattern only, trained at A | 7.7% (0.0–14.3) | 0.518 |
 | Measurement-pattern only, trained at B | 5.4% (1.9–15.8) | 0.514 |
 
@@ -77,7 +77,7 @@ whether the stay has a recorded sepsis diagnosis (276 of 2,262 stays):
 | --- | --- |
 | NEWS-inspired | 0.691 |
 | SIRS | 0.688 |
-| SignalBridge (combined) | 0.681 |
+| Septris (combined) | 0.681 |
 | Values-only | 0.677 |
 | Measurement-pattern only | 0.568 |
 

@@ -12,7 +12,7 @@ import pandas as pd  # noqa: E402
 RES = ROOT / "outputs/results"
 NAMES = {"random": "Random review (same budget)", "sirs": "SIRS ranking", "news": "NEWS-inspired score",
          "lr": "Logistic regression (current values)", "lgbm_values": "LightGBM, values only",
-         "lgbm_missing": "LightGBM, measurement pattern only", "lgbm_combined": "**SignalBridge** (LightGBM, combined)",
+         "lgbm_missing": "LightGBM, measurement pattern only", "lgbm_combined": "**Septris** (LightGBM, combined)",
          "temporal_gru": "Masked temporal GRU (exploratory)",
          "lgbm_shortcuts": "LightGBM + shortcut fields (never deployed)"}
 ORDER = ["random", "sirs", "news", "lr", "lgbm_values", "lgbm_missing", "lgbm_combined", "temporal_gru", "lgbm_shortcuts"]
@@ -58,7 +58,7 @@ def main():
         o = "B" if T == "A" else "A"
         g = t[(t.test == T) & (t.k == 3) & (t.subgroup == "all")].set_index("policy")
         home, ext, rnd = g.loc[f"{T}:lgbm_combined"], g.loc[f"{o}:lgbm_combined"], g.loc["random"]
-        L.append(f"- **Hospital {T}:** with 3 reviews per 12-hour shift, SignalBridge flagged "
+        L.append(f"- **Hospital {T}:** with 3 reviews per 12-hour shift, Septris flagged "
                  f"{home.caught6_n:.0f} of {home.eligible:.0f} eligible sepsis cases "
                  f"({pct(home.caught6, home.caught6_lo, home.caught6_hi)}) 6–12 hours before onset with its "
                  f"home model, and {pct(ext.caught6, ext.caught6_lo, ext.caught6_hi)} with the model trained at "
@@ -96,10 +96,10 @@ def main():
              "lgbm_values: home minus external", "lgbm_missing: home minus external",
              "shortcuts minus combined (home)", "temporal GRU minus combined (home)",
              "temporal GRU minus combined (external)", "SIRS minus random", "NEWS minus random"]
-    labels = {"lgbm_combined (home) minus random": "SignalBridge (home) − random",
-              "lgbm_combined: home minus external": "SignalBridge: home model − unseen-hospital model",
-              "lgbm_combined (home) minus SIRS": "SignalBridge (home) − SIRS",
-              "combined minus LR (home)": "SignalBridge (home) − logistic regression",
+    labels = {"lgbm_combined (home) minus random": "Septris (home) − random",
+              "lgbm_combined: home minus external": "Septris: home model − unseen-hospital model",
+              "lgbm_combined (home) minus SIRS": "Septris (home) − SIRS",
+              "combined minus LR (home)": "Septris (home) − logistic regression",
               "reliance: combined minus values-only (home)": "Reliance: combined − values-only",
               "missingness-only (home) minus random": "Sufficiency: measurement-pattern-only − random",
               "lgbm_values: home minus external": "Values-only: home − unseen",
@@ -115,7 +115,7 @@ def main():
                 L.append(f"| {T} | {labels[c]} | {pp(r)} | {'yes' if r.excludes_zero else 'no'} |")
     r = diff("A", 3, "false reviews/shift: combined (home) minus random")
     r2 = diff("B", 3, "false reviews/shift: combined (home) minus random")
-    L += ["", f"False reviews per shift, SignalBridge (home) minus random: A {r.point:+.2f} "
+    L += ["", f"False reviews per shift, Septris (home) minus random: A {r.point:+.2f} "
               f"({r.lo:+.2f} to {r.hi:+.2f}); B {r2.point:+.2f} ({r2.lo:+.2f} to {r2.hi:+.2f}).", ""]
 
     # hourly
@@ -144,7 +144,7 @@ def main():
 
     # budgets
     L += ["## Other budgets (Tier 1): caught 6–12 h early", "",
-          "| Test | Reviews / shift | Random | SIRS | SignalBridge (home) | SignalBridge (unseen) |",
+          "| Test | Reviews / shift | Random | SIRS | Septris (home) | Septris (unseen) |",
           "| --- | --- | --- | --- | --- | --- |"]
     for T in ("A", "B"):
         o = "B" if T == "A" else "A"
@@ -156,7 +156,7 @@ def main():
 
     # subgroups
     L += ["## Subgroups (Tier 0), home model, 3 reviews per shift", "",
-          "| Test | Group | Eligible | SignalBridge caught 6–12 h | Random |", "| --- | --- | --- | --- | --- |"]
+          "| Test | Group | Eligible | Septris caught 6–12 h | Random |", "| --- | --- | --- | --- | --- |"]
     for T in ("A", "B"):
         for sub in ["age <50", "age 50-64", "age 65-79", "age 80+", "sex 0", "sex 1", "fully observed"]:
             g = t[(t.test == T) & (t.k == 3) & (t.subgroup == sub)].set_index("policy")

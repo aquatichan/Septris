@@ -3,7 +3,7 @@
 PhysioNet/CinC Challenge 2012 (open access, ODC-By 1.0): 12,000 ICU stays,
 first 48 hours, with in-hospital death, SOFA and SAPS-I for every stay.
 There is no sepsis label, so this asks a narrower, label-free question:
-do the FROZEN version 1 SignalBridge scores rise for patients who go on to
+do the FROZEN version 1 Septris scores rise for patients who go on to
 die in hospital, and how does that compare with established severity scores?
 
 Records are converted to the 2019 hourly format (hours 0-47). Gaps the 2012

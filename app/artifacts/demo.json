@@ -9,5 +9,10 @@
  "sb_caught6": 73,
  "random_caught6": 31,
  "sb_false": 2278,
- "random_false": 2390
+ "random_false": 2390,
+ "policy_key": "lgbm_combined",
+ "policy_label": "LightGBM",
+ "model_text": "A LightGBM model (a gradient-boosted decision-tree model) reading summaries of each patient's last few hours: current values, recent changes, 6-hour highs and lows, and which tests were done when.",
+ "comparison_html": "<p>The comparison with Miheer's GRU and the mixed model is being run.</p>",
+ "lightgbm_weight": 1.0
 }

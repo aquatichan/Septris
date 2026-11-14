@@ -2,7 +2,7 @@
 
 > This project is a prototype and is not medical advice.
 
-**Bottom line:** at a third hospital, the frozen version 1 SignalBridge model
+**Bottom line:** at a third hospital, the frozen version 1 Septris model
 was never trained on these patients and never trained to predict death. Even
 so, it ranks the 14.2% of patients who die in hospital about as well as
 established ICU severity scores, and better than SIRS and NEWS. The
@@ -43,8 +43,8 @@ and ventilation, which our models never see.
 | --- | --- | --- |
 | SAPS-I (dataset field, 24 h) | 0.660 | – |
 | SOFA (dataset field, 24 h) | 0.638 | – |
-| SignalBridge combined, trained at B | 0.631 | 0.657 |
-| SignalBridge combined, trained at A | 0.602 | 0.633 |
+| Septris combined, trained at B | 0.631 | 0.657 |
+| Septris combined, trained at A | 0.602 | 0.633 |
 | Values-only, trained at B | 0.634 | 0.653 |
 | Values-only, trained at A | 0.601 | 0.612 |
 | NEWS-inspired | 0.591 | 0.608 |
@@ -54,7 +54,7 @@ and ventilation, which our models never see.
 
 ## What this adds
 
-- SignalBridge's score tracks general deterioration at a hospital it has
+- Septris's score tracks general deterioration at a hospital it has
   never seen, about as well as purpose-built severity scores.
 - For the third time (B→A, eICU, this check), the measurement-pattern model
   is the least portable, while physiology carries over.
