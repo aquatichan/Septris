@@ -30,7 +30,14 @@ meta = pd.read_parquet(ART / "patients.parquet").set_index("patient_id")
 table = pd.read_csv(ART / "results_table.csv")
 diffs = pd.read_csv(ART / "paired_differences.csv")
 cases = json.loads((ART / "failure_cases.json").read_text())
-guard_report = json.loads((ART / "familiarity_report.json").read_text())
+# Checked-in demo artifacts may predate this guard. Keep the demo usable, while
+# making the absent safety calculation explicit instead of silently inventing it.
+guard_path = ART / "familiarity_report.json"
+guard_report = json.loads(guard_path.read_text()) if guard_path.exists() else {"status": "not computed"}
+if "familiarity" not in beds:
+    beds["familiarity"] = "Not computed in this artifact build"
+if "familiarity" not in slots:
+    slots["familiarity"] = "Not computed in this artifact build"
 beds_by_hour = {h: g for h, g in beds.groupby("unit_hour")}
 
 TIER_STYLE = {"High": ("#b42318", "#fef3f2"), "Medium": ("#b54708", "#fffaeb"), "Low": ("#344054", "#f9fafb")}
