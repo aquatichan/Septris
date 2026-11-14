@@ -140,7 +140,7 @@ def find_slot(pid):
 POLICY_NAMES = [("random", "Random review (same budget)"), ("sirs", "SIRS ranking"),
                 ("news", "NEWS-inspired score"), ("lr", "Logistic regression"),
                 ("lgbm_values", "LightGBM, values only"), ("lgbm_missing", "LightGBM, measurement pattern only"),
-                ("lgbm_combined", "SignalBridge (LightGBM, combined)")]
+                ("lgbm_combined", "SignalBridge (LightGBM, combined)"), ("temporal_gru", "Masked temporal GRU (exploratory)")]
 
 
 def fmt(v, lo, hi, pct=True):
