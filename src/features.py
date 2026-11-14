@@ -15,6 +15,8 @@ Usage:
 
 from __future__ import annotations
 
+import warnings
+
 import numpy as np
 import pandas as pd
 
@@ -73,8 +75,6 @@ def causal_base(df: pd.DataFrame, variables: list[str]) -> dict:
     # rolling window over real vital measurements in hours h-5..h
     vi = [variables.index(v) for v in vitals]
     roll = {}
-    for name in ("min", "max", "mean"):
-        roll[name] = np.full((len(raw), len(vi)), np.nan)
     stack = np.full((ROLL_HOURS, len(raw), len(vi)), np.nan)
     for lag in range(ROLL_HOURS):
         sh = np.full((len(raw), len(vi)), np.nan)
@@ -86,13 +86,11 @@ def causal_base(df: pd.DataFrame, variables: list[str]) -> dict:
             same[lag:] = grp[lag:] == grp[:-lag]
             sh[~same] = np.nan
         stack[lag] = sh
-    with np.errstate(all="ignore"):
-        import warnings
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore", RuntimeWarning)
-            roll["min"] = np.nanmin(stack, axis=0)
-            roll["max"] = np.nanmax(stack, axis=0)
-            roll["mean"] = np.nanmean(stack, axis=0)
+    with warnings.catch_warnings():  # all-NaN windows are expected
+        warnings.simplefilter("ignore", RuntimeWarning)
+        roll["min"] = np.nanmin(stack, axis=0)
+        roll["max"] = np.nanmax(stack, axis=0)
+        roll["mean"] = np.nanmean(stack, axis=0)
     del stack
 
     return {
@@ -124,12 +122,13 @@ def fit_pools(base: dict, train_mask: np.ndarray) -> dict:
 
 def _hash_index(pid: np.ndarray, hour: np.ndarray, salt: int, n: int) -> np.ndarray:
     """Deterministic pseudo-random index in [0, n) from (patient, hour, salt)."""
-    x = (pid.astype(np.uint64) * np.uint64(0x9E3779B97F4A7C15)
-         + hour.astype(np.uint64) * np.uint64(0xBF58476D1CE4E5B9)
-         + np.uint64(salt) * np.uint64(0x94D049BB133111EB))
-    x ^= x >> np.uint64(31)
-    x *= np.uint64(0xD6E8FEB86659FD93)
-    x ^= x >> np.uint64(29)
+    with np.errstate(over="ignore"):  # wraparound is intended
+        x = (pid.astype(np.uint64) * np.uint64(0x9E3779B97F4A7C15)
+             + hour.astype(np.uint64) * np.uint64(0xBF58476D1CE4E5B9)
+             + np.full(pid.shape, salt, np.uint64) * np.uint64(0x94D049BB133111EB))
+        x ^= x >> np.uint64(31)
+        x *= np.uint64(0xD6E8FEB86659FD93)
+        x ^= x >> np.uint64(29)
     return (x % np.uint64(max(n, 1))).astype(np.int64)
 
 
