@@ -59,7 +59,7 @@ def bed_card(r, picked=False):
             f"Prototype priority score {r.score:.3f}</div>")
 
 
-def render_slot(i):
+def render_slot(i, focus=None):
     i = int(i)
     s = slots.iloc[i]
     b = beds_by_hour[s.unit_hour].sort_values("score", ascending=False)
@@ -79,7 +79,8 @@ def render_slot(i):
         grid += "<div class='sb-label'>Reviewed in the last 12 h (not eligible yet)</div><div class='sb-grid'>"
         grid += "".join(bed_card(r) for r in recent.itertuples()) + "</div>"
     choices = list(b["patient_id"])
-    return head, pick, grid, gr.update(choices=choices, value=s.patient_id), timeline(s.patient_id)
+    show = focus if focus in choices else s.patient_id
+    return head, pick, grid, gr.update(choices=choices, value=show), timeline(show)
 
 
 def timeline(pid):
@@ -112,13 +113,18 @@ def timeline(pid):
 
 
 def find_slot(pid):
+    """A slot to show for this patient: its first review, or, if it was never
+    reviewed, the slot inside its 12-hour pre-onset window closest to 9 h before onset."""
     hits = slots.index[slots["patient_id"] == pid]
     if len(hits):
         return int(hits[0])
-    hrs = beds.loc[beds["patient_id"] == pid, "unit_hour"]
-    if len(hrs):
-        return int(np.searchsorted(slots["unit_hour"], hrs.min()))
-    return 0
+    b = beds[beds["patient_id"] == pid]
+    if b.empty:
+        return 0
+    onset = meta.loc[pid, "t_onset"]
+    target = onset - 9 if not np.isnan(onset) else b["record_hour"].min()
+    unit_hour = b.loc[(b["record_hour"] - target).abs().idxmin(), "unit_hour"]
+    return int(np.searchsorted(slots["unit_hour"], unit_hour))
 
 
 POLICY_NAMES = [("random", "Random review (same budget)"), ("sirs", "SIRS ranking"),
@@ -149,30 +155,39 @@ def results(test, which, k):
         r = r.iloc[0]
         out.append({
             "Policy": name,
-            "Caught 6–12 h early": f"{int(r.caught6_n)} of {int(r.eligible)} · " + fmt(r.caught6, r.caught6_lo, r.caught6_hi),
-            "Missed": f"{int(r.missed_n)} · " + fmt(r.missed, r.missed_lo, r.missed_hi),
+            "Caught 6–12 h early": f"{r.caught6_n:.0f} of {r.eligible:.0f} · " + fmt(r.caught6, r.caught6_lo, r.caught6_hi),
+            "Missed": f"{r.missed_n:.0f} · " + fmt(r.missed, r.missed_lo, r.missed_hi),
             "False reviews / shift": fmt(r.false_per_shift, r.false_per_shift_lo, r.false_per_shift_hi, False),
             "Median lead (h)": "–" if pd.isna(r.median_lead) else f"{r.median_lead:.1f}",
         })
     d = diffs[(diffs.test == test) & (diffs.k == k)]
     lines = []
-    want = [f"lgbm_combined (home) minus random", f"lgbm_combined: home minus external",
-            "reliance: combined minus values-only (home)", "missingness-only (home) minus random"]
-    for w in want:
+    want = {"lgbm_combined (home) minus random": "SignalBridge (home model) minus random review",
+            "lgbm_combined: home minus external": "Drop when the model comes from the other hospital",
+            "lgbm_combined (home) minus SIRS": "SignalBridge (home model) minus SIRS ranking",
+            "reliance: combined minus values-only (home)": "Reliance on measurement pattern (combined minus values-only)",
+            "missingness-only (home) minus random": "Measurement pattern alone minus random (sufficiency)"}
+    for w, label in want.items():
         r = d[d.comparison == w]
         if len(r):
             r = r.iloc[0]
-            verdict = "interval excludes 0" if r.excludes_zero else "interval includes 0 (not shown)"
-            lines.append(f"- **{w.replace('lgbm_combined', 'SignalBridge')}**: "
+            verdict = "interval excludes 0" if r.excludes_zero else "interval includes 0, so not shown to differ"
+            lines.append(f"- **{label}**: "
                          f"{100 * r.point:+.1f} points (95% CI {100 * r.lo:+.1f} to {100 * r.hi:+.1f}); {verdict}")
     note = (f"Test patients: Hospital {test}. Models trained at Hospital {train} "
             f"({'home' if train == test else 'never saw this hospital'}). "
-            f"Mean of 5 admission orders; 95% intervals from 200 patient-level bootstrap replicates. "
+            f"Counts and rates are means of 5 admission orders (counts rounded); 95% intervals from 200 "
+            f"patient-level bootstrap replicates. "
             "Paired differences (caught 6–12 h early, percentage points):\n" + "\n".join(lines))
     return pd.DataFrame(out), note
 
 
-with gr.Blocks(title="SignalBridge", css=CSS, theme=gr.themes.Default()) as demo:
+GRADIO_MAJOR = int(gr.__version__.split(".")[0])
+STYLE = {"css": CSS, "theme": gr.themes.Default()}
+# first early catch after the unit has filled up: a better opening view than hour 0
+START = int(slots.index[(slots["review_class"] == "early6") & (slots["shift"] >= 5)][0])
+
+with gr.Blocks(title="SignalBridge", **({} if GRADIO_MAJOR >= 6 else STYLE)) as demo:
     gr.HTML(f"<div class='sb-banner'>{DISCLAIMER} SignalBridge orders a human review queue. "
             "It does not diagnose sepsis or recommend treatment.</div>")
     gr.Markdown("# SignalBridge\nA tele-ICU or charge nurse can deeply review **3 of 20 charts per 12-hour shift**. "
@@ -182,7 +197,7 @@ with gr.Blocks(title="SignalBridge", css=CSS, theme=gr.themes.Default()) as demo
                     "simulation, not a real ward census).")
         with gr.Row():
             prev_b = gr.Button("◀ Previous slot")
-            slot = gr.Slider(0, len(slots) - 1, value=0, step=1, label="Review slot")
+            slot = gr.Slider(0, len(slots) - 1, value=START, step=1, label="Review slot")
             next_b = gr.Button("Next slot ▶")
         with gr.Row():
             miss_b = gr.Button("Jump to the missed case")
@@ -192,15 +207,18 @@ with gr.Blocks(title="SignalBridge", css=CSS, theme=gr.themes.Default()) as demo
         grid = gr.HTML()
         bed = gr.Dropdown(label="Open a bed's timeline", choices=[])
         plot = gr.Plot(label="Timeline")
+        focus = gr.State(None)
         outs = [head, pick, grid, bed, plot]
-        slot.change(render_slot, slot, outs)
-        prev_b.click(lambda i: max(0, int(i) - 1), slot, slot)
-        next_b.click(lambda i: min(len(slots) - 1, int(i) + 1), slot, slot)
-        miss_b.click(lambda: find_slot(cases["missed"]["patient_id"]), None, slot).then(
-            lambda: timeline(cases["missed"]["patient_id"]), None, plot)
-        fa_b.click(lambda: find_slot(cases["false_alert"]["patient_id"]), None, slot)
+        slot.release(lambda: None, None, focus)
+        slot.change(render_slot, [slot, focus], outs)
+        prev_b.click(lambda i: (max(0, int(i) - 1), None), slot, [slot, focus])
+        next_b.click(lambda i: (min(len(slots) - 1, int(i) + 1), None), slot, [slot, focus])
+        for btn, key in ((miss_b, "missed"), (fa_b, "false_alert")):
+            pid = cases[key]["patient_id"]
+            btn.click(lambda p=pid: (find_slot(p), p), None, [slot, focus]).then(
+                render_slot, [slot, focus], outs)
         bed.change(timeline, bed, plot)
-        demo.load(render_slot, slot, outs)
+        demo.load(render_slot, [slot, focus], outs)
     with gr.Tab("Results"):
         with gr.Row():
             test = gr.Radio(["A", "B"], value="A", label="Test hospital")
@@ -222,4 +240,4 @@ if __name__ == "__main__":
     ap.add_argument("--share", action="store_true")
     ap.add_argument("--port", type=int, default=7860)
     a = ap.parse_args()
-    demo.launch(share=a.share, server_port=a.port)
+    demo.launch(share=a.share, server_port=a.port, **(STYLE if GRADIO_MAJOR >= 6 else {}))

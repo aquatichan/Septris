@@ -1,0 +1,79 @@
+test,k,comparison,metric,a,b,point,lo,hi,excludes_zero
+A,3,lr (home) minus random,caught6,A:lr,random,0.10672268907563026,0.013435740864421331,0.12232600699414738,True
+A,3,"lr (external, trained B) minus random",caught6,B:lr,random,0.034453781512605045,-0.020511423090338342,0.08734033842794758,False
+A,3,lr: home minus external,caught6,A:lr,B:lr,0.07226890756302522,-0.017048436281114823,0.09075431034482766,False
+A,3,lr (home) minus SIRS,caught6,A:lr,sirs,0.061344537815126055,-0.0318560606060606,0.07369121447028425,False
+A,3,lgbm_values (home) minus random,caught6,A:lgbm_values,random,0.11344537815126052,0.036288041891694656,0.15822368421052632,True
+A,3,"lgbm_values (external, trained B) minus random",caught6,B:lgbm_values,random,0.07142857142857142,0.00769624429030621,0.11432556713672595,True
+A,3,lgbm_values: home minus external,caught6,A:lgbm_values,B:lgbm_values,0.04201680672268909,-0.028032600732600728,0.0910123966942149,False
+A,3,lgbm_values (home) minus SIRS,caught6,A:lgbm_values,sirs,0.06806722689075631,-0.022702600353446102,0.10323044102921332,False
+A,3,lgbm_missing (home) minus random,caught6,A:lgbm_missing,random,0.16722689075630254,0.11891746551321021,0.2501077586206897,True
+A,3,"lgbm_missing (external, trained B) minus random",caught6,B:lgbm_missing,random,0.07899159663865546,0.016172807472755586,0.10911787365177197,True
+A,3,lgbm_missing: home minus external,caught6,A:lgbm_missing,B:lgbm_missing,0.08823529411764708,0.054811463046757165,0.17294235588972434,True
+A,3,lgbm_missing (home) minus SIRS,caught6,A:lgbm_missing,sirs,0.12184873949579833,0.06153935185185185,0.20182856019866724,True
+A,3,lgbm_combined (home) minus random,caught6,A:lgbm_combined,random,0.17142857142857143,0.10159935088351965,0.2387068327928543,True
+A,3,"lgbm_combined (external, trained B) minus random",caught6,B:lgbm_combined,random,0.07563025210084034,0.027303933074034337,0.13031333386435143,True
+A,3,lgbm_combined: home minus external,caught6,A:lgbm_combined,B:lgbm_combined,0.09579831932773109,0.043858775424617316,0.1514114050709604,True
+A,3,lgbm_combined (home) minus SIRS,caught6,A:lgbm_combined,sirs,0.12605042016806722,0.0592973163841808,0.18788355951517663,True
+A,3,lgbm_shortcuts (home) minus random,caught6,A:lgbm_shortcuts,random,0.2142857142857143,0.14041065632888566,0.2851033834586466,True
+A,3,"lgbm_shortcuts (external, trained B) minus random",caught6,B:lgbm_shortcuts,random,0.15714285714285714,0.10113101903695408,0.2184510239377383,True
+A,3,lgbm_shortcuts: home minus external,caught6,A:lgbm_shortcuts,B:lgbm_shortcuts,0.05714285714285716,-0.008406043268371204,0.10902471889229627,False
+A,3,lgbm_shortcuts (home) minus SIRS,caught6,A:lgbm_shortcuts,sirs,0.1689075630252101,0.09239085878253742,0.23701826378453358,True
+A,3,SIRS minus random,caught6,sirs,random,0.04537815126050421,-0.010191445907360408,0.11119350282485878,False
+A,3,NEWS minus random,caught6,news,random,0.050420168067226906,-0.01470765521398433,0.09778231292517008,False
+A,3,reliance: combined minus values-only (home),caught6,A:lgbm_combined,A:lgbm_values,0.05798319327731091,0.02186607507139947,0.14169642857142858,True
+A,3,missingness-only (home) minus random,caught6,A:lgbm_missing,random,0.16722689075630254,0.11891746551321021,0.2501077586206897,True
+A,3,combined minus LR (home),caught6,A:lgbm_combined,A:lr,0.06470588235294117,0.04571022727272728,0.16224878392217104,True
+A,3,shortcuts minus combined (home),caught6,A:lgbm_shortcuts,A:lgbm_combined,0.04285714285714287,-0.03227465817071549,0.09690589398361737,False
+A,3,false reviews/shift: combined (home) minus random,false_per_shift,A:lgbm_combined,random,-0.203858466296432,-0.26573083076773896,-0.17408887305303855,True
+A,1,lgbm_combined (home) minus random,caught6,A:lgbm_combined,random,0.09159663865546218,0.05223805670442966,0.12715956208627338,True
+A,1,"lgbm_combined (external, trained B) minus random",caught6,B:lgbm_combined,random,0.031092436974789913,0.0,0.06590347808190987,False
+A,1,lgbm_combined: home minus external,caught6,A:lgbm_combined,B:lgbm_combined,0.06050420168067227,0.01700726731459592,0.10375428291727853,True
+A,1,lgbm_combined (home) minus SIRS,caught6,A:lgbm_combined,sirs,0.06050420168067227,0.025503373118837568,0.1037777777777778,True
+A,2,lgbm_combined (home) minus random,caught6,A:lgbm_combined,random,0.13109243697478992,0.090184766214178,0.18895227268113443,True
+A,2,"lgbm_combined (external, trained B) minus random",caught6,B:lgbm_combined,random,0.046218487394958,0.009455381374812655,0.09482758620689655,True
+A,2,lgbm_combined: home minus external,caught6,A:lgbm_combined,B:lgbm_combined,0.08487394957983192,0.03386717398823936,0.1422514401536164,True
+A,2,lgbm_combined (home) minus SIRS,caught6,A:lgbm_combined,sirs,0.09663865546218488,0.04000000000000001,0.15669490711851392,True
+A,5,lgbm_combined (home) minus random,caught6,A:lgbm_combined,random,0.1722689075630252,0.12438134279858022,0.26722631578947365,True
+A,5,"lgbm_combined (external, trained B) minus random",caught6,B:lgbm_combined,random,0.09243697478991597,0.0363618035190616,0.16734781466234563,True
+A,5,lgbm_combined: home minus external,caught6,A:lgbm_combined,B:lgbm_combined,0.07983193277310924,0.012137380853709025,0.17727813852813853,True
+A,5,lgbm_combined (home) minus SIRS,caught6,A:lgbm_combined,sirs,0.1495798319327731,0.059039074960127585,0.21327870146269604,True
+B,3,lr (home) minus random,caught6,B:lr,random,0.11641791044776119,0.04311372819552578,0.20634920634920634,True
+B,3,"lr (external, trained A) minus random",caught6,A:lr,random,0.09253731343283582,0.026081334332833585,0.17547917870083501,True
+B,3,lr: home minus external,caught6,B:lr,A:lr,0.02388059701492537,-0.056659027616616356,0.09629230769230776,False
+B,3,lr (home) minus SIRS,caught6,B:lr,sirs,0.04029850746268657,-0.02985042735042736,0.12300204918032791,False
+B,3,lgbm_values (home) minus random,caught6,B:lgbm_values,random,0.12686567164179102,0.03878319531696175,0.19866438356164384,True
+B,3,"lgbm_values (external, trained A) minus random",caught6,A:lgbm_values,random,0.0955223880597015,0.008525641025641023,0.1722604929659342,True
+B,3,lgbm_values: home minus external,caught6,B:lgbm_values,A:lgbm_values,0.03134328358208954,-0.06757010770168663,0.0873015873015873,False
+B,3,lgbm_values (home) minus SIRS,caught6,B:lgbm_values,sirs,0.050746268656716415,-0.03818461424442304,0.12415441554436109,False
+B,3,lgbm_missing (home) minus random,caught6,B:lgbm_missing,random,0.1701492537313432,0.09595507246376811,0.2539814814814815,True
+B,3,"lgbm_missing (external, trained A) minus random",caught6,A:lgbm_missing,random,0.13582089552238802,0.06004521793995478,0.21435492801771874,True
+B,3,lgbm_missing: home minus external,caught6,B:lgbm_missing,A:lgbm_missing,0.03432835820895519,-0.037103174603174624,0.12768778207607992,False
+B,3,lgbm_missing (home) minus SIRS,caught6,B:lgbm_missing,sirs,0.0940298507462686,0.008052297165200385,0.20009259259259257,True
+B,3,lgbm_combined (home) minus random,caught6,B:lgbm_combined,random,0.17014925373134326,0.10275735294117647,0.2534486902186974,True
+B,3,"lgbm_combined (external, trained A) minus random",caught6,A:lgbm_combined,random,0.14477611940298507,0.06611780350438048,0.22231735159817353,True
+B,3,lgbm_combined: home minus external,caught6,B:lgbm_combined,A:lgbm_combined,0.025373134328358193,-0.06042350848385332,0.12109169653524499,False
+B,3,lgbm_combined (home) minus SIRS,caught6,B:lgbm_combined,sirs,0.09402985074626866,0.015235146532856455,0.19328408782867987,True
+B,3,lgbm_shortcuts (home) minus random,caught6,B:lgbm_shortcuts,random,0.1895522388059701,0.14278221778221778,0.3077519379844961,True
+B,3,"lgbm_shortcuts (external, trained A) minus random",caught6,A:lgbm_shortcuts,random,0.16716417910447762,0.08815707133917396,0.2684213033536586,True
+B,3,lgbm_shortcuts: home minus external,caught6,B:lgbm_shortcuts,A:lgbm_shortcuts,0.02238805970149249,-0.04448717948717949,0.12883930338412825,False
+B,3,lgbm_shortcuts (home) minus SIRS,caught6,B:lgbm_shortcuts,sirs,0.1134328358208955,0.05734122434942105,0.22710992907801422,True
+B,3,SIRS minus random,caught6,sirs,random,0.07611940298507462,0.0,0.1465764556246467,False
+B,3,NEWS minus random,caught6,news,random,0.07761194029850747,0.01734113712374582,0.16901950162513543,True
+B,3,reliance: combined minus values-only (home),caught6,B:lgbm_combined,B:lgbm_values,0.04328358208955224,-0.03650305925289825,0.14394342973110097,False
+B,3,missingness-only (home) minus random,caught6,B:lgbm_missing,random,0.1701492537313432,0.09595507246376811,0.2539814814814815,True
+B,3,combined minus LR (home),caught6,B:lgbm_combined,B:lr,0.05373134328358209,-0.031758832565284174,0.15203064516129033,False
+B,3,shortcuts minus combined (home),caught6,B:lgbm_shortcuts,B:lgbm_combined,0.019402985074626844,-0.041806102362204736,0.1231512605042017,False
+B,3,false reviews/shift: combined (home) minus random,false_per_shift,B:lgbm_combined,random,-0.1702885744442697,-0.20506597318250352,-0.1252350263877902,True
+B,1,lgbm_combined (home) minus random,caught6,B:lgbm_combined,random,0.08656716417910448,0.04376910599538336,0.15541464401294502,True
+B,1,"lgbm_combined (external, trained A) minus random",caught6,A:lgbm_combined,random,0.09850746268656718,0.043012256861177725,0.16184680182752714,True
+B,1,lgbm_combined: home minus external,caught6,B:lgbm_combined,A:lgbm_combined,-0.011940298507462699,-0.04966289691170074,0.04514775310368946,False
+B,1,lgbm_combined (home) minus SIRS,caught6,B:lgbm_combined,sirs,0.05373134328358209,0.01405290718671,0.11125304136253045,True
+B,2,lgbm_combined (home) minus random,caught6,B:lgbm_combined,random,0.14328358208955225,0.07571548821548822,0.21748930862437635,True
+B,2,"lgbm_combined (external, trained A) minus random",caught6,A:lgbm_combined,random,0.1208955223880597,0.060218375025422,0.20784188034188036,True
+B,2,lgbm_combined: home minus external,caught6,B:lgbm_combined,A:lgbm_combined,0.022388059701492546,-0.07348270995059986,0.09774436090225563,False
+B,2,lgbm_combined (home) minus SIRS,caught6,B:lgbm_combined,sirs,0.08059701492537313,0.007294093285706882,0.16166666666666668,True
+B,5,lgbm_combined (home) minus random,caught6,B:lgbm_combined,random,0.21343283582089553,0.11109068627450977,0.31676801416010053,True
+B,5,"lgbm_combined (external, trained A) minus random",caught6,A:lgbm_combined,random,0.1656716417910448,0.09013913542863111,0.257172619047619,True
+B,5,lgbm_combined: home minus external,caught6,B:lgbm_combined,A:lgbm_combined,0.04776119402985074,-0.05388888888888886,0.13589285714285718,False
+B,5,lgbm_combined (home) minus SIRS,caught6,B:lgbm_combined,sirs,0.14179104477611942,0.014150300054555368,0.22311980203071588,True

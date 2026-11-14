@@ -1,0 +1,7 @@
+{
+ "rule": "first hour within 24 h before onset where lactate, WBC, pH or PaCO2 is new (unmeasured in the previous 12 h), or >= 2 labs are new in the same hour",
+ "training_eligible_patients": 1750,
+ "signal_found_pct": 94.6,
+ "median_hours_before_onset": 15.0,
+ "frozen_at": "2026-11-14 00:42:24 CST"
+}
