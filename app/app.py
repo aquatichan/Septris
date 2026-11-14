@@ -114,6 +114,21 @@ button.revbtn {white-space: pre-line !important; line-height: 1.3 !important;}
 .sp-dots {display: grid; grid-template-columns: repeat(20, 1fr); gap: 3px; max-width: 420px; margin: 8px 0;}
 .sp-dots span {aspect-ratio: 1; border-radius: 50%; background: #e4e7ec;}
 .sp-row {display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px;}
+.sp-tiles {display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; margin-top: 8px;}
+.sp-tile {border: 2px solid #d0d5dd; border-radius: 10px; padding: 8px 10px; background: #fff; font-size: 14px;
+          line-height: 1.35; min-height: 74px;}
+.sp-tile b {font-size: 16px;}
+.sp-tile.pick {border: 4px solid #1d4ed8; box-shadow: 0 0 0 3px #c7d7fe;}
+.sp-tile.snooze {background: #f2f4f7; color: #667085; border-style: dashed;}
+.sp-tile.high {background: #fef3f2; border-color: #fda29b;}
+.sp-tile.med {background: #fffaeb; border-color: #fec84b;}
+.sp-tile.dim {opacity: .45;}
+.sp-steps {display: flex; gap: 6px; margin: 4px 0 10px; flex-wrap: wrap;}
+.sp-steps span {padding: 4px 12px; border-radius: 999px; background: #eaecf0; color: #475467; font-size: 13.5px;
+                font-weight: 600;}
+.sp-steps span.on {background: #1d4ed8; color: #fff;}
+.sp-tour h2 {font-size: 26px; margin: 2px 0 8px; color: #101828;}
+.sp-tour p.big {font-size: 18px; color: #344054; margin: 4px 0 10px;}
 .sp-faq h3 {font-size: 18px; margin: 18px 0 4px;}
 .sp-faq p, .sp-faq li {color: #344054;}
 @media (max-width: 760px) {
@@ -121,6 +136,7 @@ button.revbtn {white-space: pre-line !important; line-height: 1.3 !important;}
   body {overflow-x: hidden;}
   .sp-hero h1 {font-size: 26px;}
   button.bedbtn {min-height: 84px; font-size: 13px !important;}
+  .sp-tiles {grid-template-columns: repeat(2, 1fr);}
 }
 """
 
@@ -144,6 +160,18 @@ def shift_html(i):
             f"<div class='sub'>Shift {s['shift']} of {len(shift_ids)} in this replay</div></div>")
 
 
+def driver_html(s):
+    """Which of the two models raised this bed (only for the 'whichever is more worried' mix)."""
+    if info.get("kind") != "max" or "driver" not in s or pd.isna(s.get("pct_gru", np.nan)):
+        return ""
+    lg, gr_ = s.pct_lgbm, s.pct_gru
+    both = min(lg, gr_) >= 90
+    who = ("<b>Both models</b> were worried" if both else
+           f"Raised by <b>{'the GRU' if s.driver == 'GRU' else 'LightGBM'}</b>")
+    return (f"<p class='sp-small' style='font-size:14.5px'>🤝 {who}: GRU risk {gr_:.0f}, LightGBM risk {lg:.0f}. "
+            "Septris uses whichever is higher.</p>")
+
+
 def pick_html(s, n_cand):
     reasons = [r for r in s.reasons.split(" | ") if r]
     why = ("<ul>" + "".join(f"<li>{esc(r[0].upper() + r[1:])}</li>" for r in reasons) + "</ul>") if reasons \
@@ -151,7 +179,7 @@ def pick_html(s, n_cand):
     return (f"<div class='sp sp-box sp-pick'><div class='sp-label'>Review {s.check} of {K} · {s.clock}</div>"
             f"<h2>👉 Septris says: review Bed {s.bed} now</h2>"
             f"<p>Of the {n_cand} beds that haven't had a review in the last 12 hours, Bed {s.bed} has the "
-            f"highest risk right now.</p><p><b>What stood out in Bed {s.bed}'s chart:</b></p>{why}"
+            f"highest risk right now.</p>{driver_html(s)}<p><b>What stood out in Bed {s.bed}'s chart:</b></p>{why}"
             f"<p class='sp-small'>Septris only uses data recorded up to {s.clock}. These are warning patterns, "
             f"not a diagnosis: the nurse reads the chart and decides.</p></div>")
 
@@ -435,20 +463,102 @@ def intro_html():
  <div class='sp-banner'>⚠️ {DISCLAIMER} Septris never diagnoses sepsis or recommends treatment.
  It only suggests which patient's chart a nurse should review next.</div>
  <div class='sp-hero'><h1>Septris</h1>
- <div class='lead'>An early-warning helper that tells a busy ICU nurse <b>whose chart to review next</b> for
- signs of sepsis.</div></div>
- <div class='sp-box'>
- <p><b>The situation:</b> one nurse is responsible for {NBEDS} ICU beds, but only has time to do a careful
- sepsis review of <b>{K} patients' charts per 12-hour shift</b>. Sepsis (a life-threatening reaction to an
- infection) is much easier to treat when it is spotted early.</p>
- <p><b>What you are looking at:</b> a replay of {info['patients']:,} real ICU patients from past hospital records
- (anonymized; Septris never trained on them). At each of the {K} review times in a shift, Septris looks at
- every bed's data <i>up to that moment</i> and says which chart to review.</p>
- <p><b>Why we can see what happens next:</b> because these patients were treated years ago, their records show
- who went on to develop sepsis. We show that as an <b>📖 answer key</b> so you can judge whether Septris
- pointed the nurse to the right patient. Septris itself never sees the answer key.</p>
- </div>
+ <div class='lead'>Tells a busy ICU nurse <b>whose chart to review next</b>, so sepsis gets spotted earlier.
+ New here? Start with the <b>guided tour</b> below.</div></div>
 </div>"""
+
+
+TOUR_STEPS = ["The ICU", "Septris ranks", "Why this bed", "What happened", "The big picture"]
+
+
+def tiles_html(b, mode, bed):
+    """Static 20-bed picture for the tour. mode: plain, ranked or key."""
+    by_bed = {int(r.bed): r for r in b.itertuples()}
+    cells = []
+    for i in range(1, NBEDS + 1):
+        r = by_bed.get(i)
+        if r is None:
+            cells.append(f"<div class='sp-tile snooze'><b>Bed {i}</b><br>Empty</div>")
+            continue
+        if mode == "plain":
+            cells.append(f"<div class='sp-tile'><b>Bed {i}</b><br>Age {meta.loc[r.patient_id, 'age']:.0f}<br>"
+                         f"In ICU {r.hours_in_icu} h</div>")
+            continue
+        cls = ["sp-tile"]
+        if r.picked:
+            cls.append("pick")
+            line = "👉 1st in line"
+        elif r.snoozed:
+            cls.append("snooze")
+            line = f"✓ reviewed {r.hours_since_check} h ago"
+        else:
+            cls.append("high" if r.tier == "High" else "med" if r.tier == "Medium" else "")
+            line = f"{ordinal(int(r.rank))} in line"
+        extra = ""
+        if mode == "key":
+            if i != bed:
+                cls.append("dim")
+            h = r.hours_to_sepsis
+            if not pd.isna(h) and 0 < h <= 12:
+                extra = f"<br><span style='color:{RED}; font-weight:700'>⚠ sepsis in {h:.0f} h</span>"
+        risk = "" if r.snoozed else f"<br>Risk {r.percentile:.0f} of 100"
+        cells.append(f"<div class='{' '.join(cls)}'><b>Bed {i}</b><br>{line}{risk}{extra}</div>")
+    return "<div class='sp-tiles'>" + "".join(cells) + "</div>"
+
+
+def tour(step):
+    step = int(step)
+    s = slots.iloc[TOUR]
+    b = beds_by_hour[s.unit_hour]
+    n_cand = int(b["candidates"].iloc[0])
+    dots_ = "".join(f"<span class='{'on' if j == step else ''}'>{j + 1}. {t}</span>" for j, t in enumerate(TOUR_STEPS))
+    head = f"<div class='sp-steps'>{dots_}</div>"
+    fig = None
+    if step == 0:
+        body = (f"<h2>Meet the ICU</h2><p class='big'>It's <b>{s.clock}</b> on a night shift. One nurse is "
+                f"responsible for these {NBEDS} patients. A careful sepsis review of one chart takes a lot of time, so "
+                f"the nurse can only do about <b>{K} per 12-hour shift</b>.</p><p class='big'>Sepsis is the body's "
+                "extreme reaction to an infection. It is much easier to treat when it is spotted early. "
+                "<b>The question: whose chart should the nurse review first?</b></p>" + tiles_html(b, "plain", s.bed))
+    elif step == 1:
+        body = (f"<h2>Septris ranks the beds</h2><p class='big'>Septris reads every bed's heart rate, blood "
+                f"pressure, breathing, temperature, lab results and which tests were done, <b>using only what has "
+                f"been recorded up to {s.clock}</b>. It gives each bed a risk from 0 to 100 and lines them up. "
+                f"Beds reviewed in the last 12 hours (grey) are skipped.</p><p class='big'>Right now "
+                f"<b>Bed {s.bed} is 1st in line</b> (blue border), so that is the chart Septris says to review.</p>"
+                + tiles_html(b, "ranked", s.bed))
+    elif step == 2:
+        body = (f"<h2>Why Bed {s.bed}?</h2><p class='big'>Septris also shows what stood out, so the nurse knows "
+                "what to look at first. It's a pointer, not a diagnosis: the nurse reads the chart and decides.</p>"
+                + pick_html(s, n_cand))
+    elif step == 3:
+        icon, headline, fg, bg = VERDICT[s.review_class]
+        body = (f"<h2>What really happened</h2><p class='big'>Here's the trick that lets us test Septris: these "
+                f"are <b>real patients from past hospital records</b>, so we already know how their stay turned out. "
+                f"Septris never saw any of this.</p>"
+                f"<div class='sp-key'><div class='verdict' style='background:{bg}; border:1px solid {fg}55'>"
+                f"<b style='color:{fg}'>{icon} {headline}.</b><br>"
+                f"{esc(what_happened(s.review_class, s.lead_hours, s.bed))}</div></div>"
+                f"<p class='big' style='margin-top:10px'>Below is Bed {s.bed}'s chart. The black line is {s.clock}. "
+                "The grey area is the future (from the records). The red line is when sepsis was recorded, and the "
+                "green band is the \"caught in time\" window, 6 to 12 hours before it.</p>")
+        fig = chart(TOUR, int(s.bed))[1]
+    else:
+        sp = res("A", "septris", K)
+        rnd = res("A", "random", K)
+        body = (f"<h2>The big picture</h2><p class='big'>One catch could be luck, so we replayed <b>every</b> test "
+                f"patient: {int(sp.eligible)} people who developed sepsis at Hospital A, plus another hospital, B. "
+                f"With {K} reviews per shift:</p>"
+                f"<div class='sp-row'><div class='sp-box'><div class='num' style='font-size:44px; font-weight:800; "
+                f"color:{BLUE}'>{100 * sp.caught6:.0f} of 100</div><p>sepsis patients were reviewed <b>in time</b> "
+                f"(6 to 12 hours early) when Septris chose.</p>{dots(sp.caught6, BLUE)}</div>"
+                f"<div class='sp-box'><div class='num' style='font-size:44px; font-weight:800; color:{GREY}'>"
+                f"{100 * rnd.caught6:.0f} of 100</div><p>when the nurse picked charts <b>at random</b>, with the "
+                f"same amount of time.</p>{dots(rnd.caught6, '#98a2b3')}</div></div>"
+                "<p class='big' style='margin-top:10px'>Now try it yourself: step through shifts, click any bed, and "
+                "use the example buttons to see catches, misses and false alarms.</p>")
+    return head + f"<div class='sp sp-box sp-tour'>{body}</div>", fig, gr.update(interactive=step > 0), \
+        gr.update(value="Next ▶" if step < len(TOUR_STEPS) - 1 else "Try it yourself ▶")
 
 
 def faq_html():
@@ -496,13 +606,34 @@ started to work up. It does not show that the model is ahead of doctors.</li>
 GRADIO_MAJOR = int(gr.__version__.split(".")[0])
 STYLE = {"css": CSS, "theme": gr.themes.Soft(primary_hue="blue"), "js": FORCE_LIGHT}
 START = next(i for i in examples["good"] if slots.loc[i, "sepsis_so_far"] >= 40)
+TOUR = START
 for _k, _v in examples.items():
     _cut = next((j for j, x in enumerate(_v) if (x["slot"] if isinstance(x, dict) else x) >= START), 0)
     examples[_k] = _v[_cut:] + _v[:_cut]
 
 with gr.Blocks(title="Septris", **({} if GRADIO_MAJOR >= 6 else STYLE)) as demo:
     gr.HTML(intro_html())
-    with gr.Tab("🏥 Try it: the ICU replay"):
+    with gr.Tabs() as tabs:
+     with gr.Tab("👋 Guided tour (start here)", id="tour"):
+        step = gr.State(0)
+        tour_html = gr.HTML()
+        tour_plot = gr.Plot(show_label=False)
+        with gr.Row():
+            t_back = gr.Button("◀ Back")
+            t_next = gr.Button("Next ▶", variant="primary")
+
+        def t_go(st, d):
+            n = int(st) + d
+            if n >= len(TOUR_STEPS):
+                return st, *tour(st), gr.Tabs(selected="try")
+            n = max(0, n)
+            return n, *tour(n), gr.Tabs()
+
+        t_outs = [step, tour_html, tour_plot, t_back, t_next, tabs]
+        t_next.click(lambda st: t_go(st, 1), step, t_outs)
+        t_back.click(lambda st: t_go(st, -1), step, t_outs)
+        demo.load(lambda: tour(0), None, [tour_html, tour_plot, t_back, t_next])
+     with gr.Tab("🏥 Try it yourself", id="try"):
         cur = gr.State(START)
         sel = gr.State(None)
         focus = gr.State(None)
@@ -550,7 +681,7 @@ with gr.Blocks(title="Septris", **({} if GRADIO_MAJOR >= 6 else STYLE)) as demo:
                 render, ins, outs)
         show_key.change(render, ins, outs)
         demo.load(render, ins, outs)
-    with gr.Tab("📊 How well does it work?"):
+     with gr.Tab("📊 How well does it work?", id="results"):
         gr.HTML(f"<div class='sp sp-box'><p>These numbers cover <b>every</b> test patient from two hospital systems "
                 f"(A and B), not just the replay, averaged over 5 different orders of patient arrivals.</p>"
                 f"<p><b>Caught in time</b> = the patient's chart was reviewed 6 to 12 hours before sepsis was "
@@ -571,7 +702,7 @@ with gr.Blocks(title="Septris", **({} if GRADIO_MAJOR >= 6 else STYLE)) as demo:
         demo.load(results_html, k_res, cards)
         demo.load(results_chart, [k_res, home], rchart)
         demo.load(detail_table, k_res, det)
-    with gr.Tab("❓ Questions"):
+     with gr.Tab("❓ Questions", id="faq"):
         gr.HTML(faq_html())
     gr.HTML(f"<div class='sp sp-banner' style='margin-top:8px'>⚠️ {DISCLAIMER}</div>")
 

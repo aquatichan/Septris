@@ -145,27 +145,49 @@ def main():
     offs = S.slot_hours(K_DEMO)
 
     # why-now reasons for every Septris pick
-    # explain with the model that carries most of the weight in the deployed score
+    # explain each pick with the model that drove it
     test_rows = np.flatnonzero(te)
     sb_sorted = sb.sort_values("unit_hour").reset_index(drop=True)
     starts = test_rows[offsets[sb_sorted["cohort_idx"].to_numpy()]]
     pick_rows = starts + sb_sorted["record_hour"].to_numpy()
+    sel = json.loads(SEL.read_text()) if SEL.exists() else {"kind": "average", "lightgbm_weight": 1.0}
+    two = {}
+    for m in ("lgbm_combined", "temporal_gru"):
+        f = ROOT / f"data/processed/scores/A_{m}.npy"
+        if f.exists():
+            sm = np.load(f)
+            two[m] = 100 * np.searchsorted(np.sort(sm[va]), sm[pick_rows], side="right") / va.sum()
+    if sel["kind"] == "max":
+        use_lgbm = two["lgbm_combined"] >= two["temporal_gru"]
+    elif sel["kind"] == "alternate":
+        first_lgbm = sel["first"] == "lightgbm"
+        parity = np.array([offs.index(int(u) % C.SHIFT_HOURS) % 2 for u in sb_sorted["unit_hour"]])
+        use_lgbm = (parity == 0) == first_lgbm
+    else:
+        use_lgbm = np.full(len(pick_rows), sel["lightgbm_weight"] >= 0.5)
     base = F.causal_base(hourly, variables)
-    if lgbm_weight() >= 0.5:
+    reasons = {}
+    if use_lgbm.any():
         tr = (hosp == "A") & (split == "train") & rows["in_training"].to_numpy()
         pools = F.fit_pools(base, tr)
         X = F.assemble(base, pools, "combined")
         model = lgb.Booster(model_file=str(ROOT / "outputs/models/A_lgbm_combined.txt"))
-        contrib = model.predict(X.iloc[pick_rows], pred_contrib=True)
+        idx = np.flatnonzero(use_lgbm)
+        contrib = model.predict(X.iloc[pick_rows[idx]], pred_contrib=True)
         cols = list(X.columns)
-        reasons = {int(u): E.reasons(X.iloc[row], contrib[i, :-1], cols, base, int(row))
-                   for i, (u, row) in enumerate(zip(sb_sorted["unit_hour"], pick_rows))}
+        for i, j in enumerate(idx):
+            row = int(pick_rows[j])
+            reasons[int(sb_sorted["unit_hour"][j])] = E.reasons(X.iloc[row], contrib[i, :-1], cols, base, row)
         del X
-    else:
+    if (~use_lgbm).any():
         from src import gru_explain as G
         mod, gmodel, ck = G.load("A")
-        reasons = {int(u): G.reasons(mod, gmodel, ck, base, int(st), int(row))
-                   for u, st, row in zip(sb_sorted["unit_hour"], starts, pick_rows)}
+        for j in np.flatnonzero(~use_lgbm):
+            reasons[int(sb_sorted["unit_hour"][j])] = G.reasons(mod, gmodel, ck, base, int(starts[j]), int(pick_rows[j]))
+    driver = {int(u): ("LightGBM" if ul else "GRU") for u, ul in zip(sb_sorted["unit_hour"], use_lgbm)}
+    pct_two = {int(u): (float(two.get("lgbm_combined", [np.nan] * len(pick_rows))[j]),
+                        float(two.get("temporal_gru", [np.nan] * len(pick_rows))[j]))
+               for j, u in enumerate(sb_sorted["unit_hour"])}
     del base
 
     def judge(q, t):
@@ -204,6 +226,9 @@ def main():
             "shift": int(shift) + 1, "check": offs.index(offset) + 1,
             "bed": int(bedno[q]) + 1, "patient_id": ids[ci], "record_hour": rh,
             "reasons": " | ".join(reasons.get(int(t), [])),
+            "driver": driver.get(int(t), ""),
+            "pct_lgbm": pct_two.get(int(t), (np.nan, np.nan))[0],
+            "pct_gru": pct_two.get(int(t), (np.nan, np.nan))[1],
             "review_class": cls, "lead_hours": lead, "verdict": short, "verdict_text": sentence,
             "random_bed": r_bed, "random_class": r_cls, "random_verdict": r_short,
             "sepsis_so_far": int(onset_passed.sum()),
@@ -286,26 +311,38 @@ def main():
     (ART / "tiers.json").write_text(json.dumps({"high": float(hi_cut), "medium": float(med_cut)}))
     if DEPLOY == "blend":
         w = lgbm_weight()
-        label = ("LightGBM" if w == 1 else "GRU deep-learning model" if w == 0 else
-                 f"mix: {100 * w:.0f}% LightGBM + {100 * (1 - w):.0f}% GRU")
+        kind = sel["kind"]
         gru_txt = ("a GRU, a deep-learning model built by Miheer that reads each patient's hours in order: the "
                    "hour-by-hour vital signs and lab results, which ones were actually measured, and how long ago "
                    "each was last measured, plus age and sex")
         lgbm_txt = ("LightGBM, a decision-tree model that reads hand-made summaries of the last few hours (current "
                     "values, recent changes, 6-hour highs and lows, which tests were done when)")
-        pick = ("We tested mixing the two models in 5 proportions, judged only on validation patients (never the "
-                "test patients). ")
-        if w == 0:
-            model_text = (f"Septris uses {gru_txt}. {pick}Using the GRU on its own caught the most patients in time, "
-                          f"so that is what Septris uses. The other candidate was {lgbm_txt}. The 'what stood out' "
-                          "reasons come from hiding each measurement from the GRU for the last 12 hours and seeing "
-                          "how much its risk drops.")
+        pick = ("We tried 8 ways of using the two models (each alone, 3 weighted averages, taking the higher of the "
+                "two, and taking turns), judged only on validation patients, never on the test patients. ")
+        if kind == "max":
+            label = "LightGBM + GRU, whichever is more worried"
+            model_text = (f"Septris combines two models: {lgbm_txt}; and {gru_txt}. Each model gives every bed a "
+                          "0-100 risk, and Septris uses the <b>higher</b> of the two, so a bed moves up the line if "
+                          f"<i>either</i> model is worried about it. {pick}This 'whichever is more worried' mix came "
+                          "out on top, essentially tied with the GRU alone. The 'what stood out' reasons come from "
+                          "whichever model gave the higher risk: LightGBM's built-in feature contributions, or, for "
+                          "the GRU, hiding each measurement for the last 12 hours and seeing how much its risk drops.")
+        elif kind == "alternate":
+            label = "LightGBM and GRU taking turns"
+            model_text = (f"Septris uses two models, {lgbm_txt}, and {gru_txt}, which take turns choosing at the "
+                          f"shift's review times. {pick}Taking turns came out on top.")
+        elif w == 0:
+            label = "GRU deep-learning model"
+            model_text = (f"Septris uses {gru_txt}. {pick}The GRU alone caught the most patients in time. The "
+                          "'what stood out' reasons come from hiding each measurement from the GRU for the last 12 "
+                          "hours and seeing how much its risk drops.")
         elif w == 1:
-            model_text = (f"Septris uses {lgbm_txt}. {pick}LightGBM on its own caught the most patients in time. "
-                          f"The other candidate was {gru_txt}.")
+            label = "LightGBM"
+            model_text = f"Septris uses {lgbm_txt}. {pick}LightGBM alone caught the most patients in time."
         else:
-            model_text = (f"Septris mixes two models, {100 * w:.0f}% {lgbm_txt} and {100 * (1 - w):.0f}% {gru_txt}. "
-                          f"{pick}This mix caught the most patients in time.")
+            label = f"mix: {100 * w:.0f}% LightGBM + {100 * (1 - w):.0f}% GRU"
+            model_text = (f"Septris averages two models, {100 * w:.0f}% {lgbm_txt} and {100 * (1 - w):.0f}% "
+                          f"{gru_txt}. {pick}This mix caught the most patients in time.")
     else:
         w, label = 1.0, "LightGBM"
         model_text = "A LightGBM model reading summaries of each patient's last few hours."

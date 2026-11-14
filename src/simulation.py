@@ -148,7 +148,14 @@ def sweep(cohort: Cohort, policies: list[str], k: int, seed: int,
         last = np.full(len(run_patients), -10_000, np.int64)
         rev_pos, rev_h = [], []
         sc = cohort.scores.get(pol)
+        if sc is not None and np.ndim(sc) == 2:
+            # two score rows: review slots alternate between them within each shift
+            sc_pair, sc = sc, None
+        else:
+            sc_pair = None
         for t in slot_times:
+            if sc_pair is not None:
+                sc = sc_pair[offs.index(t % SHIFT_HOURS) % 2]
             occ = occ_pos[bounds[t]:bounds[t + 1]]
             if len(occ) == 0:
                 continue

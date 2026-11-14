@@ -142,11 +142,21 @@ def score(model, dataset, device, supervised_only=False):
 
 
 def main():
+    import argparse
     import torch
+    global NAME
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--seed", type=int, default=C.SEED, help="extra seeds train ensemble members")
+    ap.add_argument("--threads", type=int, default=0)
+    args = ap.parse_args()
+    if args.threads:
+        torch.set_num_threads(args.threads)
+    if args.seed != C.SEED:
+        NAME = f"temporal_gru_s{args.seed}"
     from torch.nn import functional as nnf
     from torch.utils.data import DataLoader
 
-    seed_everything()
+    seed_everything(args.seed)
     SCORES.mkdir(parents=True, exist_ok=True)
     MODELS.mkdir(parents=True, exist_ok=True)
     df, variables = load()
@@ -179,7 +189,7 @@ def main():
         optimizer = torch.optim.AdamW(model.parameters(), lr=1e-3, weight_decay=1e-4)
         pos_weight = torch.tensor([(tr_rows.sum() - y[tr_rows].sum()) / max(y[tr_rows].sum(), 1)], device=device)
         train_loader = DataLoader(train_ds, batch_size=BATCH_SIZE, shuffle=True, collate_fn=collate,
-                                  generator=torch.Generator().manual_seed(C.SEED))
+                                  generator=torch.Generator().manual_seed(args.seed))
         best, best_state, stale = -np.inf, None, 0
         history = []
         for epoch in range(1, EPOCHS + 1):
@@ -215,7 +225,7 @@ def main():
         np.save(SCORES / f"{H}_{NAME}.npy", scores)
         torch.save({"state_dict": best_state, "median": median, "scale": scale, "variables": variables}, MODELS / f"{H}_{NAME}.pt")
         report["models"][H] = {"best_val_pr_auc": float(best), "history": history, "rows": int(len(scores))}
-        (OUT / "temporal_gru_selection.json").write_text(json.dumps(report, indent=2))
+        (OUT / f"{NAME}_selection.json").write_text(json.dumps(report, indent=2))
     print(json.dumps(report, indent=2))
 
 

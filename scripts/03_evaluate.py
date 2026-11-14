@@ -54,7 +54,7 @@ def build_cohorts(rows, patients):
         cohorts[T] = {
             "cohort": S.Cohort(n_hours=n_hours, t_onset=p["t_onset"].to_numpy(float),
                                group=p["group"].to_numpy(object), offsets=offsets,
-                               scores={k: v[mask] for k, v in scores.items()}),
+                               scores={k: (v[:, mask] if v.ndim == 2 else v[mask]) for k, v in scores.items()}),
             "ids": ids, "patients": p, "rows": r, "mask": mask,
         }
     return cohorts, scores
@@ -67,6 +67,8 @@ def hourly_metrics(rows, scores):
             & rows["in_training"].to_numpy()
         y = rows["target"].to_numpy()[m]
         for name, s in scores.items():
+            if s.ndim == 2:  # alternating policy: no single hourly score
+                continue
             H = name.split(":")[0] if ":" in name else "-"
             out.append({"train": H, "test": T, "model": name.split(":")[-1],
                         "auroc": roc_auc_score(y, s[m]), "pr_auc": average_precision_score(y, s[m]),
@@ -236,6 +238,8 @@ def utility_scores(rows, scores):
     names = [f"{H}:{m}" for H in C.HOSPITALS for m in MODELS] + SHARED
     for name in names:
         s = scores[name]
+        if s.ndim == 2:
+            continue
         H = name.split(":")[0] if ":" in name else None
         homes = [H] if H else list(C.HOSPITALS)
         for home in homes:
