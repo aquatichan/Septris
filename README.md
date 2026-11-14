@@ -127,8 +127,8 @@ result. Exact package versions: `requirements-lock.txt`.
 
 ```
 src/        data_io, labels, splits, audit, features, simulation, utility, explanations
-scripts/    01_audit → 02_train → 03_evaluate → 04_secondary → 05_app_artifacts → 06_report
-tests/      leakage, splits, labels, slots, alert classes, utility, explanations (19 tests)
+scripts/    01_audit → 02_train → 07_familiarity_guard → 03_evaluate → 04_secondary → 05_app_artifacts → 06_report
+tests/      leakage, splits, labels, slots, alert classes, utility, explanations, familiarity guard (21 tests)
 app/        Gradio app and its precomputed artifacts
 docs/       results, pre-registration, data provenance
 vendor/     official PhysioNet 2019 scoring code (BSD-2)
