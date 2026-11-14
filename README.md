@@ -98,7 +98,7 @@ trained on death: **[docs/challenge2012_check.md](docs/challenge2012_check.md)**
    "missing" value reaches the model. ICU length of stay, admission time and
    unit fields are excluded (shortcut ablation only).
 5. **Models:** logistic regression, LightGBM on values only, measurement
-   pattern only, and combined (the deployed candidate), plus a masked temporal
+   pattern only, the original combined candidate, and an exploratory queue-outcome-tuned LightGBM candidate, plus a masked temporal
    GRU that consumes value, observation-mask and measurement-gap sequences.
    The GRU is exploratory and must improve the same fixed-capacity,
    cross-hospital review outcome before it can be considered further. Selection
