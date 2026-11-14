@@ -19,3 +19,6 @@ venv/
 logs/
 outputs/eicu/patients.csv
 data/raw/challenge2012/
+
+# the app needs its precomputed files
+!app/artifacts/*.parquet
