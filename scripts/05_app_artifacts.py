@@ -70,6 +70,10 @@ def verdict(cls: str, lead: float, group: str) -> tuple[str, str]:
     return "False alarm", "This patient did not develop sepsis in the next 12 hours."
 
 
+def lgbm_weight():
+    return json.loads(SEL.read_text())["lightgbm_weight"] if SEL.exists() else 1.0
+
+
 def comparison_html(deploy):
     """Plain sentences on where LightGBM, the GRU and the mix win (from 03's results)."""
     t = pd.read_csv(RES / "results_table.csv")
@@ -141,19 +145,28 @@ def main():
     offs = S.slot_hours(K_DEMO)
 
     # why-now reasons for every Septris pick
-    tr = (hosp == "A") & (split == "train") & rows["in_training"].to_numpy()
-    base = F.causal_base(hourly, variables)
-    pools = F.fit_pools(base, tr)
-    X = F.assemble(base, pools, "combined")
-    model = lgb.Booster(model_file=str(ROOT / "outputs/models/A_lgbm_combined.txt"))
+    # explain with the model that carries most of the weight in the deployed score
     test_rows = np.flatnonzero(te)
     sb_sorted = sb.sort_values("unit_hour").reset_index(drop=True)
-    pick_rows = test_rows[offsets[sb_sorted["cohort_idx"].to_numpy()] + sb_sorted["record_hour"].to_numpy()]
-    contrib = model.predict(X.iloc[pick_rows], pred_contrib=True)
-    cols = list(X.columns)
-    reasons = {int(u): E.reasons(X.iloc[row], contrib[i, :-1], cols, base, int(row))
-               for i, (u, row) in enumerate(zip(sb_sorted["unit_hour"], pick_rows))}
-    del X, base
+    starts = test_rows[offsets[sb_sorted["cohort_idx"].to_numpy()]]
+    pick_rows = starts + sb_sorted["record_hour"].to_numpy()
+    base = F.causal_base(hourly, variables)
+    if lgbm_weight() >= 0.5:
+        tr = (hosp == "A") & (split == "train") & rows["in_training"].to_numpy()
+        pools = F.fit_pools(base, tr)
+        X = F.assemble(base, pools, "combined")
+        model = lgb.Booster(model_file=str(ROOT / "outputs/models/A_lgbm_combined.txt"))
+        contrib = model.predict(X.iloc[pick_rows], pred_contrib=True)
+        cols = list(X.columns)
+        reasons = {int(u): E.reasons(X.iloc[row], contrib[i, :-1], cols, base, int(row))
+                   for i, (u, row) in enumerate(zip(sb_sorted["unit_hour"], pick_rows))}
+        del X
+    else:
+        from src import gru_explain as G
+        mod, gmodel, ck = G.load("A")
+        reasons = {int(u): G.reasons(mod, gmodel, ck, base, int(st), int(row))
+                   for u, st, row in zip(sb_sorted["unit_hour"], starts, pick_rows)}
+    del base
 
     def judge(q, t):
         ci = int(run_patients[q])
@@ -272,16 +285,27 @@ def main():
     (ART / "failure_cases.json").unlink(missing_ok=True)
     (ART / "tiers.json").write_text(json.dumps({"high": float(hi_cut), "medium": float(med_cut)}))
     if DEPLOY == "blend":
-        w = json.loads(SEL.read_text())["lightgbm_weight"]
-        label = ("LightGBM alone" if w == 1 else "GRU alone" if w == 0 else
+        w = lgbm_weight()
+        label = ("LightGBM" if w == 1 else "GRU deep-learning model" if w == 0 else
                  f"mix: {100 * w:.0f}% LightGBM + {100 * (1 - w):.0f}% GRU")
-        model_text = (f"Two models, mixed {100 * w:.0f}/{100 * (1 - w):.0f}. LightGBM (a gradient-boosted decision-tree "
-                      "model) reads hand-made summaries of each patient's last few hours: current values, recent "
-                      "changes, 6-hour highs and lows, and which tests were done when. A GRU (a deep-learning model "
-                      "that reads each patient's hours in order, built by Miheer) reads the raw hour-by-hour values "
-                      "and which ones were measured. Each model's score is turned into a 0-100 ranking and the two "
-                      "rankings are averaged with these weights, which were chosen on validation patients only. "
-                      "The 'what stood out' reasons come from the LightGBM part.")
+        gru_txt = ("a GRU, a deep-learning model built by Miheer that reads each patient's hours in order: the "
+                   "hour-by-hour vital signs and lab results, which ones were actually measured, and how long ago "
+                   "each was last measured, plus age and sex")
+        lgbm_txt = ("LightGBM, a decision-tree model that reads hand-made summaries of the last few hours (current "
+                    "values, recent changes, 6-hour highs and lows, which tests were done when)")
+        pick = ("We tested mixing the two models in 5 proportions, judged only on validation patients (never the "
+                "test patients). ")
+        if w == 0:
+            model_text = (f"Septris uses {gru_txt}. {pick}Using the GRU on its own caught the most patients in time, "
+                          f"so that is what Septris uses. The other candidate was {lgbm_txt}. The 'what stood out' "
+                          "reasons come from hiding each measurement from the GRU for the last 12 hours and seeing "
+                          "how much its risk drops.")
+        elif w == 1:
+            model_text = (f"Septris uses {lgbm_txt}. {pick}LightGBM on its own caught the most patients in time. "
+                          f"The other candidate was {gru_txt}.")
+        else:
+            model_text = (f"Septris mixes two models, {100 * w:.0f}% {lgbm_txt} and {100 * (1 - w):.0f}% {gru_txt}. "
+                          f"{pick}This mix caught the most patients in time.")
     else:
         w, label = 1.0, "LightGBM"
         model_text = "A LightGBM model reading summaries of each patient's last few hours."

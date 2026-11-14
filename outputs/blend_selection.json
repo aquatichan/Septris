@@ -1,0 +1,42 @@
+{
+ "rule": "Each model's score is turned into a percentile against its own home\nhospital's validation hours, so the two are on the same scale. The mix is",
+ "lightgbm_weight": 0.0,
+ "gru_weight": 1.0,
+ "validation_caught6_pct": {
+  "w=0.0": {
+   "A, k=3": 32.67,
+   "A, k=5": 40.92,
+   "B, k=3": 26.81,
+   "B, k=5": 35.14,
+   "mean": 33.88
+  },
+  "w=0.25": {
+   "A, k=3": 31.33,
+   "A, k=5": 39.33,
+   "B, k=3": 25.83,
+   "B, k=5": 36.81,
+   "mean": 33.33
+  },
+  "w=0.5": {
+   "A, k=3": 30.83,
+   "A, k=5": 38.5,
+   "B, k=3": 25.69,
+   "B, k=5": 33.89,
+   "mean": 32.23
+  },
+  "w=0.75": {
+   "A, k=3": 30.83,
+   "A, k=5": 39.17,
+   "B, k=3": 25.83,
+   "B, k=5": 34.31,
+   "mean": 32.53
+  },
+  "w=1.0": {
+   "A, k=3": 28.92,
+   "A, k=5": 39.17,
+   "B, k=3": 27.22,
+   "B, k=5": 34.86,
+   "mean": 32.54
+  }
+ }
+}

@@ -13,7 +13,7 @@ LABEL = {
     "Resp": ("respiratory rate", "/min"), "Lactate": ("lactate", "mmol/L"), "WBC": ("WBC", "×10³/µL"),
     "Creatinine": ("creatinine", "mg/dL"), "Platelets": ("platelets", "×10³/µL"),
     "BUN": ("BUN", "mg/dL"), "Glucose": ("glucose", "mg/dL"), "pH": ("pH", ""),
-    "PaCO2": ("PaCO2", "mmHg"), "FiO2": ("FiO2", ""), "HCO3": ("bicarbonate", "mmol/L"),
+    "PaCO2": ("PaCO2", "mmHg"), "FiO2": ("oxygen given (FiO2)", ""), "HCO3": ("bicarbonate", "mmol/L"),
     "Bilirubin_total": ("bilirubin", "mg/dL"), "Hgb": ("hemoglobin", "g/dL"), "Hct": ("hematocrit", "%"),
     "Potassium": ("potassium", "mmol/L"), "BaseExcess": ("base excess", "mmol/L"),
     "Calcium": ("calcium", "mg/dL"), "Magnesium": ("magnesium", "mg/dL"), "Phosphate": ("phosphate", "mg/dL"),

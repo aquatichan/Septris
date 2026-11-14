@@ -23,3 +23,4 @@ data/raw/challenge2012/
 # the app needs its precomputed files
 !app/artifacts/*.parquet
 outputs/gru_train.log
+outputs/evaluate.log
