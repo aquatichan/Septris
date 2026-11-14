@@ -39,3 +39,11 @@ def test_external_contract_rejects_duplicate_patient_hour():
     audit = validate_canonical_hourly(f, "hirid")
     with pytest.raises(ValueError, match="duplicate"):
         require_clean_external_contract(audit)
+
+
+def test_external_contract_rejects_time_reversal_without_sorting_it_away():
+    f = frame().iloc[[1, 0, 2]].reset_index(drop=True)
+    audit = validate_canonical_hourly(f, "eicu")
+    assert audit.time_reversals == 1
+    with pytest.raises(ValueError, match="non-increasing"):
+        require_clean_external_contract(audit)
