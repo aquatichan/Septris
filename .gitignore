@@ -22,3 +22,5 @@ data/raw/challenge2012/
 
 # the app needs its precomputed files
 !app/artifacts/*.parquet
+outputs/septris_replay.sqlite3
+outputs/models/*.bundle.pkl
