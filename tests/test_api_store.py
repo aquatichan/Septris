@@ -22,6 +22,7 @@ def test_monotonic_patient_history_and_hashed_audit(tmp_path):
 
 def test_review_snooze_is_twelve_hours(tmp_path):
     store = ReplayStore(tmp_path / "replay.sqlite3")
+    store.append_observation(event())
     t0 = datetime(2026, 1, 1, tzinfo=timezone.utc)
     store.record_review("p1", "nurse@example.test", t0.isoformat(), "opened_chart")
     assert store.is_snoozed("p1", (t0 + timedelta(hours=11, minutes=59)).isoformat())
