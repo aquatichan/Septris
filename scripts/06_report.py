@@ -13,9 +13,11 @@ RES = ROOT / "outputs/results"
 NAMES = {"random": "Random review (same budget)", "sirs": "SIRS ranking", "news": "NEWS-inspired score",
          "lr": "Logistic regression (current values)", "lgbm_values": "LightGBM, values only",
          "lgbm_missing": "LightGBM, measurement pattern only", "lgbm_combined": "**Septris** (LightGBM, combined)",
+         "lgbm_queue_tuned": "LightGBM, queue-outcome tuned (exploratory)",
          "temporal_gru": "Masked temporal GRU (exploratory)",
+         "lgbm_gru_blend": "Validated LightGBM + temporal GRU blend (exploratory)",
          "lgbm_shortcuts": "LightGBM + shortcut fields (never deployed)"}
-ORDER = ["random", "sirs", "news", "lr", "lgbm_values", "lgbm_missing", "lgbm_combined", "temporal_gru", "lgbm_shortcuts"]
+ORDER = ["random", "sirs", "news", "lr", "lgbm_values", "lgbm_missing", "lgbm_combined", "lgbm_queue_tuned", "temporal_gru", "lgbm_gru_blend", "lgbm_shortcuts"]
 
 
 def pct(v, lo=None, hi=None):
@@ -95,7 +97,9 @@ def main():
              "reliance: combined minus values-only (home)", "missingness-only (home) minus random",
              "lgbm_values: home minus external", "lgbm_missing: home minus external",
              "shortcuts minus combined (home)", "temporal GRU minus combined (home)",
-             "temporal GRU minus combined (external)", "SIRS minus random", "NEWS minus random"]
+             "temporal GRU minus combined (external)", "queue-tuned LightGBM minus combined (home)",
+             "validated blend minus combined (home)", "validated blend minus GRU (home)",
+             "validated blend minus combined (external)", "SIRS minus random", "NEWS minus random"]
     labels = {"lgbm_combined (home) minus random": "Septris (home) − random",
               "lgbm_combined: home minus external": "Septris: home model − unseen-hospital model",
               "lgbm_combined (home) minus SIRS": "Septris (home) − SIRS",
@@ -107,6 +111,10 @@ def main():
               "shortcuts minus combined (home)": "Shortcut fields − portable model",
               "temporal GRU minus combined (home)": "Masked temporal GRU (home) − LightGBM",
               "temporal GRU minus combined (external)": "Masked temporal GRU (unseen) − LightGBM",
+              "queue-tuned LightGBM minus combined (home)": "Queue-tuned LightGBM − original LightGBM",
+              "validated blend minus combined (home)": "Validated blend − LightGBM",
+              "validated blend minus GRU (home)": "Validated blend − masked temporal GRU",
+              "validated blend minus combined (external)": "Validated blend (unseen) − LightGBM",
               "SIRS minus random": "SIRS − random", "NEWS minus random": "NEWS − random"}
     for T in ("A", "B"):
         for c in comps:

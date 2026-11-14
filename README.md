@@ -160,8 +160,8 @@ result. The non-PyTorch stack is pinned in `requirements-lock.txt`; PyTorch is p
 
 ```
 src/        data_io, labels, splits, audit, features, simulation, utility, explanations
-scripts/    01_audit → 02_train → 08_temporal_gru → 03_evaluate → 04_secondary → 05_app_artifacts → 06_report
-tests/      leakage, splits, labels, slots, alert classes, utility, explanations, temporal GRU (25 tests)
+scripts/    01_audit → 02_train → 08_temporal_gru → 10_blend / 14_validated_ensemble → 03_evaluate → 04_secondary → 05_app_artifacts → 06_report
+tests/      leakage, splits, labels, slots, alert classes, utility, explanations, temporal GRU, API and external-data contracts
 app/        Gradio app and its precomputed artifacts
 docs/       results, pre-registration, data provenance
 vendor/     official PhysioNet 2019 scoring code (BSD-2)

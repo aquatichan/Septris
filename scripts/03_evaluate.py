@@ -217,6 +217,18 @@ def summarize(pmean, boot):
                     f"{T}:lgbm_combined", f"{T}:lgbm_values")
                 add(T, k, "missingness-only (home) minus random", f"{T}:lgbm_missing", "random")
                 add(T, k, "combined minus LR (home)", f"{T}:lgbm_combined", f"{T}:lr")
+                 add(T, k, "temporal GRU minus combined (home)",
+                     f"{T}:temporal_gru", f"{T}:lgbm_combined")
+                 add(T, k, "temporal GRU minus combined (external)",
+                     f"{other}:temporal_gru", f"{other}:lgbm_combined")
+                 add(T, k, "queue-tuned LightGBM minus combined (home)",
+                     f"{T}:lgbm_queue_tuned", f"{T}:lgbm_combined")
+                 add(T, k, "validated blend minus combined (home)",
+                     f"{T}:lgbm_gru_blend", f"{T}:lgbm_combined")
+                 add(T, k, "validated blend minus GRU (home)",
+                     f"{T}:lgbm_gru_blend", f"{T}:temporal_gru")
+                 add(T, k, "validated blend minus combined (external)",
+                     f"{other}:lgbm_gru_blend", f"{other}:lgbm_combined")
                 add(T, k, "shortcuts minus combined (home)", f"{T}:lgbm_shortcuts", f"{T}:lgbm_combined")
                 pmf = pmean[pmean.subgroup == "all"].pivot_table(index=["test", "k"], columns="policy",
                                                                  values="false_per_shift")

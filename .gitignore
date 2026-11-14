@@ -26,3 +26,6 @@ outputs/gru_train.log
 outputs/evaluate.log
 outputs/gru_seeds.log
 outputs/train_qt.log
+outputs/septris_replay.sqlite3
+outputs/models/*.bundle.pkl
+data/external/
