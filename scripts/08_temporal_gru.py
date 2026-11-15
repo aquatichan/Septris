@@ -199,7 +199,7 @@ def score(model, dataset, device, supervised_only=False):
 def main():
     import argparse
     import torch
-    global NAME
+    global NAME, BATCH_SIZE
     ap = argparse.ArgumentParser()
     ap.add_argument("--seed", type=int, default=C.SEED, help="extra seeds train ensemble members")
     ap.add_argument("--threads", type=int, default=0)
@@ -207,15 +207,20 @@ def main():
     ap.add_argument("--target-window", choices=("within_12", "early_6_12"), default="within_12")
     ap.add_argument("--measurement-dropout", type=float, default=0.0,
                     help="source-training-only probability of masking an observed input")
+    ap.add_argument("--batch-size", type=int, default=BATCH_SIZE,
+                    help="sequence batch size; lower this on memory-limited machines")
     ap.add_argument("--name", default=None,
                     help="required for a non-default candidate; prevents accidental overwrite")
     args = ap.parse_args()
     if not 0.0 <= args.measurement_dropout < 1.0:
         ap.error("--measurement-dropout must be in [0, 1)")
+    if args.batch_size < 1:
+        ap.error("--batch-size must be positive")
     if args.name is not None and not args.name.replace("_", "").isalnum():
         ap.error("--name may contain only letters, numbers, and underscores")
     if args.threads:
         torch.set_num_threads(args.threads)
+    BATCH_SIZE = args.batch_size
     nondefault = (args.input_mode != "masked" or args.target_window != "within_12"
                   or args.measurement_dropout != 0.0)
     if nondefault and args.name is None:
@@ -244,7 +249,8 @@ def main():
                          if args.input_mode == "masked" else "normalized current values, age, sex (no measurement-pattern inputs)")
     report = {"architecture": {"name": "temporal GRU", "hidden": HIDDEN, "layers": 2,
               "input_mode": args.input_mode, "inputs": input_description,
-              "target_window": args.target_window, "measurement_dropout": args.measurement_dropout},
+              "target_window": args.target_window, "measurement_dropout": args.measurement_dropout,
+              "batch_size": BATCH_SIZE},
               "device": str(device), "models": {}}
 
     for H in C.HOSPITALS:
