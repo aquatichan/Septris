@@ -8,6 +8,7 @@ Tier 1: NEWS, shortcut ablation, budgets 1/2/5, official utility score.
 Outputs go to outputs/results/.
 """
 
+import argparse
 import json
 import sys
 import time
@@ -92,6 +93,21 @@ def subgroup_masks(p):
 
 
 def main():
+    global MODELS
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--extra-model", action="append", default=[],
+                    help="exploratory score suffix to evaluate after it passes the validation gate; repeatable")
+    args = ap.parse_args()
+    extras = [name.strip() for name in args.extra_model if name.strip()]
+    for name in extras:
+        if not name.replace("_", "").isalnum():
+            ap.error("--extra-model may contain only letters, numbers, and underscores")
+        for H in C.HOSPITALS:
+            if not (SC / f"{H}_{name}.npy").exists():
+                ap.error(f"missing score file for {H}:{name}")
+    # Extra candidates remain visibly separate in every output table.  The
+    # frozen pre-registered models and their ordering are unchanged.
+    MODELS = list(dict.fromkeys(MODELS + extras))
     RES.mkdir(parents=True, exist_ok=True)
     rows = pd.read_parquet(ROOT / "data/processed/rows.parquet")
     patients = pd.read_csv(ROOT / "outputs/patients.csv")

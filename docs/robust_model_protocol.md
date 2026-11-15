@@ -40,7 +40,8 @@ that as an early catch.
 5. Freeze the winning name and evaluate it once on all four held-out
    train-to-test pairs. Report home and unseen-hospital results side by side,
    with paired patient-bootstrap intervals against the original GRU and the
-   pre-registered LightGBM.
+   pre-registered LightGBM. The exact command is
+   `make evaluate-candidate NAME=<validation-selected candidate>`.
 
 ## What would count as success
 

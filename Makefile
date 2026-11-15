@@ -4,7 +4,7 @@
 
 PY ?= python3
 
-.PHONY: reproduce data audit train deep robust-candidates robust-gate familiarity blend ensemble gru-ensemble final-mix web evaluate compare secondary artifacts bundle external-audit test app api
+.PHONY: reproduce data audit train deep robust-candidates robust-gate evaluate-candidate familiarity blend ensemble gru-ensemble final-mix web evaluate compare secondary artifacts bundle external-audit test app api
 
 reproduce: audit train deep familiarity blend ensemble gru-ensemble final-mix evaluate compare secondary artifacts bundle web test
 
@@ -30,6 +30,10 @@ robust-candidates:
 
 robust-gate:
 	$(PY) scripts/17_candidate_gate.py --candidates temporal_gru,gru_early_values,gru_early_maskdrop
+
+evaluate-candidate:
+	@test -n "$(NAME)" || (echo "Use NAME=<validation-selected candidate>"; exit 2)
+	$(PY) scripts/03_evaluate.py --extra-model $(NAME)
 
 familiarity:
 	$(PY) scripts/07_familiarity_guard.py
