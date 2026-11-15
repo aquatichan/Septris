@@ -131,13 +131,14 @@ export function createAudio() {
     white = noiseBuffer(4, 'white'); brown = noiseBuffer(4, 'brown');
 
     // Layer 1: room tone / HVAC - brown noise lowpassed at 220 Hz plus a faint 120 Hz hum.
-    const room = loopSrc(brown), roomLp = filt('lowpass', 220, 0.7), roomG = gainNode(0.35);
+    const room = loopSrc(brown), roomLp = filt('lowpass', 160, 0.7), roomG = gainNode(0.05); // just a hint of room tone
     room.connect(roomLp); roomLp.connect(roomG); roomG.connect(master);
-    const mains = ctx.createOscillator(), mainsG = gainNode(0.007);
+    const mains = ctx.createOscillator(), mainsG = gainNode(0.0);
     mains.frequency.value = 120; mains.connect(mainsG); mainsG.connect(master); mains.start();
 
     // Layer 2: distant voices - two bandpassed noise bands, level and centre re-targeted irregularly.
-    bands = [[450, 650, 0.22], [650, 900, 0.16]].map(([lo, hi, max]) => {
+    // (voices removed: band-passed noise read as loud static)
+    bands = [].map(([lo, hi, max]) => {
       const src = loopSrc(white), bp = filt('bandpass', (lo + hi) / 2, 1), g = gainNode(0);
       src.connect(bp); bp.connect(g); g.connect(close);
       return { g, bp, lo, hi, max, retarget() {
@@ -148,24 +149,28 @@ export function createAudio() {
     });
 
     // Layer 3: bedside monitors - each with its own pitch, tempo, pan and level.
-    monitors = [[880, -0.7, 0.05], [932, -0.25, 0.04], [988, 0.3, 0.045], [1047, 0.75, 0.035]]
+    monitors = [[880, -0.7, 0.03], [988, 0.3, 0.026], [1047, 0.75, 0.022]]
       .map(([f, pan, lvl]) => ({ f, lvl, bpm: rand(62, 98), out: panTo(pan, close) }));
   }
 
   // ---- ambience scheduling ------------------------------------------------------------------
   const voiceLoop = (b) => { b.retarget(); later(() => voiceLoop(b), rand(600, 2000)); };
 
+  // a monitor beeps in short runs (3-6 beats), then is quiet for a while: beeping "here and there"
   const beat = (m) => {
+    m.left = m.left > 0 ? m.left : 3 + Math.floor(Math.random() * 4);
     tone(m.f, ctx.currentTime + 0.03, 0.07, m.lvl, 'sine', m.out, 0.004);
-    m.bpm = clamp(m.bpm + rand(-0.4, 0.4), 62, 98); // tiny drift
-    later(() => beat(m), 60000 / m.bpm);
+    m.bpm = clamp(m.bpm + rand(-0.4, 0.4), 62, 98);
+    m.left -= 1;
+    later(() => beat(m), m.left > 0 ? 60000 / m.bpm : rand(5000, 14000));
   };
 
   // Layer 4: random events (one every ~6-18 s), each quiet and panned randomly.
   const events = [
+    function ivAlert2(t, out) { for (let i = 0; i < 2; i++) tone(1568, t + i * 0.22, 0.1, 0.02, 'sine', out, 0.004); },
     function pa(t, out) { // overhead PA ding-dong through a ceiling-speaker bandpass
       const bp = filt('bandpass', 1300, 0.6); bp.connect(out); drop(4, bp);
-      bell(659.25, t, 1.0, 0.09, bp); bell(523.25, t + 0.55, 1.4, 0.09, bp);
+      bell(659.25, t, 1.0, 0.05, bp); bell(523.25, t + 0.55, 1.4, 0.05, bp);
       if (Math.random() < 0.5) later(() => {
         voiceBoost = 1.8; bands.forEach((b) => b.retarget());
         later(() => { voiceBoost = 1; bands.forEach((b) => b.retarget()); }, 1100);
@@ -179,29 +184,12 @@ export function createAudio() {
         for (let k = 0; k < 8; k++) o.frequency.setValueAtTime(k % 2 ? 1500 : 1900, s + k * 0.05);
       }
     },
-    function footsteps(t) { // 4-7 soft thumps drifting across the stereo field
-      const n = 4 + Math.floor(Math.random() * 4), a = rand(-0.9, 0.9), b = -a * rand(0.4, 1);
-      const out = panTo(a, close, 8);
-      if (out.pan) { out.pan.setValueAtTime(a, t); out.pan.linearRampToValueAtTime(b, t + n * 0.55); }
-      for (let i = 0; i < n; i++) {
-        const s = t + i * 0.55 + rand(0, 0.03);
-        thump(s, 110, 0.12, 0.09, out); burst(s, 0.07, 0.3, 'lowpass', 400, 0.7, out, 0.003);
-      }
-    },
-    function trolley(t, out) { // bandpassed noise with tremolo
-      const tr = gainNode(0.5), lfo = ctx.createOscillator(), depth = gainNode(0.5);
-      lfo.frequency.value = rand(22, 32); lfo.connect(depth); depth.connect(tr.gain);
-      tr.connect(out); burst(t, 1.0, 0.35, 'bandpass', 1800, 2, tr, 0.15);
-      lfo.start(t); lfo.stop(t + 1.1); lfo.onended = () => { lfo.disconnect(); depth.disconnect(); };
-      drop(3, tr);
-    },
-    function door(t, out) { thump(t, 70, 0.18, 0.16, out); burst(t + 0.02, 0.35, 0.4, 'lowpass', 500, 0.7, out, 0.005); },
   ];
   const eventLoop = (first) => later(() => {
     const t = ctx.currentTime + 0.05;
     pick(events)(t, panTo(rand(-0.9, 0.9), close, 8));
     eventLoop();
-  }, first || rand(6000, 18000));
+  }, first || rand(14000, 30000));
 
   // Layer 5: ventilator-like slow breath every ~40-90 s.
   const ventLoop = (first) => later(() => {
@@ -215,7 +203,7 @@ export function createAudio() {
     running = true;
     bands.forEach(voiceLoop);
     monitors.forEach((m) => later(() => beat(m), rand(0, 900)));
-    eventLoop(rand(2500, 7000)); ventLoop(rand(10000, 25000));
+    eventLoop(rand(6000, 12000)); // (ventilator breath removed: it was noise-based)
   }
   function stopLoops() {
     running = false; voiceBoost = 1;

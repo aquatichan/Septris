@@ -147,7 +147,20 @@ export function patientHTML(data, st) {
     }
     outcome = `<div class="key"><div class="eyebrow">Outcome · from the patient's record</div><p class="small">${text}</p></div>`;
   }
+  // big green banner whenever this patient was (or is now being) caught 6-12 h early
+  let caughtBanner = "";
+  if (!p.manual && p.onset != null && p.group !== "uncertain_onset") {
+    const hitNow = r.picked && (s.review_class === "early6" || s.review_class === "early");
+    const prior = [...p.reviews.filter((x) => x <= h)].reverse().find((x) => p.onset - x >= 6 && p.onset - x <= 12);
+    const at = hitNow ? h : prior;
+    if (at != null) {
+      const lead = Math.round(p.onset - at);
+      caughtBanner = `<div class="hero-hit"><div class="big">✓ Sepsis caught <b>${lead}</b> hours early</div>
+        <div class="small">${at === h ? "Septris sent the nurse to this bed now" : `Septris sent the nurse here ${h - at} h ago`}; the record shows sepsis ${lead} hours after that check.</div></div>`;
+    }
+  }
   return `
+    ${caughtBanner}
     <div class="eyebrow">Day ${s.day} · ${s.clock}</div>
     <h2>Bed ${bed} <span class="pill ${status.cls}">${status.text}</span></h2>
     ${p.manual ? `<div class="entered"><b>${esc(p.name)}</b> · entered by hand · stay ends in ${p.record.admit + p.record.stay - s.unit_hour} h
@@ -200,88 +213,109 @@ export function queueHTML(data, st) {
     <p class="small muted">The risk score runs from 0 to 100. It shows how worrying this hour looks compared with past ICU hours (100 = most worrying). Beds checked in the last 12 hours go to the bottom, so the nurse isn't sent back to the same patient.</p>`;
 }
 
-export function resultsHTML(data, k) {
-  const R = data.results[String(k)];
-  const lines = [
-    ["Septris", "septris", "var(--accent)"],
-    ["Septris at a hospital it never saw", "septris_new_hospital", "#2f7fb8"],
-    ["Septris part 1 alone", "lightgbm", "#7d8fa0"],
-    ["Septris part 2 alone", "gru", "#7d8fa0"],
-    ["Hospital warning checklist (SIRS)", "sirs", "var(--warn)"],
-    ["Random picking", "random", "var(--grey)"],
-  ];
-  const block = (T, name) => `
-    <h3>${name}</h3>
-    <div class="rbars">${lines.map(([n, key, c]) => {
+export function resultsHTML(data) {
+  const R = data.results["3"]; // primary evaluation: 3 chart reviews per 20-bed ICU per 12-hour shift
+  const lines = {
+    A: [["Septris calibrated blend", "septris", "var(--accent)"], ["Septris trained at Hospital B", "septris_new_hospital", "#2f7fb8"],
+      ["Temporal GRU alone", "gru", "#7d8fa0"], ["LightGBM alone", "lightgbm", "#7d8fa0"],
+      ["Hospital warning checklist, SIRS", "sirs", "var(--warn)"], ["Random picking", "random", "var(--grey)"]],
+    B: [["Septris calibrated blend", "septris", "var(--accent)"], ["Septris trained at Hospital A", "septris_new_hospital", "#2f7fb8"],
+      ["Temporal GRU alone", "gru", "#7d8fa0"], ["LightGBM alone", "lightgbm", "#7d8fa0"],
+      ["Hospital warning checklist, SIRS", "sirs", "var(--warn)"], ["Random picking", "random", "var(--grey)"]],
+  };
+  const block = (T) => `
+    <h3>Hospital ${T} · ${R[T].septris.eligible} eligible sepsis cases</h3>
+    <div class="rbars rhead"><span class="muted small">Policy</span><span></span><span class="muted small">Caught early</span></div>
+    <div class="rbars">${lines[T].map(([n, key, c]) => {
       const v = R[T][key];
-      return v ? `<span>${n}</span><div class="bar"><i style="width:${v.caught * 2}%;background:${c}"></i></div><span class="num">${v.caught.toFixed(0)}</span>` : "";
+      return v ? `<span>${n}</span><div class="bar"><i style="width:${v.caught * 2}%;background:${c}"></i></div><span class="num">${v.caught.toFixed(1)}%</span>` : "";
     }).join("")}</div>`;
-  const a = R.A.septris, rnd = R.A.random, q = data.quality;
+  const A = R.A, B = R.B, q = data.quality;
+  const f = (x) => x.toFixed(3);
   return `
     <h2>How well does it work?</h2>
-    <p>Out of every <b>100 patients who developed sepsis</b>, how many were <b>caught early</b>? That means the nurse checked their chart <b>6–12 hours before</b> sepsis was recorded.</p>
-    <div class="seg" role="group" aria-label="Chart checks per shift">${[1, 2, 3, 5].map((x) => `<button class="btn ${x === k ? "on" : ""}" data-k="${x}">${x} per shift</button>`).join("")}</div>
-    ${block("A", `Hospital A · Boston · ${a.eligible} sepsis patients`)}
-    ${block("B", `Hospital B · Atlanta · ${R.B.septris.eligible} sepsis patients`)}
-    <p class="small muted">Only test patients are counted. Septris never trained on them. Each number is the average of 5 runs with patients arriving in a different order. Septris at Hospital A: ${a.caught.toFixed(1)}% (95% range, a range of likely values: ${a.lo.toFixed(1)}–${a.hi.toFixed(1)}).</p>
+    <h3 class="lead-q">Which patients are caught early?</h3>
+    <p>Out of every <b>100 patients who developed sepsis</b>, how many were <b>selected for clinician review 6–12 hours before</b> recorded sepsis onset?</p>
+    <p class="pill-row"><span class="pill pick">Primary held-out evaluation</span> <span class="small muted">3 review slots per 20-bed ICU per 12-hour shift</span></p>
+    ${block("A")}
+    ${block("B")}
+    <p class="small muted">Only held-out test patients are counted. Septris never trained on these patients. Each result averages five simulated ICU admission orders.</p>
+    <p>At Hospital A, Septris caught <b>${A.septris.caught.toFixed(1)}%</b> of eligible cases early (95% CI: ${A.septris.lo.toFixed(1)}–${A.septris.hi.toFixed(1)}). At Hospital B, it caught <b>${B.septris.caught.toFixed(1)}%</b> (95% CI: ${B.septris.lo.toFixed(1)}–${B.septris.hi.toFixed(1)}).</p>
     <h3>What these numbers mean</h3>
     <ul>
-      <li><b>About ${(a.caught / rnd.caught).toFixed(1)} times as many caught early as random picking</b> at Hospital A, with the same nurse time.</li>
-      <li><b>Most chart checks are still false alarms.</b> About ${a.false_per_shift.toFixed(1)} of ${k} per shift go to a patient who does not get sepsis (random: ${rnd.false_per_shift.toFixed(1)}). Only about 8% of ICU patients develop sepsis.</li>
-      <li><b>It does worse at a hospital it has never seen</b>, but still beats the checklist.</li>
+      <li>At Hospital A, Septris caught about <b>${(A.septris.caught / A.random.caught).toFixed(1)} times</b> as many cases early as random selection, using the same three chart reviews.</li>
+      <li>At Hospital B, Septris caught about <b>${(B.septris.caught / B.random.caught).toFixed(1)} times</b> as many cases early as random selection.</li>
+      <li>Most review slots are still false reviews: about ${A.septris.false_per_shift.toFixed(2)} of 3 at Hospital A and ${B.septris.false_per_shift.toFixed(2)} of 3 at Hospital B did not lead to a recorded sepsis onset in the early-review window.</li>
+      <li>Septris performs worse when moved to a hospital it did not train on, but still outperforms SIRS and random review in both transfer directions.</li>
+      <li>These results show better retrospective allocation of limited review capacity. They do not prove Septris detects sepsis before clinicians or improves patient outcomes.</li>
     </ul>
-    <h3>How well it spots risky hours</h3>
-    <p class="small">Each cell has two numbers. The first shows how well Septris, or one of its two parts, tells hours within 12 hours of sepsis from other hours. 0.5 is a coin flip and 1.0 is perfect (this score is called AUROC). The second is the official score from a 2019 sepsis contest. Higher is better, and the 2019 winner scored 0.43 on Hospital A.</p>
-    <table class="res"><thead><tr><th>Trained at → tested at</th><th class="n">Septris</th><th class="n">Part 1</th><th class="n">Part 2</th></tr></thead><tbody>
-    ${[["A>A", "A → A"], ["B>B", "B → B"], ["B>A", "B → A (new)"], ["A>B", "A → B (new)"]].map(([key, lab]) => `<tr><td>${lab}</td>${["septris", "lightgbm", "gru"].map((m) => `<td class="n">${q[key][m].auroc.toFixed(2)} <span class="muted">/ ${q[key][m].utility.toFixed(2)}</span></td>`).join("")}</tr>`).join("")}
+    <h3>How well it separates risky hours</h3>
+    <p class="small">Each cell shows <b>AUROC / official 2019 Challenge utility score</b>. An AUROC of 0.5 is random; 1.0 is perfect. The official utility score rewards timely alerts and penalizes poorly timed alerts.</p>
+    <table class="res"><thead><tr><th>Trained at → tested at</th><th class="n">Septris calibrated blend</th><th class="n">LightGBM</th><th class="n">Temporal GRU</th></tr></thead><tbody>
+    ${[["A>A", "A → A"], ["B>B", "B → B"], ["B>A", "B → A, new hospital"], ["A>B", "A → B, new hospital"]].map(([key, lab]) => `<tr><td>${lab}</td>${["septris", "lightgbm", "gru"].map((m) => `<td class="n">${f(q[key][m].auroc)} <span class="muted">/ ${f(q[key][m].utility)}</span></td>`).join("")}</tr>`).join("")}
     </tbody></table>
-    <p class="small muted">Each cell: first score (0.5 to 1.0) / contest score.</p>`;
+    <p class="small">The blend improves the hourly scores in all four train-test settings. Its fixed-review queue improved early catches in three of four settings; the standalone GRU was better for A → B queue allocation.</p>
+    <p class="small muted">The interactive ward shows five review slots per shift as a demonstration. All results on this page use the primary three-slot evaluation.</p>`;
 }
 
 export function modelHTML(data) {
   const m = data.meta;
+  const liteA = data.lite ? data.lite.auroc.lite_test.toFixed(2) : "0.68";
   return `
     <h2>How Septris works</h2>
     <h3>1. The data</h3>
-    <p>40,336 real stays in an intensive care unit (ICU) from two US hospital systems: Beth Israel Deaconess in Boston and Emory in Atlanta. They were released for a 2019 sepsis contest (the PhysioNet Challenge) with names and dates removed. Each stay has hourly vital signs and lab results.</p>
+    <p>40,336 de-identified ICU patient records from two hospital systems in the public 2019 PhysioNet/Computing in Cardiology Sepsis Challenge dataset.</p>
+    <p>Each record includes hourly vital signs, laboratory measurements, age, sex, and the Challenge's official sepsis label. The dataset identifies the sources only as Hospital A and Hospital B.</p>
     <h3>2. What it looks at</h3>
     <ul>
-      <li>Vital signs: heart rate, blood pressure, breathing rate, temperature, oxygen level.</li>
-      <li>26 lab results (blood tests), such as lactate (rises when the body is under strain), white blood cells (they fight infection) and creatinine (shows how well the kidneys work).</li>
-      <li>How each value has changed, and which tests were done recently.</li>
-      <li>Age and sex. It does <b>not</b> see how long the patient has been in hospital or which unit they're on.</li>
+      <li><b>Vital signs:</b> heart rate, blood pressure, breathing rate, temperature, oxygen saturation.</li>
+      <li><b>Laboratory values:</b> 26 measurements, including lactate, white blood cells, creatinine, platelets, and blood-gas results.</li>
+      <li><b>Past-only trends:</b> recent changes, minimums, maximums, and averages.</li>
+      <li><b>Measurement history:</b> which tests were recorded and how long ago.</li>
+      <li><b>Age and sex.</b></li>
     </ul>
-    <h3>3. Two models, one score</h3>
-    <p><b>Part 1 is a decision-tree model (LightGBM).</b> It asks a long series of yes/no questions about summaries of the last few hours. <b>Part 2 is a deep-learning model (GRU).</b> It is a type of AI that learns patterns from examples, and it reads the whole stay hour by hour. We use three copies of it and average them. Each part gives every bed a 0–100 risk score. Septris uses the <b>higher</b> of the two, so a bed moves up if either part is worried. The two parts catch largely different patients, so using both helps.</p>
-    <p>We compared 10 ways of combining the two parts. They included each part alone, averages, a blend with rescaled scores, a version of part 1 tuned directly on the chart-check queue, and “whichever is higher”. We used only the tuning patients (a group kept apart from the test patients). “Whichever is higher” came out best, so Septris uses it.</p>
+    <p>It does not use ICU length of stay, hospital-admission time, or unit-type fields because they can become shortcuts tied to local workflow rather than patient physiology.</p>
+    <h3>3. Two models, one calibrated priority score</h3>
+    <p>Septris combines two complementary models.</p>
+    <p><b>Part 1: LightGBM.</b> A gradient-boosted decision-tree model that learns nonlinear combinations of current vital signs, lab values, six-hour trends, and measurement history.</p>
+    <p><b>Part 2: Masked temporal GRU.</b> A causal two-layer deep-learning model with 64 hidden units. It reads each patient's history hour by hour using normalized values, observation masks, log time since each measurement, age, and sex. It cannot see future hours.</p>
+    <p>Both models are calibrated on patient-disjoint validation data. We then selected the blend weight only on a separate validation slice using the real objective: catching patients 6–12 hours early with three review slots.</p>
+    <div class="blendbox"><div><b>Hospital A model</b><span>20% LightGBM + 80% GRU</span></div><div><b>Hospital B model</b><span>10% LightGBM + 90% GRU</span></div></div>
+    <p>This is Septris's final scoring policy. It is not a simple average and not a “take the highest score” rule.</p>
     <h3>4. From risk score to priority</h3>
-    <p>At each of the nurse's ${m.k} chart checks per 12-hour shift, Septris sorts the ${m.beds} beds by risk score. It skips anyone checked in the last 12 hours and recommends the top bed, with the reasons that raised its score.</p>
+    <p>At each of the three review slots per 12-hour shift, Septris ranks the 20 simulated beds by calibrated priority score.</p>
+    <p>It skips patients reviewed in the previous 12 hours and recommends the highest-priority remaining patient. The clinician then opens the full chart and decides whether action is appropriate.</p>
+    <p>The interactive ward can show five slots for demonstration, but the primary reported evaluation uses three slots, matching the stated review-capacity constraint.</p>
     <h3>5. How it was tested</h3>
     <ul>
-      <li>Patients were split three ways: 70% to train the models, 15% to tune them and 15% to test them. Every number shown comes from test patients the models never saw.</li>
-      <li>${m.patients.toLocaleString()} Hospital A test patients (${m.eligible_septic} developed sepsis) pass through this ${m.beds}-bed unit over ${Math.round(m.days)} simulated days. When one leaves, the next is admitted to the free bed.</li>
-      <li>Random picking and the SIRS checklist (a standard list of warning signs used in hospitals) face the same beds at the same moments.</li>
-      <li>The main settings were written down before any test result was seen; later changes are recorded in the project's code history.</li>
+      <li>Patients were split by patient, not hourly row: 70% training, 15% validation, and 15% held-out testing.</li>
+      <li>The model-selection, calibration, and blend-weight decisions used validation patients only.</li>
+      <li>Hospital A testing used 3,051 held-out patient records, including 238 eligible sepsis cases.</li>
+      <li>Hospital B testing used held-out patient records containing 134 eligible sepsis cases.</li>
+      <li>Random selection, SIRS, LightGBM, GRU, and Septris faced the same beds at the same simulated review times.</li>
+      <li>We used 200 patient-level bootstrap resamples to estimate 95% confidence intervals.</li>
+      <li>We tested home-hospital performance and both cross-hospital directions: A → A, B → B, A → B, and B → A.</li>
     </ul>
-    <h3>6. How a hospital would use it</h3>
-    <p>In a hospital, nobody would type anything in. Each patient's vital signs and lab results already go into the electronic patient record every hour. Septris would read them from there, re-score every bed and update the nurse's priority list on its own.</p>
-    <p><b>“＋ Add a patient”</b> at the top of the ward shows that step done by hand. Enter a new patient's readings and expected stay. They are admitted to a bed, scored and placed in the queue with everyone else. You can update their readings later and watch their priority change.</p>
-    <p class="small muted">Entered patients are scored by “Septris Lite”, a small version of Septris that runs inside this page and sees only the ${data.lite ? data.lite.fields.length : 11} values on the form. It is weaker than the full Septris. Its hour-by-hour accuracy score is ${data.lite ? data.lite.auroc.lite_test.toFixed(2) : "0.68"}, against ${data.lite ? data.lite.auroc.septris_test.toFixed(2) : "0.79"} for the full Septris (Hospital A test patients; 0.5 is a coin flip, 1.0 is perfect). The full Septris also reads each patient's history.</p>
+    <h3>6. How a hospital could use it after validation</h3>
+    <p>In a real hospital, clinicians would not manually enter values. Vital signs and laboratory results already flow into the electronic health record. After prospective validation and local calibration, Septris could receive those existing records, re-score active ICU beds, and update a clinician-review queue.</p>
+    <p>The <b>“Add a patient”</b> feature in this prototype demonstrates that workflow manually. It uses Septris Lite, a smaller browser-based model that sees only the ${data.lite ? data.lite.fields.length : 11} values on the form. Septris Lite is not the full model and is weaker: its Hospital A held-out AUROC is ${liteA}, compared with 0.79 for the full Septris blend.</p>
     <h3>Limits</h3>
     <ul>
-      <li>Tested on past records only. It has never been used on real patients.</li>
-      <li>It is less accurate at a hospital it wasn't trained on.</li>
-      <li>Many of its early flags came after new lab tests were ordered. So it mostly points to patients the care team was already looking into. This does not show that the model is ahead of doctors.</li>
-      <li>The ward in this demo puts patients from different time periods side by side.</li>
+      <li>Septris was evaluated only on retrospective, de-identified records. It has never been used in live clinical care.</li>
+      <li>It does not diagnose sepsis, recommend treatment, or replace clinician judgment.</li>
+      <li>It performs worse at an unseen hospital, showing that local workflow and measurement practices matter.</li>
+      <li>Measurement patterns can reflect tests clinicians already chose to order. Septris may partly prioritize patients the care team was already investigating.</li>
+      <li>The simulated ward places patients from different historical time periods side by side, so it is not a real ICU deployment.</li>
+      <li>A prospective silent trial, local calibration, clinician feedback, fairness analysis, and outcome study are required before clinical use.</li>
     </ul>
-    <p class="small muted">Team: Miheer Parasnis, Aaron Qin, Reyansh Maheshwari · Veritas AI Hackathon 2026, AI + Health. Data: PhysioNet/CinC Challenge 2019 (CC BY 4.0). Prototype; not medical advice.</p>`;
+    <p class="small muted">Team: Miheer Parasnis, Aaron Qin, Reyansh Maheshwari<br>Veritas AI Hackathon 2026 · AI + Health<br>Data: PhysioNet/CinC Challenge 2019, CC BY 4.0<br>Prototype · Not medical advice · Clinician review required</p>`;
 }
 
 export function faqHTML(data) {
   const k = data.meta.k;
   const qa = [
     ["What is sepsis?", "Sepsis is the body's extreme reaction to an infection. It can damage organs within hours. Each hour of delayed treatment raises the risk of death. That is why spotting it early matters."],
-    ["What problem does Septris solve?", `Checking one chart for signs of sepsis takes real time, and one nurse may cover 20 beds. Septris answers one question: whose chart should the nurse open next? This page shows ${k} chart checks per 12-hour shift. We also tested 1, 2 and 3.`],
+    ["What problem does Septris solve?", `Checking one chart for signs of sepsis takes real time, and one nurse may cover 20 beds. Septris answers one question: whose chart should the nurse open next? The ward shows ${k} chart checks per 12-hour shift as a demonstration. The reported results use 3 per shift.`],
     ["What do the colours mean?", "Blue: check this bed now. Red: high risk (top 5% of ICU hours). Yellow: medium risk (top 20%). Green: low risk. Grey: checked in the last 12 hours, so skipped for now."],
     ["What does “risk score 92 of 100” mean?", "It is a ranking. This patient's data right now looks more worrying than about 92% of ICU hours at the training hospital. It does not tell you the chance of having sepsis."],
     ["How do you know if a pick was right?", "These are real patients from past records, so each stay is already written down. Septris only gets the data up to each moment. Afterwards we look at the record. If sepsis was recorded 6–12 hours after the chart check, the patient counts as caught early."],

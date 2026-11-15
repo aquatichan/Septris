@@ -39,6 +39,7 @@ vec3 hsv2rgb(vec3 c) {
 float Star(vec2 uv, float flare) {
   float d = length(uv);
   float m = uStarGlow / d;
+  m = m * m * 1.4; // squared falloff: a crisp point instead of a soft blob
   float rays = smoothstep(0.0, 1.0, 1.0 - abs(uv.x * uv.y * 1000.0));
   m += rays * flare * uFlareGain;
   uv *= MAT45;
@@ -56,6 +57,7 @@ vec3 StarLayer(vec2 uv) {
     vec2 si = id + offset;
     float seed = Hash21(si);
     float size = fract(seed * 345.32);
+    if (size < 0.45) continue; // fewer, brighter stars
     float glossLocal = tri(uGloss / (PERIOD * seed + 1.0));
     float flareSize = smoothstep(0.9, 1.0, size) * glossLocal;
     float red = smoothstep(STAR_COLOR_CUTOFF, 1.0, Hash21(si + 1.0)) + STAR_COLOR_CUTOFF;
@@ -87,12 +89,12 @@ void main() {
     float fade = depth * smoothstep(1.0, 0.9, depth);
     col += StarLayer(uv * scale + vec2(i * 453.32)) * fade;
   }
-  gl_FragColor = vec4(uBackground + col, 1.0);
+  gl_FragColor = vec4(min(uBackground + col, vec3(1.0)), 1.0); // capped so the bloom pass doesn't smear stars
 }`;
 
 /** Adds the sky to the scene. It follows the camera, so it is always behind everything. */
-export function createGalaxy(world, { density = 1, hueShift = 190, saturation = 0.35, glowIntensity = 0.3, twinkleIntensity = 0.3,
-  rotationSpeed = 0.03, starSpeed = 0.35, speed = 1, flareIntensity = 0.12, starGlow = 0.6 } = {}) {
+export function createGalaxy(world, { density = 0.8, hueShift = 190, saturation = 0.35, glowIntensity = 0.3, twinkleIntensity = 0.3,
+  rotationSpeed = 0.03, starSpeed = 0.35, speed = 1, flareIntensity = 0.06, starGlow = 1.1 } = {}) {
   const { scene, camera, renderer } = world;
   const uniforms = {
     uTime: { value: 0 }, uResolution: { value: new THREE.Vector2(1, 1) }, uGloss: { value: 0 }, uDepth: { value: 0 },

@@ -28,7 +28,7 @@
     <div class="hud-top">
       <a class="brand" href="#" aria-label="Septris home">
         <img src="assets/septris-logo.png" alt="Septris" width="150" height="35">
-        <span class="brand-tag">Which ICU patient to check next for sepsis</span>
+        <span class="brand-tag">Sepsis triage: which ICU chart to check next</span>
       </a>
       <nav class="pages" aria-label="Sections">
         <button class="pg on" data-page="">Ward</button>
@@ -38,7 +38,7 @@
       </nav>
       <nav class="viewbar" aria-label="View">
         <button id="overview" class="vb" title="Zoom out to see the whole ward"><svg viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>Overview</button>
-        <button id="beNurse" class="vb" title="See through the charge nurse's eyes as she follows Septris. Use W A S D to roam on your own"><svg viewBox="0 0 24 24"><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12z"/><circle cx="12" cy="12" r="2.6"/></svg>Be the nurse</button>
+        <button id="beNurse" class="vb" title="Step into the ward: be the charge nurse, or roam freely"><svg viewBox="0 0 24 24"><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12z"/><circle cx="12" cy="12" r="2.6"/></svg>First-person mode</button>
         <button id="startTour" class="vb" title="A two-minute guided tour"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .9-1 1.6v.6M12 17.2v.1"/></svg>Tour</button>
         <button id="replayIntro" class="vb" title="Ride the elevator in again"><svg viewBox="0 0 24 24"><path d="M4 12a8 8 0 1 0 2.4-5.7M4 4v4h4"/></svg>Replay intro</button>
         <button id="sound" class="vb" title="Sound"></button>
@@ -57,11 +57,19 @@
   </header>
 
   <div class="leftcol">
+    <aside id="nextCard" class="card nextcard" aria-label="Check next" aria-live="polite"></aside>
+    <aside class="card admitcard" aria-label="Admit a patient">
+      <div class="eyebrow">New admission</div>
+      <p>Enter a patient's vital signs and labs. Septris scores them and ranks them against every bed in seconds.</p>
+      <button id="admitBig" class="btn add wide">＋ Admit a patient</button>
+    </aside>
     <aside id="examples" class="examples card" aria-label="Jump to an example">
-      <div class="eyebrow">See an example</div>
-      <button class="ex" data-kind="good"><i class="dot good"></i>Sepsis caught early</button>
-      <button class="ex" data-kind="miss"><i class="dot miss"></i>A patient it missed</button>
-      <button class="ex" data-kind="false"><i class="dot false"></i>A false alarm</button>
+      <div class="eyebrow">Examples from the record</div>
+      <div class="exrow2">
+        <button class="ex" data-kind="good"><i class="dot good"></i>Caught early</button>
+        <button class="ex" data-kind="miss"><i class="dot miss"></i>Missed</button>
+        <button class="ex" data-kind="false"><i class="dot false"></i>False alarm</button>
+      </div>
     </aside>
   </div>
 

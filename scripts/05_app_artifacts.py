@@ -19,6 +19,7 @@ Artifacts:
 """
 
 import json
+import os
 import sys
 from pathlib import Path
 
@@ -35,7 +36,13 @@ from src.labels import ELIGIBLE  # noqa: E402
 RES = ROOT / "outputs/results"
 ART = ROOT / "app/artifacts"
 SEL = ROOT / "outputs/blend_selection.json"
-DEPLOY = "blend" if SEL.exists() else "lgbm_combined"
+# Final Septris policy: the Platt-calibrated LightGBM + GRU blend whose weight was
+# chosen on validation patients only (09_validated_ensemble.py). The earlier
+# "higher of the two" mix ("blend") can still be shown with SEPTRIS_DEPLOY=blend.
+ENS = ROOT / "outputs/ensemble_selection.json"
+DEPLOY = os.environ.get("SEPTRIS_DEPLOY") or (
+    "lgbm_gru_blend" if (ROOT / "data/processed/scores/A_lgbm_gru_blend.npy").exists()
+    else "blend" if SEL.exists() else "lgbm_combined")
 POLICY = f"A:{DEPLOY}"
 K_DEMO = 5
 SEED_DEMO = 1
@@ -309,7 +316,16 @@ def main():
             (ART / f).write_bytes(src.read_bytes())
     (ART / "failure_cases.json").unlink(missing_ok=True)
     (ART / "tiers.json").write_text(json.dumps({"high": float(hi_cut), "medium": float(med_cut)}))
-    if DEPLOY == "blend":
+    if DEPLOY == "lgbm_gru_blend":
+        ens = json.loads(ENS.read_text())["models"]["A"]["chosen"]
+        w = float(ens["alpha_lgbm"])
+        label = f"calibrated blend: {100 * w:.0f}% LightGBM + {100 * (1 - w):.0f}% GRU"
+        sel = {"kind": "platt"}
+        model_text = (f"Septris combines two models. LightGBM, a decision-tree model, reads summaries of the last few "
+                      "hours. A masked temporal GRU, a deep-learning model, reads each patient's history hour by hour. "
+                      "Both scores are calibrated on one group of validation patients; the weight was then chosen on a "
+                      f"second, separate group of validation patients: {100 * w:.0f}% LightGBM + {100 * (1 - w):.0f}% GRU.")
+    elif DEPLOY == "blend":
         w = lgbm_weight()
         kind = sel["kind"]
         gru_txt = ("a GRU, a deep-learning model built by Miheer that reads each patient's hours in order: the "

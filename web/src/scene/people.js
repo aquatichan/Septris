@@ -220,6 +220,7 @@ export function makeWalker(person, speed = 1.35) {
   const pos = person.group.position;
   return {
     go(points) { path = points.map((p) => p.clone()); },
+    setSpeed(s) { speed = s; },
     get moving() { return path.length > 0; },
     step(dt) {
       if (!path.length) return false;

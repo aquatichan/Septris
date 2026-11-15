@@ -1,10 +1,10 @@
 {
- "policy_key": "blend",
- "policy_label": "LightGBM + GRU, whichever is more worried",
- "kind": "max",
- "lightgbm_weight": 0.5,
- "model_text": "Septris combines two models: LightGBM, a decision-tree model that reads hand-made summaries of the last few hours (current values, recent changes, 6-hour highs and lows, which tests were done when); and a GRU, a deep-learning model built by Miheer that reads each patient's hours in order: the hour-by-hour vital signs and lab results, which ones were actually measured, and how long ago each was last measured, plus age and sex. Each model gives every bed a 0-100 risk, and Septris uses the <b>higher</b> of the two, so a bed moves up the line if <i>either</i> model is worried about it. We tried 8 ways of using the two models (each alone, 3 weighted averages, taking the higher of the two, and taking turns), judged only on validation patients, never on the test patients. This 'whichever is more worried' mix came out on top, essentially tied with the GRU alone. The 'what stood out' reasons come from whichever model gave the higher risk: LightGBM's built-in feature contributions, or, for the GRU, hiding each measurement for the last 12 hours and seeing how much its risk drops.",
- "comparison_html": "<p><b>LightGBM vs Miheer's GRU vs the Septris mix</b>, caught in time out of 100 sepsis patients (bold = the better of the two single models):</p><table style='width:100%; border-collapse:collapse; font-size:15px'><tr style='text-align:left; border-bottom:1px solid #d0d5dd'><th>Reviews per shift</th><th>Tested on</th><th>LightGBM</th><th>GRU</th><th>Septris mix</th></tr><tr><td>3</td><td>Hospital A, trained there</td><td>25.1</td><td><b>26.1</b></td><td style='color:#1d4ed8'><b>26.2</b></td></tr><tr><td>3</td><td>Hospital A, trained at B (never saw A)</td><td>15.5</td><td><b>21.5</b></td><td style='color:#1d4ed8'><b>21.8</b></td></tr><tr><td>3</td><td>Hospital B, trained there</td><td>26.3</td><td><b>29.6</b></td><td style='color:#1d4ed8'><b>30.9</b></td></tr><tr><td>3</td><td>Hospital B, trained at A (never saw B)</td><td>23.7</td><td><b>26.3</b></td><td style='color:#1d4ed8'><b>24.6</b></td></tr><tr><td>5</td><td>Hospital A, trained there</td><td>32.9</td><td><b>33.4</b></td><td style='color:#1d4ed8'><b>33.2</b></td></tr><tr><td>5</td><td>Hospital A, trained at B (never saw A)</td><td>24.9</td><td><b>28.1</b></td><td style='color:#1d4ed8'><b>25.5</b></td></tr><tr><td>5</td><td>Hospital B, trained there</td><td>35.1</td><td><b>36.0</b></td><td style='color:#1d4ed8'><b>37.6</b></td></tr><tr><td>5</td><td>Hospital B, trained at A (never saw B)</td><td>30.3</td><td><b>30.4</b></td><td style='color:#1d4ed8'><b>31.5</b></td></tr></table>",
+ "policy_key": "lgbm_gru_blend",
+ "policy_label": "calibrated blend: 20% LightGBM + 80% GRU",
+ "kind": "platt",
+ "lightgbm_weight": 0.2,
+ "model_text": "Septris combines two models. LightGBM, a decision-tree model, reads summaries of the last few hours. A masked temporal GRU, a deep-learning model, reads each patient's history hour by hour. Both scores are calibrated on one group of validation patients; the weight was then chosen on a second, separate group of validation patients: 20% LightGBM + 80% GRU.",
+ "comparison_html": "<p><b>LightGBM vs Miheer's GRU vs the Septris mix</b>, caught in time out of 100 sepsis patients (bold = the better of the two single models):</p><table style='width:100%; border-collapse:collapse; font-size:15px'><tr style='text-align:left; border-bottom:1px solid #d0d5dd'><th>Reviews per shift</th><th>Tested on</th><th>LightGBM</th><th>GRU</th><th>Septris mix</th></tr><tr><td>3</td><td>Hospital A, trained there</td><td>25.1</td><td><b>26.1</b></td><td style='color:#1d4ed8'><b>26.6</b></td></tr><tr><td>3</td><td>Hospital A, trained at B (never saw A)</td><td>15.5</td><td><b>21.5</b></td><td style='color:#1d4ed8'><b>22.6</b></td></tr><tr><td>3</td><td>Hospital B, trained there</td><td>26.3</td><td><b>29.6</b></td><td style='color:#1d4ed8'><b>31.6</b></td></tr><tr><td>3</td><td>Hospital B, trained at A (never saw B)</td><td>23.7</td><td><b>26.3</b></td><td style='color:#1d4ed8'><b>24.0</b></td></tr><tr><td>5</td><td>Hospital A, trained there</td><td>32.9</td><td><b>33.4</b></td><td style='color:#1d4ed8'><b>nan</b></td></tr><tr><td>5</td><td>Hospital A, trained at B (never saw A)</td><td>24.9</td><td><b>28.1</b></td><td style='color:#1d4ed8'><b>nan</b></td></tr><tr><td>5</td><td>Hospital B, trained there</td><td>35.1</td><td><b>36.0</b></td><td style='color:#1d4ed8'><b>nan</b></td></tr><tr><td>5</td><td>Hospital B, trained at A (never saw B)</td><td>30.3</td><td><b>30.4</b></td><td style='color:#1d4ed8'><b>nan</b></td></tr></table>",
  "k": 5,
  "seed": 1,
  "beds": 20,
@@ -12,8 +12,8 @@
  "eligible_septic": 238,
  "days": 249.3,
  "reviews": 2476,
- "sb_caught6": 82,
+ "sb_caught6": 86,
  "random_caught6": 31,
- "sb_false": 2251,
+ "sb_false": 2254,
  "random_false": 2393
 }

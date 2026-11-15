@@ -26,11 +26,12 @@ function obstacles() {
   return o;
 }
 
-function walkable(x, z, obs) {
+function walkable(x, z, obs, ignoreObstacles = false) {
   const inWard = x > -22 + R && x < 22 - R && z > -11 + R && z < 11 - R;
   const inDoor = x >= 21 && x <= 23 && z > -3.5 + R && z < 3.5 - R;
   const inLobby = x > LOBBY.x0 + R && x < LOBBY.x1 - R - 0.1 && z > -LOBBY.halfZ + R && z < LOBBY.halfZ - R;
   if (!inWard && !inDoor && !inLobby) return false;
+  if (ignoreObstacles) return true;
   return !obs.some(([x0, x1, z0, z1]) => x > x0 - R && x < x1 + R && z > z0 - R && z < z1 + R);
 }
 
@@ -87,14 +88,14 @@ export function createViews(world, { nurse, onChange }) {
       const side = (keys.has("d") ? 1 : 0) - (keys.has("a") ? 1 : 0);
       yaw += ((keys.has("arrowleft") ? 1 : 0) - (keys.has("arrowright") ? 1 : 0)) * dt * 1.8; // arrows turn
       if (fwd || side) {
-        const speed = (keys.has("shift") ? 3.2 : 1.6) * dt;
+        const speed = (keys.has("shift") ? 4.6 : 2.7) * dt;
         const sx = Math.sin(yaw), cz = Math.cos(yaw);
         const len = Math.hypot(fwd, side);
         const dx = ((sx * fwd - cz * side) / len) * speed, dz = ((cz * fwd + sx * side) / len) * speed;
         const p = camera.position;
         const stuck = !walkable(p.x, p.z, obs); // stepped out of the nurse inside a tight spot: let them walk free
-        if (stuck || walkable(p.x + dx, p.z, obs)) p.x += dx; // slide along walls
-        if (stuck || walkable(p.x, p.z + dz, obs)) p.z += dz;
+        if (walkable(p.x + dx, p.z, obs, stuck)) p.x += dx; // slide along walls (never through them)
+        if (walkable(p.x, p.z + dz, obs, stuck)) p.z += dz;
         world.stepT = (world.stepT || 0) + speed * 5.5;
       }
       camera.position.y = EYE + Math.sin(world.stepT || 0) * 0.018; // footsteps
@@ -147,6 +148,10 @@ export function createViews(world, { nurse, onChange }) {
 
   return {
     nurse: enter, exit,
+    /** step out of the nurse now (the 3-second return timer starts) */
+    roam() { if (mode) touch(); },
+    /** jump straight back into the nurse */
+    follow() { if (mode && roaming) { roaming = false; nurse.person.group.visible = false; onChange?.(mode, false); } },
     get mode() { return mode; },
     get roaming() { return roaming; },
     secondsToReturn: () => Math.max(0, Math.ceil(RETURN_AFTER - (performance.now() / 1000 - lastInput))),

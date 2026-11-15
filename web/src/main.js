@@ -57,28 +57,60 @@ async function main() {
   queueMicrotask(() => Object.assign(window.__septris, { views, paper, bedsView }));
   const bedsView = createBeds(world, (bed) => selectBed(bed), lobby);
   // first-person views; while one is on, the orbit camera moves are ignored
-  const views = createViews(world, { nurse: bedsView.nurse, onChange: (m) => syncViews(m) });
+  const views = createViews(world, { nurse: bedsView.nurse, onChange: (m, r) => syncViews(m, r) });
   const orbitBed = rig.bed, orbitOverview = rig.overview;
   rig.bed = (b) => { if (!views.mode) orbitBed(b); };
   rig.overview = () => { if (!views.mode) orbitOverview(); };
   const toOverview = () => { views.exit(); orbitOverview(); };
+  let paperFor = null;
   const paper = createPaper({ el: $("paper"), getData: () => data, getState: () => state });
   function syncViews(m, roaming) {
     $("beNurse").classList.toggle("on", !!m);
     $("viewHint").hidden = !m;
-    $("viewHint").innerHTML = !m ? "" : roaming
-      ? `<b>Exploring on your own.</b> W A S D or arrows to move · drag to look · Shift to hurry · click any bed for its chart · back to the nurse after 3 s · <kbd>Esc</kbd> to leave`
-      : `<b>You are the charge nurse.</b> She walks to each bed Septris picks and pulls out the chart. Tick your decisions and sign · press W A S D to roam · <kbd>Esc</kbd> to leave`;
-    if (!m) { paper.hide(); orbitOverview(); }
+    bedsView.nurse.setFixedTime(!m || !!roaming); // natural walking pace only when you are her
+    if (m && !roaming) paperFor = null; // back in the nurse: lift the current chart again
+    if (!m) { $("viewHint").innerHTML = ""; paper.hide(); orbitOverview(); return; }
+    $("viewHint").innerHTML = `
+      <div class="fpm"><span class="fpm-title">First-person mode</span>
+        <div class="seg2" role="group" aria-label="First-person sub-mode">
+          <button data-fp="nurse" class="${roaming ? "" : "on"}">Be the nurse</button>
+          <button data-fp="roam" class="${roaming ? "on" : ""}">Roam freely</button>
+        </div>
+        <button data-fp="exit" class="fpm-exit">Leave <kbd>Esc</kbd></button></div>
+      <div class="fpm-text">${roaming
+        ? `Walk with <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> or the arrow keys, drag to look, hold <kbd>Shift</kbd> to hurry. Walk up to a bed and its chart comes up. <b>Stand still for 3 seconds and you become the nurse again<span id="fpCount"></span>.</b>`
+        : `You see through the charge nurse's eyes. She walks to each bed Septris picks and lifts the chart on her clipboard. Nothing to control. Press <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> any time to roam on your own.`}</div>`;
   }
+  $("viewHint").addEventListener("click", (e) => {
+    const b = e.target.closest("[data-fp]");
+    if (!b) return;
+    if (b.dataset.fp === "roam") views.roam();
+    else if (b.dataset.fp === "nurse") views.follow();
+    else { views.exit(); set({ playing: false }); }
+  });
+  // countdown back to the nurse, and charts that come up as you walk past beds
+  let nearBed = null;
+  setInterval(() => {
+    if (!views.mode || !views.roaming) { nearBed = null; return; }
+    const c = $("fpCount");
+    if (c) c.textContent = ` (${views.secondsToReturn()})`;
+    const cam = world.camera.position;
+    let best = null, bestD = 2.8;
+    for (let b = 1; b <= 20; b++) {
+      const p = bayPosition(b), d = Math.hypot(cam.x - p.x, cam.z - p.z);
+      if (d < bestD) { best = b; bestD = d; }
+    }
+    if (best) { nearBed = best; paper.show(best); } // show() only re-renders when the bed or the time changed
+    if (!best && nearBed) { nearBed = null; paper.hide(); }
+  }, 250);
   // the chart flies in when the nurse reaches the bed, and goes away when she sets off
-  let paperFor = null;
   setInterval(() => {
     if (views.mode !== "nurse") return;
     const s = slotAt(data, state.slot);
     const idle = bedsView.nurse.idleFor();
-    if (idle > 0.6 && paperFor !== state.slot && !views.roaming) { paperFor = state.slot; paper.show(s.bed); }
-    if (idle === 0 && paper.open && !paper.busy() && paperFor !== state.slot) paper.hide();
+    if (views.roaming) return;
+    if (idle > 0.6 && paperFor !== state.slot) { paperFor = state.slot; paper.show(s.bed); }
+    if (idle === 0 && paper.open && paperFor !== state.slot) paper.hide();
   }, 250);
   createStaff(world, bayPosition);
   world.onDoors = () => audio.elevatorDoors();
@@ -184,7 +216,7 @@ async function main() {
     $("page").hidden = !state.page;
     document.body.classList.toggle("paged", !!state.page);
     document.querySelectorAll(".pg").forEach((b) => b.classList.toggle("on", b.dataset.page === state.page));
-    if (state.page === "results") $("pageBody").innerHTML = resultsHTML(data, resultsK);
+    if (state.page === "results") $("pageBody").innerHTML = resultsHTML(data);
     if (state.page === "model") $("pageBody").innerHTML = modelHTML(data);
     if (state.page === "faq") $("pageBody").innerHTML = faqHTML(data);
     // running tally of early predictions
@@ -218,6 +250,23 @@ async function main() {
     if (key && key !== renderNote.last) audio.chime(f && f.slot === state.slot && f.kind === "miss" ? "alarm" : hit ? "caught" : "select");
     renderNote.last = key;
   }
+  // the tool's core answer, always in view: whose chart to open next, then who is after them
+  function renderNext() {
+    const s = slotAt(data, state.slot);
+    const all = beds(data, state.slot);
+    const pick = all.find((r) => r.picked);
+    if (!pick) { $("nextCard").innerHTML = ""; return; }
+    const then = all.filter((r) => !r.picked && !r.snoozed).sort((a, b) => a.rank - b.rank).slice(0, 3);
+    const reason = (s.reasons || "").split(" | ").filter(Boolean)[0];
+    const tier = ["Low", "Medium", "High"][pick.tier], cls = ["low", "med", "high"][pick.tier];
+    $("nextCard").innerHTML = `
+      <div class="eyebrow">Check next · ${s.clock}</div>
+      <div class="nc-main"><b>Bed ${pick.bed}</b><span class="nc-score"><i>${pick.percentile}</i>/100</span><span class="pill ${cls}">${tier} risk</span></div>
+      ${reason ? `<p class="nc-why">${reason.charAt(0).toUpperCase() + reason.slice(1)}</p>` : ""}
+      <button class="btn on wide" data-bed="${pick.bed}">Open Bed ${pick.bed}'s chart</button>
+      <div class="nc-then"><span>Then</span>${then.map((r) => `<button data-bed="${r.bed}">Bed ${r.bed} <i>${r.percentile}</i></button>`).join("")}</div>`;
+  }
+
   function render(patch) {
     const s = slotAt(data, state.slot);
     if (!patch || "slot" in patch || "showKey" in patch || "selectedBed" in patch || "focus" in patch || "manualVersion" in patch) {
@@ -225,6 +274,7 @@ async function main() {
     }
     renderHud();
     renderPanel();
+    renderNext();
     renderNote();
     renderTour($("tour"), steps, state.tourStep, {
       onNext: () => (state.tourStep >= steps.length - 1 ? set({ tourStep: null, showKey: true }) : set({ tourStep: state.tourStep + 1 })),
@@ -320,6 +370,8 @@ async function main() {
   $("admitForm").oninput = refreshEstimate;
   $("admitCancel").onclick = closeAdmit;
   $("addPatient").onclick = () => openAdmit();
+  $("admitBig").onclick = () => openAdmit();
+  $("nextCard").onclick = (e) => { const b = e.target.closest("[data-bed]"); if (b) selectBed(Number(b.dataset.bed)); };
   $("admitForm").onsubmit = (e) => {
     e.preventDefault();
     const values = formValues();
@@ -417,7 +469,7 @@ async function main() {
     if (!state.playing || state.tourStep != null) return;
     const now = performance.now();
     // as the nurse: give her time at the bed, and never move on while a chart is half filled in
-    if (now - lastAdvance < 3400 || (views.mode === "nurse" && (bedsView.nurse.idleFor() < 4 || paper.shownFor() < 9 || paper.busy()))) return;
+    if (now - lastAdvance < 3400 || (views.mode === "nurse" && (bedsView.nurse.idleFor() < 4 || paper.shownFor() < 7))) return;
     lastAdvance = now;
     goSlot(state.slot + 1, { focus: null });
   }, 500);
@@ -460,6 +512,7 @@ async function main() {
   if (seen) {
     rig.intro(lobby, {}); rig.skipIntro();
     $("splash").hidden = true;
+    set({ tourStep: 0 }); // every visit starts with the tour; the Tour button replays it
   } else {
     document.body.classList.add("intro");
     rig.intro(lobby, {}); rig.pause(true); // hold inside the elevator until they click

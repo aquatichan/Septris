@@ -87,14 +87,15 @@ def main():
                 "hi": round(100 * r.caught6_hi, 1), "false_per_shift": round(r.false_per_shift, 2),
                 "eligible": int(r.eligible)}
 
-    results = {str(k): {T: {"septris": pol(T, "blend", k), "septris_new_hospital": pol(T, "blend", k, False),
+    final = demo.get("policy_key", "lgbm_gru_blend")
+    results = {str(k): {T: {"septris": pol(T, final, k), "septris_new_hospital": pol(T, final, k, False),
                             "lightgbm": pol(T, "lgbm_combined", k), "gru": pol(T, "temporal_gru", k),
                             "sirs": pol(T, "sirs", k), "random": pol(T, "random", k)} for T in "AB"}
                for k in (1, 2, 3, 5)}
 
     hm = pd.read_csv(ART / "hourly_metrics.csv")
     ut = pd.read_csv(ART / "utility_scores.csv")
-    names = {"blend": "septris", "lgbm_combined": "lightgbm", "temporal_gru": "gru"}
+    names = {demo.get("policy_key", "lgbm_gru_blend"): "septris", "lgbm_combined": "lightgbm", "temporal_gru": "gru"}
     quality = {}
     for m, key in names.items():
         for r in hm[hm.model == m].itertuples():

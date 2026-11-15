@@ -393,6 +393,7 @@ export function createBeds(world, onSelect, lobby) {
   nurse.group.position.set(1.2, 0, 2.2);
   scene.add(nurse.group);
   const nurseWalk = makeWalker(nurse, 3.2); // brisk: she is on her way to a patient
+  let fixedTime = true;
   let nurseBed = null, nurseFace = 0, wasWalking = false, nurseArrived = performance.now() / 1000;
   world.onFrame((dt, t) => {
     if (nurseWalk.step(dt)) { nurse.armR.rotation.x = -0.35; nurse.armR.userData.elbow.rotation.x = -1.3; wasWalking = true; return; }
@@ -410,7 +411,15 @@ export function createBeds(world, onSelect, lobby) {
     const goal = new THREE.Vector3(pb.x - 1.25 * side, 0, pb.z + 0.9 * side);
     nurseFace = Math.atan2(pb.x - goal.x, pb.z + (pb.z < 0 ? 0.3 : -0.3) - goal.z);
     if (instant) { nurse.group.position.copy(goal); nurse.group.rotation.y = nurseFace; nurseWalk.go([]); nurseArrived = performance.now() / 1000; }
-    else nurseWalk.go(corridorRoute(nurse.group.position, goal));
+    else {
+      const route = corridorRoute(nurse.group.position, goal);
+      let len = 0, prev = nurse.group.position;
+      for (const q of route) { len += Math.hypot(q.x - prev.x, q.z - prev.z); prev = q; }
+      // seen from above she always reaches the bed in about 2.4 s, like the gurneys;
+      // in first person she walks at a natural pace
+      nurseWalk.setSpeed(fixedTime ? Math.max(3.2, len / 2.4) : 3.2);
+      nurseWalk.go(route);
+    }
   }
 
   let lastSlot = null, lastVersion = 0, lastNurseSlot = null;
@@ -501,6 +510,7 @@ export function createBeds(world, onSelect, lobby) {
       /** seconds she has been standing at the current bed (0 while walking) */
       idleFor: () => (nurseWalk.moving ? 0 : performance.now() / 1000 - nurseArrived),
       facing: () => nurseFace,
+      setFixedTime(on) { fixedTime = on; nurseWalk.setSpeed(on ? 6 : 3.2); },
     },
   };
 }
