@@ -1,0 +1,64 @@
+{
+  "method": {
+    "name": "feature-range familiarity guard",
+    "description": "Flags feature patterns outside source-hospital validation range; does not alter model scores.",
+    "feature_quantile": 0.01,
+    "validation_abstention_rate": 0.05
+  },
+  "source_models": {
+    "A": {
+      "threshold": 0.020304568111896515,
+      "n_features": 197,
+      "validation": {
+        "median_out_of_range_share": 0.005076142027974129,
+        "unfamiliar_share": 0.04953492305090479,
+        "threshold": 0.020304568111896515,
+        "feature_quantile": 0.01,
+        "n_features": 197
+      },
+      "test_hospitals": {
+        "A": {
+          "median_out_of_range_share": 0.005076142027974129,
+          "unfamiliar_share": 0.04961370194545285,
+          "threshold": 0.020304568111896515,
+          "feature_quantile": 0.01,
+          "n_features": 197
+        },
+        "B": {
+          "median_out_of_range_share": 0.005076142027974129,
+          "unfamiliar_share": 0.11477234580116256,
+          "threshold": 0.020304568111896515,
+          "feature_quantile": 0.01,
+          "n_features": 197
+        }
+      }
+    },
+    "B": {
+      "threshold": 0.025380710139870644,
+      "n_features": 197,
+      "validation": {
+        "median_out_of_range_share": 0.005076142027974129,
+        "unfamiliar_share": 0.03472864596898041,
+        "threshold": 0.025380710139870644,
+        "feature_quantile": 0.01,
+        "n_features": 197
+      },
+      "test_hospitals": {
+        "A": {
+          "median_out_of_range_share": 0.015228426083922386,
+          "unfamiliar_share": 0.1947483773789275,
+          "threshold": 0.025380710139870644,
+          "feature_quantile": 0.01,
+          "n_features": 197
+        },
+        "B": {
+          "median_out_of_range_share": 0.005076142027974129,
+          "unfamiliar_share": 0.033728511104436476,
+          "threshold": 0.025380710139870644,
+          "feature_quantile": 0.01,
+          "n_features": 197
+        }
+      }
+    }
+  }
+}
