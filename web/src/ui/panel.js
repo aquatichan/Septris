@@ -288,7 +288,7 @@ export function faqHTML(data) {
     ["Why are most picks false alarms?", "Only about 8% of these ICU patients ever develop sepsis, and at any moment very few are 6–12 hours away from it. Usually there is no one to catch. What matters is catching more real cases with the same nurse time."],
     ["Can I add my own patient?", "Yes. Click “＋ Add a patient” at the top of the ward, type in their readings (or use an example), and choose how long they stay. They are wheeled in from the elevator, scored, and ranked with the other beds. In a real hospital this information would come in automatically from the patient record."],
     ["Does it diagnose sepsis?", "No. It never diagnoses or recommends treatment. It only orders the nurse's review list and explains why."],
-    ["Can I control it by voice?", "Yes, when the page is allowed to use the microphone. You can also type: “show bed 6”, “next review”, “next shift”, “queue”, “results”, “show me a miss”, “why?”, “zoom out”, “play”."],
+    ["Can I control it by voice?", "Yes, when the page is allowed to use the microphone. You can also type: “add John, a 62 year old man, with heart rate 118 and temperature 38.6 to bed 4”, “show bed 6”, “next review”, “next shift”, “queue”, “results”, “show me a miss”, “why?”, “zoom out”, “play”."],
   ];
   return `<h2>Questions</h2>${qa.map(([q, a]) => `<h3>${q}</h3><p>${a}</p>`).join("")}`;
 }

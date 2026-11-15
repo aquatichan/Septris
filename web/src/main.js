@@ -110,7 +110,7 @@ async function main() {
       case "key": set({ showKey: a.on }); break;
       case "tab": set({ tab: a.tab }); break;
       case "tour": set({ tourStep: 0 }); break;
-      case "admit": openAdmit(); break;
+      case "admit": admitFromCommand(a.details); break;
     }
     if (spoken && a.type !== "explain" && state.narrate) speakPick();
   }
@@ -231,6 +231,28 @@ async function main() {
     refreshEstimate();
     $("admit").hidden = false;
     (m ? $(`f_${FIELDS[0].key}`) : $("f_name")).focus();
+  }
+  /** "add John who is 32 with heart rate 118 to bed 4": fill the form from the sentence and admit if enough was heard. */
+  function admitFromCommand(d) {
+    openAdmit();
+    if (!d) return;
+    if (d.name) $("f_name").value = d.name;
+    if (d.age != null) $("f_age").value = d.age;
+    if (d.sex) $("f_sex").value = d.sex;
+    if (d.bed >= 1 && d.bed <= 20) $("f_bed").value = String(d.bed);
+    if (d.stay) $("f_stay").value = d.stay;
+    for (const f of FIELDS) $(`f_${f.key}`).value = d.values[f.key] ?? "";
+    refreshEstimate();
+    const missing = [];
+    if (d.age == null) missing.push("age");
+    if (!d.sex) missing.push("man or woman");
+    if (!Object.keys(d.values).length) missing.push("at least one reading");
+    if (missing.length) {
+      $("admitError").textContent = `I filled in what I heard. Still needed: ${missing.join(", ")}. Add it and press Admit patient.`;
+      $("admitError").hidden = false;
+      return;
+    }
+    $("admitForm").requestSubmit();
   }
   function closeAdmit() { $("admit").hidden = true; editing = null; }
   $("admitFields").innerHTML = FIELDS.map((f) => `<label>${f.label} <span>${f.unit}</span>
