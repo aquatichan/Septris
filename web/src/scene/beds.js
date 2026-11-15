@@ -259,18 +259,20 @@ export function createBeds(world, onSelect, lobby) {
     }
   });
 
-  let lastSlot = null;
+  let lastSlot = null, lastVersion = 0;
   const occupant = new Map(); // bed -> patient index currently shown
 
   function update(data, slotRow, bedRows, st) {
     // patients coming and going: when a bed's occupant changed since the last
     // review shown, the old patient is wheeled to the elevator and the new one in
     const newOcc = new Map(bedRows.map((r) => [r.bed, r.p]));
-    if (lobby && st.slot !== lastSlot) {
+    const edited = st.manualVersion !== lastVersion;
+    lastVersion = st.manualVersion;
+    if (lobby && (st.slot !== lastSlot || edited)) {
       lobby.cancel();
       const changed = [];
       for (let bed = 1; bed <= 20; bed++) if (occupant.get(bed) !== newOcc.get(bed)) changed.push(bed);
-      const stepped = lastSlot != null && Math.abs(st.slot - lastSlot) <= 5 && st.tourStep == null;
+      const stepped = lastSlot != null && Math.abs(st.slot - lastSlot) <= 5 && (st.tourStep == null || edited);
       if (stepped && changed.length && changed.length <= 6) {
         for (const bed of changed) {
           const b = bays.get(bed);
@@ -328,6 +330,7 @@ export function createBeds(world, onSelect, lobby) {
         else if (c === "false") extra = "<small class='line'>false alarm</small>";
         else if (c === "late") extra = "<small class='line'>flagged too late</small>";
       }
+      if (r && r.manual) extra += "<small class='line entered-tag'>entered patient</small>";
       if (bed === missBed) extra += "<small class='warn'>missed</small>";
       b.el.innerHTML = `<span class='long'>Bed </span>${bed}<small class='line'>${line}</small>${extra}`;
     }

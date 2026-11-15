@@ -44,6 +44,7 @@
     <div class="toggles">
       <label class="switch"><input type="checkbox" id="showKey" checked><span>Show outcomes</span></label>
       <label class="switch"><input type="checkbox" id="narrate"><span>Read aloud</span></label>
+      <button id="addPatient" class="btn add">＋ Add a patient</button>
       <button id="overview" class="btn ghost" title="Zoom out to the whole unit">Overview</button>
       <button id="startTour" class="btn ghost">Tour</button>
     </div>
@@ -88,6 +89,29 @@
     <button id="pageClose" class="btn ghost pageclose">✕ Back to the ward</button>
     <div id="pageBody" class="pagebody"></div>
   </section>
+  <div id="admit" class="modal" hidden role="dialog" aria-label="Add a patient">
+    <form id="admitForm" class="modalbox" autocomplete="off" novalidate>
+      <div class="eyebrow" id="admitEyebrow">Check-in desk</div>
+      <h2 id="admitTitle">Add a patient</h2>
+      <p class="small muted" id="admitIntro">In a hospital these readings would arrive automatically from the patient record. Here you can enter them by hand. Leave anything blank that hasn't been measured.</p>
+      <div class="exrow" id="admitExamples"></div>
+      <div class="fgrid" id="admitWho">
+        <label>Name or label<input id="f_name" type="text" maxlength="40" placeholder="e.g. New admission"></label>
+        <label>Age<input id="f_age" type="number" min="18" max="110" value="65"></label>
+        <label>Sex<select id="f_sex"><option value="F">Woman</option><option value="M">Man</option></select></label>
+        <label>Bed<select id="f_bed"></select></label>
+        <label>Expected stay (hours)<input id="f_stay" type="number" min="6" max="240" value="48"></label>
+      </div>
+      <div class="eyebrow">Readings</div>
+      <div class="fgrid" id="admitFields"></div>
+      <div class="estimate" id="admitEstimate"></div>
+      <div class="error" id="admitError" hidden></div>
+      <div class="row">
+        <button type="button" class="btn ghost" id="admitCancel">Cancel</button>
+        <button type="submit" class="btn on" id="admitSubmit">Admit patient</button>
+      </div>
+    </form>
+  </div>
   <div id="tally" class="tally" hidden></div>
   <button id="skipIntro" class="btn skipintro" hidden>Skip intro ▶</button>
   <div id="tour" class="tour" hidden role="dialog" aria-label="Guided tour"></div>

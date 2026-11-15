@@ -12,6 +12,7 @@ export const state = {
   playing: false,      // auto-advance through reviews
   tab: "priority",     // right panel tab
   tourStep: null,      // null when the tour is closed
+  manualVersion: 0,    // bumps whenever an entered patient is added, updated or discharged
   page: "",            // "" = the ward; "results" | "model" | "faq" = full-page sections
 };
 

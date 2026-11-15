@@ -95,7 +95,14 @@ python scripts/13_web_export.py     # rebuild web/data/septris.json from app/art
 cd web && python -m http.server 8000   # then open http://localhost:8000
 ```
 
-Code map: `src/store.js` (shared state), `src/data.js` (loading + wording),
+**Add a patient.** The ward's “＋ Add a patient” form admits a patient typed in
+by hand (readings, bed, expected stay), wheels them in from the elevator,
+and ranks them with the other beds. It shows the step a hospital would
+automate from its record system. Entered patients are scored in the browser
+by a small stand-in model (`scripts/16_lite_model.py` → `web/data/lite.json`),
+which is weaker than the full models and is labelled as such in the app.
+
+Code map: `src/manual.js` (entered patients + the in-browser model), `src/store.js` (shared state), `src/data.js` (loading + wording),
 `src/scene/` (room, beds, camera), `src/ui/` (panel, chart, tour),
 `src/commands.js` (one parser for typed and spoken commands), `src/voice.js`.
 

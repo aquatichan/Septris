@@ -110,3 +110,27 @@ described in [results.md](results.md).
 
 Reproduce: `python scripts/08_temporal_gru.py && python scripts/10_blend.py
 && python scripts/03_evaluate.py && python scripts/11_compare_models.py`.
+
+## Update: 3-seed GRU and Miheer's later candidates
+
+Two more validation-only checks were run after the sections above were
+written; the test tables above predate them.
+
+1. **GRU seed ensemble.** Two more GRU seeds were trained with the same
+   recipe, and the three seeds' validation percentiles averaged. Inside the
+   mix this raised the mean validation catch share from 33.9% to 35.2%, so
+   the ensemble replaced the single GRU. Test results for the mix now: 5
+   reviews per shift, 33.2% (A) and 37.6% (B) at home, 26.1% and 31.9% at
+   the unseen hospital; 3 reviews per shift, 26.2% (A) and 30.9% (B).
+2. **Queue-tuned LightGBM and Platt blend (Miheer).** `scripts/15_final_mix.py`
+   compared 10 combinations on validation patients. max(LightGBM, GRU
+   ensemble) stayed best at 35.2%; swapping in the queue-tuned LightGBM gave
+   34.4%, the highest of all three 35.1%, the Platt blend 33.6%. The mix was
+   therefore left unchanged. For information, at 3 reviews per shift on test
+   patients the Platt blend scores 26.6% (A→A), 31.6% (B→B), 22.6% (B→A) and
+   24.0% (A→B), against the mix's 26.2%, 30.9%, 21.8% and 24.6%: within
+   about a point either way, well inside the bootstrap intervals.
+
+The practical reading: several sensible ways of combining a tree model with
+a sequence model land within a point of each other, and all of them beat
+either model's weak spot (LightGBM at an unseen hospital).

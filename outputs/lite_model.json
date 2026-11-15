@@ -1,0 +1,21 @@
+{
+ "fields": [
+  "HR",
+  "MAP",
+  "Resp",
+  "Temp",
+  "O2Sat",
+  "Lactate",
+  "WBC",
+  "Creatinine",
+  "Platelets",
+  "Age",
+  "Male"
+ ],
+ "n_trees": 58,
+ "auroc": {
+  "lite_val": 0.68,
+  "lite_test": 0.677,
+  "septris_test": 0.792
+ }
+}

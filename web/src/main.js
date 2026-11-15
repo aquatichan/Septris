@@ -1,11 +1,13 @@
 // Entry point: load data, build the 3D unit, wire the HUD, panel, tour,
 // examples and commands to the shared state.
-import { loadData, beds, shiftLabel, ordinal } from "./data.js";
+import { loadData, beds, slotAt, shiftLabel, ordinal } from "./data.js";
+import { FIELDS, EXAMPLES, loadLite, liteRisk, rebuild, admit, addReading, discharge } from "./manual.js";
 import { state, set, subscribe } from "./store.js";
 import { createWorld } from "./scene/world.js";
 import { createBeds } from "./scene/beds.js";
 import { createCameraRig } from "./scene/camera.js";
 import { createLobby } from "./scene/lobby.js";
+import { createDecor } from "./scene/decor.js";
 import { priorityHTML, patientHTML, drawBedChart, queueHTML, resultsHTML, modelHTML, faqHTML } from "./ui/panel.js";
 import { tourSteps, renderTour } from "./ui/tour.js";
 import { parse } from "./commands.js";
@@ -39,6 +41,7 @@ async function main() {
   const world = createWorld($("stage"));
   const rig = createCameraRig(world);
   const lobby = createLobby(world);
+  createDecor(world);
   window.__septris = { lobby, rig, state };
   const bedsView = createBeds(world, (bed) => selectBed(bed), lobby);
   const voice = createVoice({
@@ -50,6 +53,9 @@ async function main() {
       if (msg) $("cmdEcho").textContent = msg;
     },
   });
+  const lite = await loadLite();
+  data.lite = lite;
+  data.manual = [];
   const TOUR = tourSlot(data);
   const steps = tourSteps(data, TOUR);
   let resultsK = data.meta.k;
@@ -82,7 +88,7 @@ async function main() {
     if (kind === "miss") set({ selectedBed: focus.bed });
   }
   function speakPick() {
-    const s = data.slots[state.slot];
+    const s = slotAt(data, state.slot);
     const r = (s.reasons || "").split(" | ").filter(Boolean);
     voice.say(`${s.clock}. Highest priority is bed ${s.bed}. ${r.length ? "What stood out: " + r.join(", ") + "." : ""}`);
   }
@@ -104,13 +110,14 @@ async function main() {
       case "key": set({ showKey: a.on }); break;
       case "tab": set({ tab: a.tab }); break;
       case "tour": set({ tourStep: 0 }); break;
+      case "admit": openAdmit(); break;
     }
     if (spoken && a.type !== "explain" && state.narrate) speakPick();
   }
 
   // ---------- render ----------
   function renderHud() {
-    const s = data.slots[state.slot];
+    const s = slotAt(data, state.slot);
     $("clock").innerHTML = `Day ${s.day} · ${s.clock} <small>${shiftLabel(s)}</small>`;
     const ids = data.shifts.get(s.shift);
     $("reviewChips").innerHTML = ids.map((i) => {
@@ -142,7 +149,7 @@ async function main() {
   function renderNote() {
     const f = state.focus;
     const el = $("note");
-    const s = data.slots[state.slot];
+    const s = slotAt(data, state.slot);
     const hit = state.showKey && (s.review_class === "early6" || s.review_class === "early");
     el.className = "note" + (hit ? " hit" : "");
     let text = "";
@@ -160,8 +167,8 @@ async function main() {
     el.hidden = !text || !!state.page;
   }
   function render(patch) {
-    const s = data.slots[state.slot];
-    if (!patch || "slot" in patch || "showKey" in patch || "selectedBed" in patch || "focus" in patch) {
+    const s = slotAt(data, state.slot);
+    if (!patch || "slot" in patch || "showKey" in patch || "selectedBed" in patch || "focus" in patch || "manualVersion" in patch) {
       bedsView.update(data, s, beds(data, state.slot), state);
     }
     renderHud();
@@ -183,6 +190,102 @@ async function main() {
     }
     render(patch);
   });
+
+  // ---------- add a patient ----------
+  let editing = null; // the entered patient whose readings are being updated, or null when admitting
+  const fval = (id) => $(id).value.trim();
+  function formValues() {
+    return Object.fromEntries(FIELDS.map((f) => [f.key, fval(`f_${f.key}`) === "" ? "" : Number(fval(`f_${f.key}`))]));
+  }
+  function refreshEstimate() {
+    const age = editing ? editing.age : Number(fval("f_age")) || 65;
+    const sex = editing ? editing.sex : $("f_sex").value;
+    const filled = FIELDS.filter((f) => fval(`f_${f.key}`) !== "").length;
+    const pct = liteRisk(lite, { ...formValues(), Age: age, Male: sex === "M" ? 1 : 0 });
+    const tier = pct >= 95 ? ["high", "High"] : pct >= 80 ? ["med", "Medium"] : ["low", "Low"];
+    const el = $("admitEstimate");
+    el.className = `estimate ${tier[0]}`;
+    el.innerHTML = filled
+      ? `Estimated sepsis risk: <b>${pct} of 100</b> · ${tier[1]} · from ${filled} of ${FIELDS.length} readings`
+      : `<span class="muted">Enter at least one reading to see the estimated risk.</span>`;
+  }
+  function openAdmit(m = null) {
+    editing = m;
+    const s = slotAt(data, state.slot);
+    $("admitTitle").textContent = m ? `Update readings: ${m.name}` : "Add a patient";
+    $("admitEyebrow").textContent = `${m ? `Bed ${m.bed}` : "Check-in desk"} · day ${s.day}, ${s.clock}`;
+    $("admitIntro").textContent = m
+      ? "Enter the newest readings. The patient is re-scored from this moment on, and their place in the queue updates."
+      : "In a hospital these readings would arrive automatically from the patient record. Here you can enter them by hand. Leave anything blank that hasn't been measured.";
+    $("admitWho").hidden = !!m;
+    $("admitSubmit").textContent = m ? "Save readings" : "Admit patient";
+    $("admitError").hidden = true;
+    const rows = beds(data, state.slot);
+    const free = [...Array(20)].map((_, i) => i + 1).filter((b) => !rows.some((r) => r.bed === b));
+    const lowest = [...rows].filter((r) => !r.manual && !r.picked).sort((a, b) => a.percentile - b.percentile)[0];
+    const auto = free[0] ?? lowest?.bed ?? 20;
+    $("f_bed").innerHTML = `<option value="${auto}">Auto: Bed ${auto} (${free.length ? "free" : "lowest-risk patient moves out"})</option>`
+      + [...Array(20)].map((_, i) => `<option value="${i + 1}">Bed ${i + 1}${free.includes(i + 1) ? " (free)" : ""}</option>`).join("");
+    const cur = m ? m.readings[m.readings.length - 1].values : {};
+    for (const f of FIELDS) $(`f_${f.key}`).value = cur[f.key] ?? "";
+    refreshEstimate();
+    $("admit").hidden = false;
+    (m ? $(`f_${FIELDS[0].key}`) : $("f_name")).focus();
+  }
+  function closeAdmit() { $("admit").hidden = true; editing = null; }
+  $("admitFields").innerHTML = FIELDS.map((f) => `<label>${f.label} <span>${f.unit}</span>
+    <input id="f_${f.key}" type="number" inputmode="decimal" min="${f.min}" max="${f.max}" step="${f.step ?? 1}" placeholder="${f.lab ? "not measured" : `typical ${lite.typical[f.key]}`}"></label>`).join("");
+  $("admitExamples").innerHTML = Object.entries(EXAMPLES).map(([k, e]) => `<button type="button" class="btn" data-example="${k}">${e.label}</button>`).join("");
+  $("admitExamples").onclick = (e) => {
+    const ex = EXAMPLES[e.target.dataset.example];
+    if (!ex) return;
+    if (!editing) { $("f_name").value = ex.name; $("f_age").value = ex.age; $("f_sex").value = ex.sex; }
+    for (const f of FIELDS) $(`f_${f.key}`).value = ex.values[f.key];
+    refreshEstimate();
+  };
+  $("admitForm").oninput = refreshEstimate;
+  $("admitCancel").onclick = closeAdmit;
+  $("addPatient").onclick = () => openAdmit();
+  $("admitForm").onsubmit = (e) => {
+    e.preventDefault();
+    const values = formValues();
+    const err = (msg) => { $("admitError").textContent = msg; $("admitError").hidden = false; };
+    if (!FIELDS.some((f) => values[f.key] !== "")) return err("Enter at least one reading so the patient can be scored.");
+    for (const f of FIELDS) {
+      const v = values[f.key];
+      if (v !== "" && (Number.isNaN(v) || v < f.min || v > f.max)) return err(`${f.label} should be between ${f.min} and ${f.max} ${f.unit}.`);
+    }
+    const hour = slotAt(data, state.slot).unit_hour;
+    let bed;
+    if (editing) {
+      addReading(editing, hour, values);
+      bed = editing.bed;
+    } else {
+      const age = Number(fval("f_age")), stay = Number(fval("f_stay"));
+      if (!(age >= 18 && age <= 110)) return err("Age should be between 18 and 110.");
+      if (!(stay >= 6 && stay <= 240)) return err("Expected stay should be between 6 and 240 hours.");
+      bed = Number($("f_bed").value);
+      admit(data, { name: fval("f_name"), age, sex: $("f_sex").value, bed, stay: Math.round(stay), values, hour });
+    }
+    rebuild(data, lite);
+    closeAdmit();
+    set({ manualVersion: state.manualVersion + 1, selectedBed: bed, tab: "patient", page: "", focus: null });
+    rig.bed(bed);
+  };
+  $("tab-patient").onclick = (e) => {
+    const act = e.target.dataset.manual;
+    if (!act) return;
+    const s = slotAt(data, state.slot);
+    const r = beds(data, state.slot).find((x) => x.bed === (state.selectedBed ?? s.bed));
+    const m = r && data.patients[r.p]?.record;
+    if (!m) return;
+    if (act === "update") openAdmit(m);
+    if (act === "discharge") {
+      discharge(data, m, s.unit_hour);
+      rebuild(data, lite);
+      set({ manualVersion: state.manualVersion + 1 });
+    }
+  };
 
   // ---------- events ----------
   $("prevShift").onclick = () => goShift(-1);
@@ -216,7 +319,8 @@ async function main() {
   };
   $("mic").onclick = () => voice.listen();
   window.addEventListener("keydown", (e) => {
-    if (e.target.tagName === "INPUT") return;
+    if (e.key === "Escape" && !$("admit").hidden) closeAdmit();
+    if (["INPUT", "SELECT", "TEXTAREA"].includes(e.target.tagName) || !$("admit").hidden) return;
     if (e.key === "ArrowRight") goSlot(state.slot + 1, { focus: null });
     if (e.key === "ArrowLeft") goSlot(state.slot - 1, { focus: null });
     if (e.key === "/") { e.preventDefault(); $("cmdInput").focus(); }

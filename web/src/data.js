@@ -24,7 +24,10 @@ export async function loadData(url = "data/septris.json") {
   return { ...raw, slots, bedsByHour, shifts, shiftIds: [...shifts.keys()].sort((a, b) => a - b) };
 }
 
-export const beds = (data, slotIndex) => data.bedsByHour.get(data.slots[slotIndex].unit_hour) || [];
+// Entered patients (manual.js) are layered on through data.overlay, so always
+// read beds and the current review through these two helpers.
+export const beds = (data, slotIndex) => data.overlay?.get(slotIndex)?.rows ?? (data.bedsByHour.get(data.slots[slotIndex].unit_hour) || []);
+export const slotAt = (data, slotIndex) => data.overlay?.get(slotIndex)?.slot ?? data.slots[slotIndex];
 export const patient = (data, p) => data.patients[p];
 
 export function ordinal(n) {
@@ -39,9 +42,11 @@ export const VERDICT = {
   late: { icon: "!", head: "Flagged too late", tone: "bad" },
   false: { icon: "○", head: "False alarm: no sepsis followed", tone: "grey" },
   uncertain: { icon: "–", head: "Not scored", tone: "grey" },
+  manual: { icon: "–", head: "No outcome to check", tone: "grey" },
 };
 
 export function whatHappened(cls, lead, bed) {
+  if (cls === "manual") return `Bed ${bed} is a patient you entered, so there is no hospital record to check this pick against.`;
   if (cls === "early6") return `Sepsis was recorded ${Math.round(lead)} hours after this review, inside the 6–12 hour early-warning window.`;
   if (cls === "early") return `Sepsis was recorded ${Math.round(lead)} hours after this review: ahead of time, but with less than the 6 hours of warning we aim for.`;
   if (cls === "late") {

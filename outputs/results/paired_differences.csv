@@ -15,10 +15,18 @@ A,3,lgbm_combined (home) minus random,caught6,A:lgbm_combined,random,0.171428571
 A,3,"lgbm_combined (external, trained B) minus random",caught6,B:lgbm_combined,random,0.07563025210084034,0.027303933074034337,0.13031333386435143,True
 A,3,lgbm_combined: home minus external,caught6,A:lgbm_combined,B:lgbm_combined,0.09579831932773109,0.043858775424617316,0.1514114050709604,True
 A,3,lgbm_combined (home) minus SIRS,caught6,A:lgbm_combined,sirs,0.12605042016806722,0.0592973163841808,0.18788355951517663,True
+A,3,lgbm_queue_tuned (home) minus random,caught6,A:lgbm_queue_tuned,random,0.17394957983193277,0.10223577235772358,0.21673067076292887,True
+A,3,"lgbm_queue_tuned (external, trained B) minus random",caught6,B:lgbm_queue_tuned,random,0.07394957983193276,0.024312402698495078,0.12941721132897605,True
+A,3,lgbm_queue_tuned: home minus external,caught6,A:lgbm_queue_tuned,B:lgbm_queue_tuned,0.1,0.017741496598639432,0.14868243243243245,True
+A,3,lgbm_queue_tuned (home) minus SIRS,caught6,A:lgbm_queue_tuned,sirs,0.12857142857142856,0.052779990044798414,0.17865259740259742,True
 A,3,temporal_gru (home) minus random,caught6,A:temporal_gru,random,0.180672268907563,0.11997872340425533,0.24776376146788992,True
 A,3,"temporal_gru (external, trained B) minus random",caught6,B:temporal_gru,random,0.13529411764705881,0.06665289256198348,0.18258146948689402,True
 A,3,temporal_gru: home minus external,caught6,A:temporal_gru,B:temporal_gru,0.04537815126050418,-0.012150747238466542,0.11557928802588995,False
 A,3,temporal_gru (home) minus SIRS,caught6,A:temporal_gru,sirs,0.1352941176470588,0.06428339185849916,0.20238899613899616,True
+A,3,lgbm_gru_blend (home) minus random,caught6,A:lgbm_gru_blend,random,0.18655462184873955,0.12139977603583427,0.24900510204081633,True
+A,3,"lgbm_gru_blend (external, trained B) minus random",caught6,B:lgbm_gru_blend,random,0.146218487394958,0.06424634709048962,0.18470118825722273,True
+A,3,lgbm_gru_blend: home minus external,caught6,A:lgbm_gru_blend,B:lgbm_gru_blend,0.040336134453781564,-0.00803375445100238,0.1107213755122951,False
+A,3,lgbm_gru_blend (home) minus SIRS,caught6,A:lgbm_gru_blend,sirs,0.14117647058823535,0.06664473684210527,0.2025743060445466,True
 A,3,blend (home) minus random,caught6,A:blend,random,0.1823529411764706,0.11994715447154472,0.25118483412322273,True
 A,3,"blend (external, trained B) minus random",caught6,B:blend,random,0.1378151260504202,0.0765952654782442,0.1958731223175966,True
 A,3,blend: home minus external,caught6,A:blend,B:blend,0.0445378151260504,-0.008349215246636768,0.11221441549404672,False
@@ -110,10 +118,18 @@ B,3,lgbm_combined (home) minus random,caught6,B:lgbm_combined,random,0.170149253
 B,3,"lgbm_combined (external, trained A) minus random",caught6,A:lgbm_combined,random,0.14477611940298507,0.06611780350438048,0.22231735159817353,True
 B,3,lgbm_combined: home minus external,caught6,B:lgbm_combined,A:lgbm_combined,0.025373134328358193,-0.06042350848385332,0.12109169653524499,False
 B,3,lgbm_combined (home) minus SIRS,caught6,B:lgbm_combined,sirs,0.09402985074626866,0.015235146532856455,0.19328408782867987,True
+B,3,lgbm_queue_tuned (home) minus random,caught6,B:lgbm_queue_tuned,random,0.1761194029850746,0.09209949937421777,0.26407938931297714,True
+B,3,"lgbm_queue_tuned (external, trained A) minus random",caught6,A:lgbm_queue_tuned,random,0.14328358208955227,0.07136041439476556,0.23741192411924128,True
+B,3,lgbm_queue_tuned: home minus external,caught6,B:lgbm_queue_tuned,A:lgbm_queue_tuned,0.032835820895522366,-0.08088235294117646,0.12597484276729562,False
+B,3,lgbm_queue_tuned (home) minus SIRS,caught6,B:lgbm_queue_tuned,sirs,0.1,0.015317891972993252,0.20524193548387096,True
 B,3,temporal_gru (home) minus random,caught6,B:temporal_gru,random,0.20298507462686566,0.12571843251088535,0.2871260683760684,True
 B,3,"temporal_gru (external, trained A) minus random",caught6,A:temporal_gru,random,0.17014925373134326,0.07084066549352103,0.22702205882352947,True
 B,3,temporal_gru: home minus external,caught6,B:temporal_gru,A:temporal_gru,0.032835820895522394,-0.029414122981641245,0.14759615384615388,False
 B,3,temporal_gru (home) minus SIRS,caught6,B:temporal_gru,sirs,0.12686567164179105,0.03947663971248877,0.24062673462178938,True
+B,3,lgbm_gru_blend (home) minus random,caught6,B:lgbm_gru_blend,random,0.2238805970149254,0.12557950191570882,0.2823184012243937,True
+B,3,"lgbm_gru_blend (external, trained A) minus random",caught6,A:lgbm_gru_blend,random,0.14776119402985077,0.07838019250253293,0.23468686612576073,True
+B,3,lgbm_gru_blend: home minus external,caught6,B:lgbm_gru_blend,A:lgbm_gru_blend,0.07611940298507466,-0.049681627581922676,0.12738952020202027,False
+B,3,lgbm_gru_blend (home) minus SIRS,caught6,B:lgbm_gru_blend,sirs,0.1477611940298508,0.041041135897595234,0.22828322147651006,True
 B,3,blend (home) minus random,caught6,B:blend,random,0.21641791044776115,0.127593085106383,0.3066028225806452,True
 B,3,"blend (external, trained A) minus random",caught6,A:blend,random,0.15373134328358212,0.08493524514338575,0.24204094292803974,True
 B,3,blend: home minus external,caught6,B:blend,A:blend,0.06268656716417906,-0.03859489051094893,0.1429966517857143,False

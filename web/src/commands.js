@@ -9,6 +9,7 @@ const WORDS = { one: 1, two: 2, to: 2, too: 2, three: 3, four: 4, for: 4, five: 
 const num = (s) => (/^\d+$/.test(s) ? Number(s) : WORDS[s]);
 
 const RULES = [
+  [/\b(add|admit|new)\b.*\bpatient\b|\bcheck ?in\b/, () => ({ type: "admit" })],
   [/\b(bed|patient)\s+(\d+|[a-z]+)\b/, (m) => (num(m[2]) ? { type: "bed", bed: num(m[2]) } : null)],
   [/\b(next|forward)\s+(review|check)\b|^next$/, () => ({ type: "review", delta: 1 })],
   [/\b(previous|last|back)\s+(review|check)\b|^back$|^previous$/, () => ({ type: "review", delta: -1 })],

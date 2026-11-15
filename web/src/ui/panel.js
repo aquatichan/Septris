@@ -5,7 +5,8 @@
 //   results   how well it works on every test patient
 //   model     what is inside Septris and how it was tested
 //   faq       plain questions and answers
-import { beds, ordinal, VERDICT, whatHappened } from "../data.js";
+import { beds, slotAt, ordinal, VERDICT, whatHappened } from "../data.js";
+import { FIELDS } from "../manual.js";
 import { drawChart, chartLegend } from "./chart.js";
 
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
@@ -42,7 +43,7 @@ function outcomeBlock(s, n, sbar) {
 }
 
 export function priorityHTML(data, st) {
-  const s = data.slots[st.slot];
+  const s = slotAt(data, st.slot);
   const b = beds(data, st.slot);
   const nCand = b[0]?.candidates ?? 0;
   const pick = b.find((x) => x.picked);
@@ -56,7 +57,7 @@ export function priorityHTML(data, st) {
       ${s.review_class === "early6" ? `<span class="star">★ Inside the 6–12 hour early-warning window</span>` : ""}</div>`;
   }
   let nextNote = "";
-  const ns = data.slots[st.slot + 1];
+  const ns = st.slot + 1 < data.slots.length ? slotAt(data, st.slot + 1) : null;
   if (ns) {
     const nb = b.find((x) => x.bed === ns.bed && x.p === ns.p);
     const was = !nb ? "a patient who hasn't arrived yet" : nb.snoozed ? "still on its 12-hour pause right now" : `${ordinal(nb.rank)} in line right now`;
@@ -97,7 +98,7 @@ function trend(series, hour) {
 const when = (x) => (x.ago === 0 ? "this hour" : `${x.ago} h ago`);
 
 export function patientHTML(data, st) {
-  const s = data.slots[st.slot];
+  const s = slotAt(data, st.slot);
   const bed = st.selectedBed ?? s.bed;
   const all = beds(data, st.slot);
   const r = all.find((x) => x.bed === bed);
@@ -116,6 +117,13 @@ export function patientHTML(data, st) {
     ["Lactate", latestSparse(p.lactate, h), "mmol/L", ""],
     ["White blood cells", latestSparse(p.wbc, h), "×10³/µL", ""],
   ];
+  if (p.manual) {
+    const rd = [...p.record.readings].reverse().find((x) => x.hour <= s.unit_hour) || p.record.readings[0];
+    for (const f of FIELDS.filter((x) => !x.series && !["Lactate", "WBC"].includes(x.key))) {
+      const v = rd.values[f.key];
+      rows.push([f.label, v === "" || v == null ? null : { v, ago: s.unit_hour - rd.hour }, f.unit, ""]);
+    }
+  }
   const past = p.reviews.filter((x) => x < h);
   const hist = past.length
     ? `Septris had this chart reviewed ${past.length} time${past.length > 1 ? "s" : ""} before (${past.map((x) => `${h - x} h ago`).join(", ")}).`
@@ -128,7 +136,8 @@ export function patientHTML(data, st) {
   let outcome = "";
   if (st.showKey) {
     let text;
-    if (p.group === "uncertain_onset") text = "This patient already had sepsis on arrival, so they aren't counted in the results.";
+    if (p.manual) text = "You entered this patient, so there is no hospital record to check the prediction against.";
+    else if (p.group === "uncertain_onset") text = "This patient already had sepsis on arrival, so they aren't counted in the results.";
     else if (p.onset == null) text = "This patient did not develop sepsis during their ICU stay.";
     else {
       const d = Math.round(p.onset - h);
@@ -141,6 +150,8 @@ export function patientHTML(data, st) {
   return `
     <div class="eyebrow">Day ${s.day} · ${s.clock}</div>
     <h2>Bed ${bed} <span class="pill ${status.cls}">${status.text}</span></h2>
+    ${p.manual ? `<div class="entered"><b>${esc(p.name)}</b> · entered by hand · stay ends in ${p.record.admit + p.record.stay - s.unit_hour} h
+      <div class="row"><button class="btn" data-manual="update">Update readings</button><button class="btn ghost" data-manual="discharge">Discharge now</button></div></div>` : ""}
     <div class="facts">
       <div><span>Patient</span><b>${p.sex === "M" ? "Man" : "Woman"}, ${Math.round(p.age)}</b></div>
       <div><span>Time in ICU</span><b>${r.hours_in_icu} h</b></div>
@@ -155,6 +166,7 @@ export function patientHTML(data, st) {
     <table class="res vit"><tbody>${rows.map(([name, x, unit, tr]) => `<tr><td>${name}</td><td class="n">${x ? `${x.v} ${unit}` : "not measured"}</td><td class="muted small">${x ? when(x) : ""}${tr ? ` · ${tr}` : ""}</td></tr>`).join("")}</tbody></table>
     <h3>Review history</h3>
     <p class="small">${hist}</p>
+    ${p.manual ? `<p class="small muted">Risk for entered patients comes from a small in-browser model that only sees the readings typed in. The full Septris models read each patient's hour-by-hour history.</p>` : ""}
     ${outcome}
     <h3>Stay so far</h3>
     <canvas class="chart" id="bedChart" aria-label="Chart of Bed ${bed}'s risk, heart rate and blood pressure"></canvas>
@@ -164,14 +176,14 @@ export function patientHTML(data, st) {
 export function drawBedChart(data, st) {
   const c = document.getElementById("bedChart");
   if (!c) return;
-  const s = data.slots[st.slot];
+  const s = slotAt(data, st.slot);
   const bed = st.selectedBed ?? s.bed;
   const r = beds(data, st.slot).find((x) => x.bed === bed);
   if (r) drawChart(c, data.patients[r.p], r.record_hour, st.showKey);
 }
 
 export function queueHTML(data, st) {
-  const s = data.slots[st.slot];
+  const s = slotAt(data, st.slot);
   const b = [...beds(data, st.slot)].sort((x, y) => (x.snoozed - y.snoozed) || (x.rank - y.rank));
   return `
     <div class="eyebrow">Day ${s.day} · ${s.clock}</div>
@@ -251,6 +263,10 @@ export function modelHTML(data) {
       <li>Random picking and the SIRS checklist face the same beds at the same moments.</li>
       <li>The main settings were written down before any test result was seen; later changes are logged in the project repository.</li>
     </ul>
+    <h3>6. How a hospital would use it</h3>
+    <p>In a hospital, nobody would type anything in. Each patient's vital signs and lab results already flow into the electronic record every hour; Septris would read them from there, re-score every bed, and update the nurse's priority list on its own.</p>
+    <p><b>“＋ Add a patient”</b> at the top of the ward shows that step done by hand: enter a new patient's readings and expected stay, and they are admitted to a bed, scored, and placed in the queue with everyone else. You can update their readings later and watch their priority change.</p>
+    <p class="small muted">Entered patients are scored by “Septris Lite”, a small version of the model that runs inside this page and only sees the ${data.lite ? data.lite.fields.length : 11} values on the form. It is weaker than the full models (hour-by-hour accuracy ${data.lite ? data.lite.auroc.lite_test.toFixed(2) : "0.68"} vs ${data.lite ? data.lite.auroc.septris_test.toFixed(2) : "0.79"} on Hospital A test patients), because the full models also read each patient's history.</p>
     <h3>Limits</h3>
     <ul>
       <li>Tested on past records only. It has never been used on real patients.</li>
@@ -270,6 +286,7 @@ export function faqHTML(data) {
     ["What does “Risk 92 of 100” mean?", "This patient's current data looks more worrying than about 92% of ICU hours at the training hospital. It's a ranking, not the chance of having sepsis."],
     ["How do you know if a pick was right?", "These are real patients from past records, so each stay is already written down. Septris only gets the data up to each moment. Afterwards we look at the record: if sepsis was recorded 6–12 hours after the review, the pick counts as an accurate early flag. Turn on “Show outcomes” to see this."],
     ["Why are most picks false alarms?", "Only about 8% of these ICU patients ever develop sepsis, and at any moment very few are 6–12 hours away from it. Usually there is no one to catch. What matters is catching more real cases with the same nurse time."],
+    ["Can I add my own patient?", "Yes. Click “＋ Add a patient” at the top of the ward, type in their readings (or use an example), and choose how long they stay. They are wheeled in from the elevator, scored, and ranked with the other beds. In a real hospital this information would come in automatically from the patient record."],
     ["Does it diagnose sepsis?", "No. It never diagnoses or recommends treatment. It only orders the nurse's review list and explains why."],
     ["Can I control it by voice?", "Yes, when the page is allowed to use the microphone. You can also type: “show bed 6”, “next review”, “next shift”, “queue”, “results”, “show me a miss”, “why?”, “zoom out”, “play”."],
   ];
