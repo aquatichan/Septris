@@ -526,8 +526,10 @@ async function main() {
     document.body.classList.add("intro");
     rig.intro(lobby, {}); rig.pause(true); // hold inside the elevator until they click
     $("splash").hidden = false;
-    $("enter").onclick = () => { $("splash").hidden = true; audio.start(); rig.skipIntro(); playIntro(true); };
-    $("enterQuiet").onclick = () => { $("splash").hidden = true; audio.setEnabled(false); syncSound(); rig.skipIntro(); playIntro(true); };
+    // the held elevator shot set body.intro; clear it, or playIntro's double-click guard swallows the ride
+    const enterWard = () => { $("splash").hidden = true; rig.skipIntro(); document.body.classList.remove("intro"); playIntro(true); };
+    $("enter").onclick = () => { audio.start(); enterWard(); };
+    $("enterQuiet").onclick = () => { audio.setEnabled(false); syncSound(); enterWard(); };
   }
 }
 
