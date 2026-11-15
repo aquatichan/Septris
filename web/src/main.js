@@ -13,7 +13,8 @@ import { createPaper } from "./ui/paper.js";
 import { createStaff } from "./scene/people.js";
 import { bayPosition } from "./scene/beds.js";
 import { createAudio } from "./audio.js";
-import { priorityHTML, patientHTML, drawBedChart, queueHTML, resultsHTML, modelHTML, faqHTML } from "./ui/panel.js";
+import { priorityHTML, patientHTML, drawBedChart, queueHTML } from "./ui/panel.js";
+import { resultsHTML, modelHTML, faqHTML } from "./ui/pages.js";
 import { tourSteps, renderTour } from "./ui/tour.js";
 import { parse } from "./commands.js";
 import { createVoice } from "./voice.js";
@@ -215,6 +216,7 @@ async function main() {
     // full-page sections
     $("page").hidden = !state.page;
     document.body.classList.toggle("paged", !!state.page);
+    if (state.page !== render.lastPage) { $("page").scrollTop = 0; render.lastPage = state.page; }
     if (state.page && views.mode) { views.exit(false); syncViews(null); }
     document.querySelectorAll(".pg").forEach((b) => b.classList.toggle("on", b.dataset.page === state.page));
     if (state.page === "results") $("pageBody").innerHTML = resultsHTML(data);
