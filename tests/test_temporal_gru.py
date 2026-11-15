@@ -40,3 +40,29 @@ def test_sequence_keeps_observation_mask_and_supervision_mask_separate():
     assert x[1, 2] == 1.0  # a measured zero is still explicitly observed
     assert y.tolist() == [0.0, 1.0, 0.0]
     assert supervised.tolist() == [True, True, False]
+
+
+def test_values_only_sequence_has_no_measurement_pattern_channels():
+    base = {
+        "current": np.array([[1.0, np.nan], [0.0, 2.0]], dtype=float),
+        "since": np.array([[0.0, 24.0], [1.0, 0.0]], dtype=float),
+        "age": np.array([50.0, 50.0]),
+        "gender": np.array([1.0, 1.0]),
+    }
+    ds = temporal_gru.PatientSequences(
+        base=base, target=np.array([0.0, 1.0]), supervised=np.array([True, True]),
+        bounds=(np.array([0]), np.array([2])), indices=np.array([0]),
+        median=np.array([0.0, 0.0]), scale=np.array([1.0, 1.0]), input_mode="values_only",
+    )
+    x, _, _ = ds[0]
+    assert x.shape == (2, 4)  # two values plus age/sex, no masks or time-since features
+
+
+def test_early_window_target_never_trains_final_six_hours_as_negative():
+    y, supervised = temporal_gru.training_target_and_supervision(
+        hours_to_onset=np.array([13.0, 12.0, 6.0, 5.0, 1.0, np.nan]),
+        in_training=np.array([True, True, True, True, True, True]),
+        target_window="early_6_12",
+    )
+    assert y.tolist() == [0.0, 1.0, 1.0, 0.0, 0.0, 0.0]
+    assert supervised.tolist() == [True, True, True, False, False, True]
