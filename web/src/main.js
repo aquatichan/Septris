@@ -8,6 +8,9 @@ import { createBeds } from "./scene/beds.js";
 import { createCameraRig } from "./scene/camera.js";
 import { createLobby } from "./scene/lobby.js";
 import { createDecor } from "./scene/decor.js";
+import { createStaff } from "./scene/people.js";
+import { bayPosition } from "./scene/beds.js";
+import { createAudio } from "./audio.js";
 import { priorityHTML, patientHTML, drawBedChart, queueHTML, resultsHTML, modelHTML, faqHTML } from "./ui/panel.js";
 import { tourSteps, renderTour } from "./ui/tour.js";
 import { parse } from "./commands.js";
@@ -42,8 +45,17 @@ async function main() {
   const rig = createCameraRig(world);
   const lobby = createLobby(world);
   createDecor(world);
-  window.__septris = { lobby, rig, state };
+  const audio = createAudio();
+  window.__septris = { lobby, rig, state, audio, world };
   const bedsView = createBeds(world, (bed) => selectBed(bed), lobby);
+  createStaff(world, bayPosition);
+  world.onDoors = () => audio.elevatorDoors();
+  // the ward gets louder as the camera gets closer to it
+  world.onFrame(() => {
+    const c = world.camera.position;
+    const d = Math.hypot(c.x - Math.max(-22, Math.min(22, c.x)), c.y - 1.6, c.z - Math.max(-11, Math.min(11, c.z)));
+    audio.setProximity(Math.max(0.25, Math.min(1, 1.15 - d / 70)));
+  });
   const voice = createVoice({
     onText: (t) => runCommand(t, true),
     onState: (s) => {
@@ -70,6 +82,7 @@ async function main() {
   function selectBed(bed) {
     set({ selectedBed: bed, tab: "patient" });
     rig.bed(bed);
+    audio.chime("select");
   }
   function goShift(delta) {
     const sh = data.slots[state.slot].shift;
@@ -94,7 +107,7 @@ async function main() {
   }
   function runCommand(text, spoken = false) {
     const a = parse(text);
-    $("cmdEcho").textContent = a ? `“${text}”` : `Didn't understand “${text}”. Try “show bed 6” or “next review”.`;
+    $("cmdEcho").textContent = a ? `“${text}”` : `Didn't understand “${text}”. Try “show bed 6” or “next check”.`;
     if (!a) return;
     const shiftIdx = data.shifts.get(data.slots[state.slot].shift);
     switch (a.type) {
@@ -122,7 +135,7 @@ async function main() {
     const ids = data.shifts.get(s.shift);
     $("reviewChips").innerHTML = ids.map((i) => {
       const x = data.slots[i];
-      return `<button class="chip ${i === state.slot ? "on" : ""}" data-slot="${i}"><b>Review ${x.check}</b>${x.clock}</button>`;
+      return `<button class="chip ${i === state.slot ? "on" : ""}" data-slot="${i}"><b>Check ${x.check}</b>${x.clock}</button>`;
     }).join("");
     $("play").textContent = state.playing ? "❚❚ Pause" : "▶ Play";
     $("showKey").checked = state.showKey;
@@ -157,14 +170,17 @@ async function main() {
       const b = beds(data, state.slot).find((x) => x.bed === f.bed);
       text = f.kind === "false"
         ? `Example of a false alarm: Septris put Bed ${s.bed} first, but no sepsis followed. This is the most common outcome, because only about 8% of ICU patients develop sepsis.`
-        : b ? `Example of a miss: the record shows Bed ${f.bed} developed sepsis ${Math.round(b.hours_to_sepsis)} hours after this point, but Septris had it ${b.rank ? `${ordinal(b.rank)} in line` : "marked as recently reviewed"}, so it wasn't reviewed in time.` : "";
+        : b ? `Example of a miss: the record shows Bed ${f.bed} developed sepsis ${Math.round(b.hours_to_sepsis)} hours after this point, but Septris had it ${b.rank ? `${ordinal(b.rank)} in line` : "paused because it was checked recently"}, so nobody looked in time.` : "";
       el.className = "note";
     } else if (hit && state.tourStep == null) {
       const lead = Math.round(s.lead_hours);
-      text = `<b>✓ Sepsis predicted ${lead} hour${lead === 1 ? "" : "s"} early.</b> Septris sent the nurse to Bed ${s.bed} at ${s.clock}; the record shows sepsis ${lead} hour${lead === 1 ? "" : "s"} later${s.review_class === "early6" ? ", inside the 6–12 hour early-warning window" : ""}.`;
+      text = `<b>✓ Sepsis flagged ${lead} hour${lead === 1 ? "" : "s"} early.</b> Septris sent the nurse to Bed ${s.bed} at ${s.clock}; the record shows sepsis ${lead} hour${lead === 1 ? "" : "s"} later${s.review_class === "early6" ? ", early enough to start treatment ahead of time" : ""}.`;
     }
     el.innerHTML = text;
     el.hidden = !text || !!state.page;
+    const key = text ? `${state.slot}:${f?.kind || "hit"}` : "";
+    if (key && key !== renderNote.last) audio.chime(f && f.slot === state.slot && f.kind === "miss" ? "alarm" : hit ? "caught" : "select");
+    renderNote.last = key;
   }
   function render(patch) {
     const s = slotAt(data, state.slot);
@@ -287,6 +303,7 @@ async function main() {
       if (!(age >= 18 && age <= 110)) return err("Age should be between 18 and 110.");
       if (!(stay >= 6 && stay <= 240)) return err("Expected stay should be between 6 and 240 hours.");
       bed = Number($("f_bed").value);
+      audio.chime("admit");
       admit(data, { name: fval("f_name"), age, sex: $("f_sex").value, bed, stay: Math.round(stay), values, hour });
     }
     rebuild(data, lite);
@@ -352,18 +369,44 @@ async function main() {
   // autoplay: one review every 3.5 s
   setInterval(() => { if (state.playing && state.tourStep == null) goSlot(state.slot + 1, { focus: null }); }, 3500);
 
-  // start: the tour moment, overview camera, tour open
-  // start: ride the elevator into the lobby, through to the ward, then open the tour
+  // start: first visit rides the elevator in (after one click, so sound can
+  // play); return visits land straight on the overview.
   $("loading").hidden = true;
   set({ data, slot: TOUR });
-  document.body.classList.add("intro");
-  $("skipIntro").hidden = false;
-  $("skipIntro").onclick = () => rig.skipIntro();
-  rig.intro(lobby, () => {
-    document.body.classList.remove("intro");
-    $("skipIntro").hidden = true;
-    set({ tourStep: 0 });
-  });
+  const SEEN = "septris_seen_intro";
+  const seen = (() => { try { return localStorage.getItem(SEEN) === "1"; } catch { return false; } })();
+  const syncSound = () => { $("sound").textContent = audio.isEnabled() ? "🔊 Sound on" : "🔇 Sound off"; };
+  syncSound();
+  $("sound").onclick = () => { audio.start(); audio.setEnabled(!audio.isEnabled()); syncSound(); };
+  window.addEventListener("pointerdown", () => audio.start(), { once: true });
+  function playIntro(openTour) {
+    set({ selectedBed: null, tourStep: null });
+    document.body.classList.add("intro");
+    $("skipIntro").hidden = false;
+    $("skipIntro").onclick = () => rig.skipIntro();
+    audio.elevatorHum(true);
+    rig.intro(lobby, {
+      onArrive: () => { audio.elevatorHum(false); audio.elevatorDing(); },
+      done: () => {
+        audio.elevatorHum(false);
+        document.body.classList.remove("intro");
+        $("skipIntro").hidden = true;
+        try { localStorage.setItem(SEEN, "1"); } catch { /* private window */ }
+        if (openTour) set({ tourStep: 0 });
+      },
+    });
+  }
+  $("replayIntro").onclick = () => playIntro(false);
+  if (seen) {
+    rig.intro(lobby, {}); rig.skipIntro();
+    $("splash").hidden = true;
+  } else {
+    document.body.classList.add("intro");
+    rig.intro(lobby, {}); rig.pause(true); // hold inside the elevator until they click
+    $("splash").hidden = false;
+    $("enter").onclick = () => { $("splash").hidden = true; audio.start(); rig.skipIntro(); playIntro(true); };
+    $("enterQuiet").onclick = () => { $("splash").hidden = true; audio.setEnabled(false); syncSound(); rig.skipIntro(); playIntro(true); };
+  }
 }
 
 main();

@@ -47,13 +47,13 @@ export const VERDICT = {
 
 export function whatHappened(cls, lead, bed) {
   if (cls === "manual") return `Bed ${bed} is a patient you entered, so there is no hospital record to check this pick against.`;
-  if (cls === "early6") return `Sepsis was recorded ${Math.round(lead)} hours after this review, inside the 6–12 hour early-warning window.`;
-  if (cls === "early") return `Sepsis was recorded ${Math.round(lead)} hours after this review: ahead of time, but with less than the 6 hours of warning we aim for.`;
+  if (cls === "early6") return `Sepsis was recorded ${Math.round(lead)} hours after this check: early enough to start treatment ahead of time.`;
+  if (cls === "early") return `Sepsis was recorded ${Math.round(lead)} hours after this check: ahead of time, but with less than the 6 hours of warning we aim for.`;
   if (cls === "late") {
     const ago = -lead;
-    return `Bed ${bed} already had sepsis when it was reviewed (recorded ${ago === 0 ? "in the same hour" : `${Math.round(ago)} hours earlier`}).`;
+    return `Bed ${bed} already had sepsis when it was checked (recorded ${ago === 0 ? "in the same hour" : `${Math.round(ago)} hours earlier`}).`;
   }
-  if (cls === "uncertain") return `Bed ${bed} already had sepsis on arrival, so this review isn't scored.`;
+  if (cls === "uncertain") return `Bed ${bed} already had sepsis on arrival, so this check isn't counted.`;
   if (lead != null && lead > 12) return `Bed ${bed} didn't develop sepsis until ${Math.round(lead)} hours later, too far ahead to count as a catch.`;
   return `Bed ${bed} did not develop sepsis in the next 12 hours.`;
 }

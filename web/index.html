@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Septris ICU</title>
-<meta name="description" content="Septris: a 3D ICU replay showing which patient's chart a nurse should review next for early signs of sepsis. Prototype, not medical advice.">
+<meta name="description" content="Septris: a 3D ICU replay showing which ICU patient a nurse should check next for early signs of sepsis. Prototype, not medical advice.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@500;700&display=swap">
@@ -26,7 +26,7 @@
   <header id="hud" class="hud">
     <div class="brand">
       <span class="brand-name">Septris</span>
-      <span class="brand-tag">sepsis review priority for the ICU</span>
+      <span class="brand-tag">which ICU patient to check next for sepsis</span>
     </div>
     <nav class="pages" aria-label="Sections">
       <button class="btn pg on" data-page="">Ward</button>
@@ -37,9 +37,9 @@
     <div class="clock" id="clock" aria-live="polite"></div>
     <nav class="timebar" aria-label="Move through time">
       <button id="prevShift" class="btn ghost">◀ Previous shift</button>
-      <div id="reviewChips" class="chips" role="group" aria-label="This shift's reviews"></div>
+      <div id="reviewChips" class="chips" role="group" aria-label="This shift's checks"></div>
       <button id="nextShift" class="btn ghost">Next shift ▶</button>
-      <button id="play" class="btn" title="Play through reviews">▶ Play</button>
+      <button id="play" class="btn" title="Play through the checks">▶ Play</button>
     </nav>
     <div class="toggles">
       <label class="switch"><input type="checkbox" id="showKey" checked><span>Show outcomes</span></label>
@@ -59,11 +59,11 @@
 
   <aside id="legend" class="legendbox" aria-label="Colour key">
     <div class="eyebrow">Colour key</div>
-    <div><i class="sw pick"></i>Review now (Septris's pick)</div>
+    <div><i class="sw pick"></i>Check now (Septris's pick)</div>
     <div><i class="sw high"></i>High risk</div>
     <div><i class="sw med"></i>Medium risk</div>
     <div><i class="sw low"></i>Low risk</div>
-    <div><i class="sw snooze"></i>Reviewed in the last 12 hours</div>
+    <div><i class="sw snooze"></i>Checked in the last 12 hours</div>
   </aside>
 
   <aside id="panel" class="panel" aria-label="Details">
@@ -81,7 +81,7 @@
     <button type="button" id="mic" class="mic" title="Speak a command" aria-label="Speak a command">
       <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M12 15a3 3 0 0 0 3-3V6a3 3 0 1 0-6 0v6a3 3 0 0 0 3 3Zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.92V21h2v-2.08A7 7 0 0 0 19 12h-2Z"/></svg>
     </button>
-    <input id="cmdInput" type="text" placeholder="Try “show bed 6”, “next review”, “queue”, “why?”" aria-label="Type a command">
+    <input id="cmdInput" type="text" placeholder="Try “show bed 6”, “next check”, “queue”, “why?”" aria-label="Type a command">
     <div id="cmdEcho" class="cmd-echo" aria-live="polite"></div>
   </form>
 
@@ -113,11 +113,25 @@
     </form>
   </div>
   <div id="tally" class="tally" hidden></div>
+  <div class="corner">
+    <button id="replayIntro" class="btn ghost" title="Ride the elevator in again">↻ Replay intro</button>
+    <button id="sound" class="btn ghost" title="Hospital background sound">🔊 Sound on</button>
+  </div>
   <button id="skipIntro" class="btn skipintro" hidden>Skip intro ▶</button>
+  <div id="splash" class="splash" hidden>
+    <div class="splash-card">
+      <div class="eyebrow">Intensive care · floor 3</div>
+      <h1>Septris</h1>
+      <p>Sepsis is easier to treat the earlier it is noticed. Septris watches 20 ICU beds and tells the nurse which patient to check next.</p>
+      <button id="enter" class="btn add big">Enter the ward ▶</button>
+      <button id="enterQuiet" class="btn ghost">Enter without sound</button>
+      <small>Replays real, de-identified hospital records. Prototype, not medical advice.</small>
+    </div>
+  </div>
   <div id="tour" class="tour" hidden role="dialog" aria-label="Guided tour"></div>
   <div id="note" class="note" hidden></div>
   <div id="loading" class="loading">Loading the ICU…</div>
-  <footer class="disclaimer">Prototype. Not medical advice. Septris never diagnoses sepsis; it only suggests which chart to review next.</footer>
+  <footer class="disclaimer">Prototype. Not medical advice. Septris never diagnoses sepsis; it only suggests which patient to check next.</footer>
 </div>
 <script type="module" src="src/main.js"></script>
 </body>

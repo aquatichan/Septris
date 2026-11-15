@@ -6,27 +6,27 @@ export function tourSteps(data, slot) {
   return [
     {
       title: "Meet the ICU",
-      text: `It's ${s.clock} on the ${s.shift_name.toLowerCase()}. One nurse looks after these 20 beds but only has time for about ${data.meta.k} careful sepsis reviews per 12-hour shift. Sepsis is the body's extreme reaction to an infection, and it's much easier to treat when caught early. Whose chart should the nurse open first?`,
+      text: `It's ${s.clock} on the ${s.shift_name.toLowerCase()}. One nurse looks after these 20 beds. In a 12-hour shift, there is time to check only about ${data.meta.k} charts carefully for signs of sepsis. Sepsis is the body's extreme reaction to an infection. It is much easier to treat when found early. The question is whose chart to open first.`,
       apply: (go) => go({ showKey: false, camera: "overview" }),
     },
     {
       title: "Septris ranks every bed",
-      text: `Septris reads each bed's vital signs, lab results and which tests were done, using only what has been recorded up to ${s.clock}. The ring on the floor and the bedside monitor show each bed's risk: red is high, yellow is medium, green is low. Grey beds were reviewed in the last 12 hours, so they're skipped.`,
+      text: `Septris reads each bed's vital signs (like heart rate) and lab results (blood tests), and notes which tests were done. It uses only what has been recorded up to ${s.clock}. The ring on the floor and the bedside monitor show each bed's risk score. Red is high, yellow is medium, green is low. Grey beds were checked in the last 12 hours, so Septris skips them.`,
       apply: (go) => go({ showKey: false, camera: "overview" }),
     },
     {
       title: `It points to Bed ${s.bed}`,
-      text: `Bed ${s.bed} is first in line (the blue light). The panel on the right shows what stood out in its chart, so the nurse knows where to look. It's a pointer, not a diagnosis: the nurse decides.`,
+      text: `Bed ${s.bed} is first in line (the blue light). The panel on the right shows what stood out in its chart, so the nurse knows where to look. It points to a chart and does not diagnose. The nurse decides.`,
       apply: (go) => go({ showKey: false, camera: s.bed, tab: "priority" }),
     },
     {
       title: "Was it right?",
-      text: `These are real patients from past hospital records, so we can check each pick afterwards. Here the record shows sepsis ${Math.round(s.lead_hours)} hours after this review: Septris flagged Bed ${s.bed} early enough to act. Septris itself never sees outcomes. “Show outcomes” at the top turns this on and off.`,
+      text: `These are real patients from past hospital records, so we can check each pick afterwards. Here the record shows sepsis ${Math.round(s.lead_hours)} hours after this chart check. Septris flagged Bed ${s.bed} early enough to act. Septris itself never sees outcomes. “Show outcomes” at the top turns this view on and off.`,
       apply: (go) => go({ showKey: true, camera: s.bed, tab: "patient", selectedBed: s.bed }),
     },
     {
       title: "Explore",
-      text: "Click any bed for its full patient card. The Queue tab lists all 20 beds in priority order. Results, How it works and FAQ at the top explain the evidence. Use the review buttons to move through the shift; when a patient leaves, a new one is wheeled in from the elevator. You can also type or say commands like “show bed 6”, “next review” or “show me a miss”.",
+      text: "Click any bed to see its patient card. The Queue tab lists all 20 beds in priority order. Results, How it works and FAQ at the top show the evidence. Use the Review buttons to move through the shift. When a patient leaves, a new one is wheeled in from the elevator. You can also type or say commands like “show bed 6”, “next check” or “show me a miss”.",
       apply: (go) => go({ showKey: true, camera: "overview", tab: "priority" }),
     },
   ];

@@ -18,8 +18,8 @@ const TIER = [
 ];
 
 function statusOf(r) {
-  if (r.picked) return { text: "Review now", cls: "pick" };
-  if (r.snoozed) return { text: `Reviewed ${r.hours_since_check} h ago`, cls: "snooze" };
+  if (r.picked) return { text: "Check now", cls: "pick" };
+  if (r.snoozed) return { text: `Checked ${r.hours_since_check} h ago`, cls: "snooze" };
   return { text: `${ordinal(r.rank)} in line`, cls: TIER[r.tier].cls };
 }
 
@@ -34,9 +34,9 @@ function outcomeBlock(s, n, sbar) {
       <div class="eyebrow">Outcome · from the patient's record</div>
       <div class="verdict ${v.tone}"><b>${v.icon} ${v.head}.</b><br>${esc(whatHappened(s.review_class, s.lead_hours, s.bed))}</div>
       ${rnd}
-      <p class="small muted">Septris never sees outcomes. These are past patients, so the record shows what happened after each review, and that is how we check its picks.</p>
+      <p class="small muted">Septris never sees outcomes. These are past patients, so their records show what happened after each chart check. That is how we judge its picks.</p>
       ${n ? `<div class="eyebrow" style="margin-top:10px">Track record so far (day 1 to ${s.day})</div>
-      <p class="small">${n} patient${n === 1 ? " has" : "s have"} developed sepsis. Flagged 6–12 hours ahead:</p>
+      <p class="small">${n} patient${n === 1 ? " has" : "s have"} developed sepsis. Caught early (chart checked 6–12 hours before sepsis was recorded):</p>
       <div class="score"><span>Septris</span>${sbar(s.sb_caught_so_far, "var(--accent)")}<span class="num">${s.sb_caught_so_far}</span>
       <span>Random</span>${sbar(s.random_caught_so_far, "var(--grey)")}<span class="num">${s.random_caught_so_far}</span></div>` : ""}
     </div>`;
@@ -52,31 +52,31 @@ export function priorityHTML(data, st) {
   let hero = "";
   if (st.showKey && (s.review_class === "early6" || s.review_class === "early")) {
     const lead = Math.round(s.lead_hours);
-    hero = `<div class="hero-hit"><div class="big">✓ Sepsis predicted <b>${lead}</b> hour${lead === 1 ? "" : "s"} early</div>
-      <div class="small">The patient's record shows sepsis ${lead} hour${lead === 1 ? "" : "s"} after Septris sent the nurse to this bed.</div>
-      ${s.review_class === "early6" ? `<span class="star">★ Inside the 6–12 hour early-warning window</span>` : ""}</div>`;
+    hero = `<div class="hero-hit"><div class="big">✓ Sepsis flagged <b>${lead}</b> hour${lead === 1 ? "" : "s"} early</div>
+      <div class="small">The patient's record shows sepsis ${lead} hour${lead === 1 ? "" : "s"} after Septris pointed the nurse to this bed.</div>
+      ${s.review_class === "early6" ? `<span class="star">★ Caught early: checked 6–12 hours before sepsis was recorded</span>` : ""}</div>`;
   }
   let nextNote = "";
   const ns = st.slot + 1 < data.slots.length ? slotAt(data, st.slot + 1) : null;
   if (ns) {
     const nb = b.find((x) => x.bed === ns.bed && x.p === ns.p);
-    const was = !nb ? "a patient who hasn't arrived yet" : nb.snoozed ? "still on its 12-hour pause right now" : `${ordinal(nb.rank)} in line right now`;
-    nextNote = ` For example, the next review (${ns.clock}) goes to Bed ${ns.bed}, which is ${was}.`;
+    const was = !nb ? "a patient who hasn't arrived yet" : nb.snoozed ? "paused for now (checked in the last 12 hours)" : `${ordinal(nb.rank)} in line right now`;
+    nextNote = ` For example, the next chart check (${ns.clock}) goes to Bed ${ns.bed}, which is ${was}.`;
   }
   const n = s.sepsis_so_far;
   const sbar = (v2, c) => `<div class="bar"><i style="width:${n ? (100 * v2) / n : 0}%;background:${c}"></i></div>`;
   return `
-    <div class="eyebrow">Review ${s.check} of ${data.meta.k} this shift · ${s.clock}</div>
+    <div class="eyebrow">Chart check ${s.check} of ${data.meta.k} this shift · ${s.clock}</div>
     <h2 class="pick-title">Highest priority: Bed ${s.bed}</h2>
-    <p>Septris recommends reviewing <b>Bed ${s.bed}</b>'s chart now. It has the highest sepsis risk (<b>${pick ? pick.percentile : "–"} of 100</b>) of the ${nCand} beds that haven't been reviewed in the last 12 hours.</p>
+    <p>Septris recommends checking <b>Bed ${s.bed}</b>'s chart now. It has the highest risk score (<b>${pick ? pick.percentile : "–"} of 100</b>) of the ${nCand} beds not checked in the last 12 hours.</p>
     ${hero}
     <h3>Why this bed</h3>
     ${reasons.length ? `<ul>${reasons.map((r) => `<li>${esc(cap(r))}</li>`).join("")}</ul>` : "<p>Several small changes together, none big on its own.</p>"}
     <h3>Also high right now</h3>
     <div class="qmini">${next.map((x) => `<button class="qrow" data-bed="${x.bed}"><b>Bed ${x.bed}</b><span class="pill ${TIER[x.tier].cls}">${TIER[x.tier].name}</span><span class="num">${x.percentile}</span></button>`).join("")}</div>
-    <p class="small muted">This is <b>not</b> the order of the next reviews. Septris re-ranks every bed from fresh data at each review time, so the next review goes to whoever is highest <i>then</i>.${nextNote}</p>
-    <p class="small muted">Based only on data recorded up to ${s.clock}. A warning pattern, not a diagnosis: the nurse reads the chart and decides.</p>
-    ${st.showKey ? outcomeBlock(s, n, sbar) : `<p class="small muted">Turn on “Show outcomes” to see what the record shows happened after this review.</p>`}`;
+    <p class="small muted">This is <b>not</b> the order of the next chart checks. Septris re-ranks every bed from fresh data before each check, so the next check goes to whoever is highest <i>then</i>.${nextNote}</p>
+    <p class="small muted">Septris uses only data recorded up to ${s.clock}. It points to a chart and does not diagnose. The nurse reads the chart and decides.</p>
+    ${st.showKey ? outcomeBlock(s, n, sbar) : `<p class="small muted">Turn on “Show outcomes” to see what the record shows happened after this chart check.</p>`}`;
 }
 
 function latest(series, hour) {
@@ -111,11 +111,11 @@ export function patientHTML(data, st) {
   const peak = Math.max(...p.risk.slice(0, h + 1).filter((v) => v != null));
   const rows = [
     ["Heart rate", latest(p.hr, h), "bpm", trend(p.hr, h)],
-    ["Blood pressure (MAP)", latest(p.map, h), "mmHg", trend(p.map, h)],
+    ["Average blood pressure (MAP)", latest(p.map, h), "mmHg", trend(p.map, h)],
     ["Breathing rate", latest(p.resp, h), "/min", trend(p.resp, h)],
     ["Temperature", latest(p.temp, h), "°C", trend(p.temp, h)],
-    ["Lactate", latestSparse(p.lactate, h), "mmol/L", ""],
-    ["White blood cells", latestSparse(p.wbc, h), "×10³/µL", ""],
+    ["Lactate (a blood test that rises when the body is under strain)", latestSparse(p.lactate, h), "mmol/L", ""],
+    ["White blood cells (they fight infection)", latestSparse(p.wbc, h), "×10³/µL", ""],
   ];
   if (p.manual) {
     const rd = [...p.record.readings].reverse().find((x) => x.hour <= s.unit_hour) || p.record.readings[0];
@@ -126,8 +126,8 @@ export function patientHTML(data, st) {
   }
   const past = p.reviews.filter((x) => x < h);
   const hist = past.length
-    ? `Septris had this chart reviewed ${past.length} time${past.length > 1 ? "s" : ""} before (${past.map((x) => `${h - x} h ago`).join(", ")}).`
-    : "Not reviewed yet during this stay.";
+    ? `Septris sent the nurse to check this chart ${past.length} time${past.length > 1 ? "s" : ""} before (${past.map((x) => `${h - x} h ago`).join(", ")}).`
+    : "Not checked yet during this stay.";
   let why = "";
   if (r.picked) {
     const reasons = (s.reasons || "").split(" | ").filter(Boolean);
@@ -141,7 +141,7 @@ export function patientHTML(data, st) {
     else if (p.onset == null) text = "This patient did not develop sepsis during their ICU stay.";
     else {
       const d = Math.round(p.onset - h);
-      if (r.picked && d >= 6 && d <= 12) text = `Sepsis was accurately predicted: it was recorded ${d} hours after this review.`;
+      if (r.picked && d >= 6 && d <= 12) text = `Caught early: sepsis was recorded ${d} hours after this chart check.`;
       else if (d > 0) text = `The record shows sepsis ${d} hours after this point.`;
       else text = `The record shows sepsis began ${-d} hours before this point.`;
     }
@@ -155,21 +155,21 @@ export function patientHTML(data, st) {
     <div class="facts">
       <div><span>Patient</span><b>${p.sex === "M" ? "Man" : "Woman"}, ${Math.round(p.age)}</b></div>
       <div><span>Time in ICU</span><b>${r.hours_in_icu} h</b></div>
-      <div><span>Sepsis risk</span><b>${r.percentile} of 100</b></div>
+      <div><span>Risk score</span><b>${r.percentile} of 100</b></div>
       <div><span>Risk level</span><b>${tier.name}</b></div>
       <div><span>6-hour trend</span><b>${riskTrend || "–"}</b></div>
       <div><span>Highest so far</span><b>${peak} of 100</b></div>
     </div>
-    <p class="small muted">${tier.name} risk: ${tier.note}. ${r.snoozed ? "Skipped for now because it was reviewed in the last 12 hours." : r.picked ? "This is the bed Septris recommends reviewing now." : `${r.rank - 1} bed${r.rank - 1 === 1 ? " is" : "s are"} ahead of it in line.`}</p>
+    <p class="small muted">${tier.name} risk: ${tier.note}. ${r.snoozed ? "Skipped for now because it was checked in the last 12 hours." : r.picked ? "Septris recommends checking this bed now." : `${r.rank - 1} bed${r.rank - 1 === 1 ? " is" : "s are"} ahead of it in line.`}</p>
     ${why}
     <h3>Latest readings</h3>
     <table class="res vit"><tbody>${rows.map(([name, x, unit, tr]) => `<tr><td>${name}</td><td class="n">${x ? `${x.v} ${unit}` : "not measured"}</td><td class="muted small">${x ? when(x) : ""}${tr ? ` · ${tr}` : ""}</td></tr>`).join("")}</tbody></table>
-    <h3>Review history</h3>
+    <h3>Check history</h3>
     <p class="small">${hist}</p>
-    ${p.manual ? `<p class="small muted">Risk for entered patients comes from a small in-browser model that only sees the readings typed in. The full Septris models read each patient's hour-by-hour history.</p>` : ""}
+    ${p.manual ? `<p class="small muted">Risk scores for entered patients come from a small model that runs in your browser. It sees only the readings typed in. The full Septris reads each patient's hour-by-hour history.</p>` : ""}
     ${outcome}
     <h3>Stay so far</h3>
-    <canvas class="chart" id="bedChart" aria-label="Chart of Bed ${bed}'s risk, heart rate and blood pressure"></canvas>
+    <canvas class="chart" id="bedChart" aria-label="Chart of Bed ${bed}'s risk score, heart rate and blood pressure"></canvas>
     ${chartLegend(st.showKey)}`;
 }
 
@@ -188,16 +188,16 @@ export function queueHTML(data, st) {
   return `
     <div class="eyebrow">Day ${s.day} · ${s.clock}</div>
     <h2>Priority queue</h2>
-    <p>All ${b.length} occupied beds, most urgent first. The nurse reviews the top one now; the rest wait for the next review time.</p>
+    <p>All ${b.length} occupied beds, most urgent first. The nurse checks the top one now. The rest wait for the next chart check.</p>
     <div class="queue">${b.map((x) => {
       const stt = statusOf(x);
       return `<button class="qrow ${x.picked ? "top" : ""}" data-bed="${x.bed}">
         <span class="rank">${x.snoozed ? "–" : x.rank}</span><b>Bed ${x.bed}</b>
         <div class="bar"><i class="${stt.cls}" style="width:${x.percentile}%"></i></div>
-        <span class="num">${x.percentile}</span><span class="pill ${stt.cls}">${x.picked ? "Review now" : x.snoozed ? "Reviewed" : TIER[x.tier].name}</span></button>`;
+        <span class="num">${x.percentile}</span><span class="pill ${stt.cls}">${x.picked ? "Check now" : x.snoozed ? "Checked" : TIER[x.tier].name}</span></button>`;
     }).join("")}</div>
-    <p class="small"><b>This order only holds for this moment.</b> At the next review time every bed is scored again with its newest data, so the bed that is 2nd now is often not the next one reviewed.</p>
-    <p class="small muted">Risk is 0–100: how this hour compares with past ICU hours (100 = most worrying). Beds reviewed in the last 12 hours go to the bottom so the nurse isn't sent back to the same patient.</p>`;
+    <p class="small"><b>This order only holds for this moment.</b> Before the next chart check, every bed is scored again with its newest data. So the bed that is 2nd now is often not the next one checked.</p>
+    <p class="small muted">The risk score runs from 0 to 100. It shows how worrying this hour looks compared with past ICU hours (100 = most worrying). Beds checked in the last 12 hours go to the bottom, so the nurse isn't sent back to the same patient.</p>`;
 }
 
 export function resultsHTML(data, k) {
@@ -205,9 +205,9 @@ export function resultsHTML(data, k) {
   const lines = [
     ["Septris", "septris", "var(--accent)"],
     ["Septris at a hospital it never saw", "septris_new_hospital", "#2f7fb8"],
-    ["Decision-tree model alone", "lightgbm", "#7d8fa0"],
-    ["Deep-learning model alone", "gru", "#7d8fa0"],
-    ["SIRS checklist (used in hospitals)", "sirs", "var(--warn)"],
+    ["Septris part 1 alone", "lightgbm", "#7d8fa0"],
+    ["Septris part 2 alone", "gru", "#7d8fa0"],
+    ["Hospital warning checklist (SIRS)", "sirs", "var(--warn)"],
     ["Random picking", "random", "var(--grey)"],
   ];
   const block = (T, name) => `
@@ -219,23 +219,23 @@ export function resultsHTML(data, k) {
   const a = R.A.septris, rnd = R.A.random, q = data.quality;
   return `
     <h2>How well does it work?</h2>
-    <p>Out of every <b>100 patients who developed sepsis</b>, how many had their chart reviewed <b>6–12 hours before</b> sepsis was recorded.</p>
-    <div class="seg" role="group" aria-label="Reviews per shift">${[1, 2, 3, 5].map((x) => `<button class="btn ${x === k ? "on" : ""}" data-k="${x}">${x} per shift</button>`).join("")}</div>
+    <p>Out of every <b>100 patients who developed sepsis</b>, how many were <b>caught early</b>? That means the nurse checked their chart <b>6–12 hours before</b> sepsis was recorded.</p>
+    <div class="seg" role="group" aria-label="Chart checks per shift">${[1, 2, 3, 5].map((x) => `<button class="btn ${x === k ? "on" : ""}" data-k="${x}">${x} per shift</button>`).join("")}</div>
     ${block("A", `Hospital A · Boston · ${a.eligible} sepsis patients`)}
     ${block("B", `Hospital B · Atlanta · ${R.B.septris.eligible} sepsis patients`)}
-    <p class="small muted">Test patients only; no model was trained on them. Mean of 5 patient-arrival orders. Septris at Hospital A: ${a.caught.toFixed(1)}% (95% range ${a.lo.toFixed(1)}–${a.hi.toFixed(1)}).</p>
+    <p class="small muted">Only test patients are counted. Septris never trained on them. Each number is the average of 5 runs with patients arriving in a different order. Septris at Hospital A: ${a.caught.toFixed(1)}% (95% range, a range of likely values: ${a.lo.toFixed(1)}–${a.hi.toFixed(1)}).</p>
     <h3>What these numbers mean</h3>
     <ul>
-      <li><b>About ${(a.caught / rnd.caught).toFixed(1)}× random picking</b> at Hospital A with the same nurse time.</li>
-      <li><b>Most reviews are still false alarms:</b> about ${a.false_per_shift.toFixed(1)} of ${k} per shift go to a patient who turns out fine (random: ${rnd.false_per_shift.toFixed(1)}). Only about 8% of ICU patients develop sepsis.</li>
-      <li><b>It loses some accuracy at a new hospital</b>, but still beats the checklist.</li>
+      <li><b>About ${(a.caught / rnd.caught).toFixed(1)} times as many caught early as random picking</b> at Hospital A, with the same nurse time.</li>
+      <li><b>Most chart checks are still false alarms.</b> About ${a.false_per_shift.toFixed(1)} of ${k} per shift go to a patient who does not get sepsis (random: ${rnd.false_per_shift.toFixed(1)}). Only about 8% of ICU patients develop sepsis.</li>
+      <li><b>It does worse at a hospital it has never seen</b>, but still beats the checklist.</li>
     </ul>
-    <h3>Hour-by-hour accuracy</h3>
-    <p class="small">How well each model separates hours that are within 12 hours of sepsis from hours that aren't (AUROC: 0.5 is a coin flip, 1.0 is perfect), and the official PhysioNet 2019 Challenge score (higher is better; the 2019 winner scored 0.43 on Hospital A).</p>
-    <table class="res"><thead><tr><th>Trained → tested</th><th class="n">Septris</th><th class="n">Tree</th><th class="n">Deep</th></tr></thead><tbody>
+    <h3>How well it spots risky hours</h3>
+    <p class="small">Each cell has two numbers. The first shows how well Septris, or one of its two parts, tells hours within 12 hours of sepsis from other hours. 0.5 is a coin flip and 1.0 is perfect (this score is called AUROC). The second is the official score from a 2019 sepsis contest. Higher is better, and the 2019 winner scored 0.43 on Hospital A.</p>
+    <table class="res"><thead><tr><th>Trained at → tested at</th><th class="n">Septris</th><th class="n">Part 1</th><th class="n">Part 2</th></tr></thead><tbody>
     ${[["A>A", "A → A"], ["B>B", "B → B"], ["B>A", "B → A (new)"], ["A>B", "A → B (new)"]].map(([key, lab]) => `<tr><td>${lab}</td>${["septris", "lightgbm", "gru"].map((m) => `<td class="n">${q[key][m].auroc.toFixed(2)} <span class="muted">/ ${q[key][m].utility.toFixed(2)}</span></td>`).join("")}</tr>`).join("")}
     </tbody></table>
-    <p class="small muted">Each cell: AUROC / Challenge score.</p>`;
+    <p class="small muted">Each cell: first score (0.5 to 1.0) / contest score.</p>`;
 }
 
 export function modelHTML(data) {
@@ -243,36 +243,36 @@ export function modelHTML(data) {
   return `
     <h2>How Septris works</h2>
     <h3>1. The data</h3>
-    <p>40,336 real ICU stays from two US hospital systems (Beth Israel Deaconess in Boston and Emory in Atlanta), released for the PhysioNet 2019 sepsis challenge with names and dates removed. Each stay has hourly vital signs and lab results.</p>
+    <p>40,336 real stays in an intensive care unit (ICU) from two US hospital systems: Beth Israel Deaconess in Boston and Emory in Atlanta. They were released for a 2019 sepsis contest (the PhysioNet Challenge) with names and dates removed. Each stay has hourly vital signs and lab results.</p>
     <h3>2. What it looks at</h3>
     <ul>
       <li>Vital signs: heart rate, blood pressure, breathing rate, temperature, oxygen level.</li>
-      <li>26 lab results such as lactate, white blood cells and creatinine.</li>
+      <li>26 lab results (blood tests), such as lactate (rises when the body is under strain), white blood cells (they fight infection) and creatinine (shows how well the kidneys work).</li>
       <li>How each value has changed, and which tests were done recently.</li>
       <li>Age and sex. It does <b>not</b> see how long the patient has been in hospital or which unit they're on.</li>
     </ul>
     <h3>3. Two models, one score</h3>
-    <p><b>A decision-tree model (LightGBM)</b> reads summaries of the last few hours. <b>A deep-learning model (GRU, three copies averaged)</b> reads the whole stay hour by hour. Each gives every bed a 0–100 risk, and Septris uses the <b>higher</b> of the two, so a bed moves up if either model is worried. The two models catch largely different patients, which is why using both helps.</p>
-    <p>We compared 10 ways of combining our models (each alone, averages, a calibrated blend, a version of the tree model tuned directly on the review queue, and "whichever is higher") using only the tuning patients. "Whichever is higher" of these two came out best, so that is what Septris uses.</p>
-    <h3>4. From score to priority</h3>
-    <p>At each of the nurse's ${m.k} review times per 12-hour shift, Septris sorts the ${m.beds} beds by risk, skips anyone reviewed in the last 12 hours, and recommends the top one, with the reasons that raised its score.</p>
+    <p><b>Part 1 is a decision-tree model (LightGBM).</b> It asks a long series of yes/no questions about summaries of the last few hours. <b>Part 2 is a deep-learning model (GRU).</b> It is a type of AI that learns patterns from examples, and it reads the whole stay hour by hour. We use three copies of it and average them. Each part gives every bed a 0–100 risk score. Septris uses the <b>higher</b> of the two, so a bed moves up if either part is worried. The two parts catch largely different patients, so using both helps.</p>
+    <p>We compared 10 ways of combining the two parts. They included each part alone, averages, a blend with rescaled scores, a version of part 1 tuned directly on the chart-check queue, and “whichever is higher”. We used only the tuning patients (a group kept apart from the test patients). “Whichever is higher” came out best, so Septris uses it.</p>
+    <h3>4. From risk score to priority</h3>
+    <p>At each of the nurse's ${m.k} chart checks per 12-hour shift, Septris sorts the ${m.beds} beds by risk score. It skips anyone checked in the last 12 hours and recommends the top bed, with the reasons that raised its score.</p>
     <h3>5. How it was tested</h3>
     <ul>
-      <li>Patients were split 70 / 15 / 15: train, tune, test. Every number shown is from test patients the models never saw.</li>
+      <li>Patients were split three ways: 70% to train the models, 15% to tune them and 15% to test them. Every number shown comes from test patients the models never saw.</li>
       <li>${m.patients.toLocaleString()} Hospital A test patients (${m.eligible_septic} developed sepsis) pass through this ${m.beds}-bed unit over ${Math.round(m.days)} simulated days. When one leaves, the next is admitted to the free bed.</li>
-      <li>Random picking and the SIRS checklist face the same beds at the same moments.</li>
-      <li>The main settings were written down before any test result was seen; later changes are logged in the project repository.</li>
+      <li>Random picking and the SIRS checklist (a standard list of warning signs used in hospitals) face the same beds at the same moments.</li>
+      <li>The main settings were written down before any test result was seen; later changes are recorded in the project's code history.</li>
     </ul>
     <h3>6. How a hospital would use it</h3>
-    <p>In a hospital, nobody would type anything in. Each patient's vital signs and lab results already flow into the electronic record every hour; Septris would read them from there, re-score every bed, and update the nurse's priority list on its own.</p>
-    <p><b>“＋ Add a patient”</b> at the top of the ward shows that step done by hand: enter a new patient's readings and expected stay, and they are admitted to a bed, scored, and placed in the queue with everyone else. You can update their readings later and watch their priority change.</p>
-    <p class="small muted">Entered patients are scored by “Septris Lite”, a small version of the model that runs inside this page and only sees the ${data.lite ? data.lite.fields.length : 11} values on the form. It is weaker than the full models (hour-by-hour accuracy ${data.lite ? data.lite.auroc.lite_test.toFixed(2) : "0.68"} vs ${data.lite ? data.lite.auroc.septris_test.toFixed(2) : "0.79"} on Hospital A test patients), because the full models also read each patient's history.</p>
+    <p>In a hospital, nobody would type anything in. Each patient's vital signs and lab results already go into the electronic patient record every hour. Septris would read them from there, re-score every bed and update the nurse's priority list on its own.</p>
+    <p><b>“＋ Add a patient”</b> at the top of the ward shows that step done by hand. Enter a new patient's readings and expected stay. They are admitted to a bed, scored and placed in the queue with everyone else. You can update their readings later and watch their priority change.</p>
+    <p class="small muted">Entered patients are scored by “Septris Lite”, a small version of Septris that runs inside this page and sees only the ${data.lite ? data.lite.fields.length : 11} values on the form. It is weaker than the full Septris. Its hour-by-hour accuracy score is ${data.lite ? data.lite.auroc.lite_test.toFixed(2) : "0.68"}, against ${data.lite ? data.lite.auroc.septris_test.toFixed(2) : "0.79"} for the full Septris (Hospital A test patients; 0.5 is a coin flip, 1.0 is perfect). The full Septris also reads each patient's history.</p>
     <h3>Limits</h3>
     <ul>
       <li>Tested on past records only. It has never been used on real patients.</li>
       <li>It is less accurate at a hospital it wasn't trained on.</li>
-      <li>Many of its early flags came after new lab tests were ordered, so it mostly highlights patients the team was already working up. It doesn't show the model is ahead of doctors.</li>
-      <li>The unit places patients from different times side by side.</li>
+      <li>Many of its early flags came after new lab tests were ordered. So it mostly points to patients the care team was already looking into. This does not show that the model is ahead of doctors.</li>
+      <li>The ward in this demo puts patients from different time periods side by side.</li>
     </ul>
     <p class="small muted">Team: Miheer Parasnis, Aaron Qin, Reyansh Maheshwari · Veritas AI Hackathon 2026, AI + Health. Data: PhysioNet/CinC Challenge 2019 (CC BY 4.0). Prototype; not medical advice.</p>`;
 }
@@ -280,15 +280,15 @@ export function modelHTML(data) {
 export function faqHTML(data) {
   const k = data.meta.k;
   const qa = [
-    ["What is sepsis?", "The body's extreme reaction to an infection. It can damage organs within hours, and each hour of delayed treatment raises the risk of death, so spotting it early matters."],
-    ["What problem does Septris solve?", `A careful sepsis review of one chart takes real time, and one nurse may cover 20 beds. Septris answers one question: with my next review, whose chart should I open? This page shows ${k} reviews per 12-hour shift; we also tested 1, 2 and 3.`],
-    ["What do the colours mean?", "Blue: review this bed now. Red: high risk (top 5% of ICU hours). Yellow: medium risk (top 20%). Green: low risk. Grey: reviewed in the last 12 hours, so skipped for now."],
-    ["What does “Risk 92 of 100” mean?", "This patient's current data looks more worrying than about 92% of ICU hours at the training hospital. It's a ranking, not the chance of having sepsis."],
-    ["How do you know if a pick was right?", "These are real patients from past records, so each stay is already written down. Septris only gets the data up to each moment. Afterwards we look at the record: if sepsis was recorded 6–12 hours after the review, the pick counts as an accurate early flag. Turn on “Show outcomes” to see this."],
-    ["Why are most picks false alarms?", "Only about 8% of these ICU patients ever develop sepsis, and at any moment very few are 6–12 hours away from it. Usually there is no one to catch. What matters is catching more real cases with the same nurse time."],
-    ["Can I add my own patient?", "Yes. Click “＋ Add a patient” at the top of the ward, type in their readings (or use an example), and choose how long they stay. They are wheeled in from the elevator, scored, and ranked with the other beds. In a real hospital this information would come in automatically from the patient record."],
-    ["Does it diagnose sepsis?", "No. It never diagnoses or recommends treatment. It only orders the nurse's review list and explains why."],
-    ["Can I control it by voice?", "Yes, when the page is allowed to use the microphone. You can also type: “add John, a 62 year old man, with heart rate 118 and temperature 38.6 to bed 4”, “show bed 6”, “next review”, “next shift”, “queue”, “results”, “show me a miss”, “why?”, “zoom out”, “play”."],
+    ["What is sepsis?", "Sepsis is the body's extreme reaction to an infection. It can damage organs within hours. Each hour of delayed treatment raises the risk of death. That is why spotting it early matters."],
+    ["What problem does Septris solve?", `Checking one chart for signs of sepsis takes real time, and one nurse may cover 20 beds. Septris answers one question: whose chart should the nurse open next? This page shows ${k} chart checks per 12-hour shift. We also tested 1, 2 and 3.`],
+    ["What do the colours mean?", "Blue: check this bed now. Red: high risk (top 5% of ICU hours). Yellow: medium risk (top 20%). Green: low risk. Grey: checked in the last 12 hours, so skipped for now."],
+    ["What does “risk score 92 of 100” mean?", "It is a ranking. This patient's data right now looks more worrying than about 92% of ICU hours at the training hospital. It does not tell you the chance of having sepsis."],
+    ["How do you know if a pick was right?", "These are real patients from past records, so each stay is already written down. Septris only gets the data up to each moment. Afterwards we look at the record. If sepsis was recorded 6–12 hours after the chart check, the patient counts as caught early. Turn on “Show outcomes” to see this."],
+    ["Why are most picks false alarms?", "Only about 8% of these ICU patients ever develop sepsis. At any moment, very few are 6–12 hours away from it. So most of the time there is no one to catch. A false alarm is a check on a patient who did not get sepsis. What counts is catching more real cases with the same nurse time."],
+    ["Can I add my own patient?", "Yes. Click “＋ Add a patient” at the top of the ward, type in their readings (or use an example), and choose how long they stay. They are wheeled in from the elevator, scored and ranked with the other beds. In a real hospital, this information would come in automatically from the patient record."],
+    ["Does it diagnose sepsis?", "No. It never diagnoses or recommends treatment. It only sorts the nurse's list of charts to check and explains why."],
+    ["Can I control it by voice?", "Yes, when the page is allowed to use the microphone. You can also type: “add John, a 62 year old man, with heart rate 118 and temperature 38.6 to bed 4”, “show bed 6”, “next check”, “next shift”, “queue”, “results”, “show me a miss”, “why?”, “zoom out”, “play”."],
   ];
   return `<h2>Questions</h2>${qa.map(([q, a]) => `<h3>${q}</h3><p>${a}</p>`).join("")}`;
 }

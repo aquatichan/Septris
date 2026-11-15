@@ -43,30 +43,41 @@ export function createDecor(world) {
   };
   plant(34.8, -7.0, 1.1);
   plant(34.8, 7.0, 1.1);
-  plant(23.2, -7.0);
-  plant(-21.0, -9.9, 0.9);
-  plant(21.0, -9.9, 0.9);
+  plant(23.0, -7.0);
+  plant(21.2, 3.2, 0.9);
 
-  // lobby bench facing the desk
-  const wood = new THREE.MeshStandardMaterial({ color: "#7a6654", roughness: 0.7 });
-  add(new THREE.BoxGeometry(3.2, 0.12, 0.7), wood, 30.5, 0.5, 4.2);
-  for (const x of [29.2, 31.8]) add(new THREE.BoxGeometry(0.12, 0.5, 0.6), new THREE.MeshStandardMaterial({ color: "#3a4a50" }), x, 0.25, 4.2);
-
-  // ward: supply carts by the end walls and a crash cart near the station
-  const steel = new THREE.MeshStandardMaterial({ color: "#aab7bb", metalness: 0.6, roughness: 0.35 });
-  const cart = (x, z, color) => {
-    add(new THREE.BoxGeometry(0.9, 0.95, 0.6), steel, x, 0.55, z);
-    add(new THREE.BoxGeometry(0.92, 0.12, 0.62), new THREE.MeshStandardMaterial({ color, roughness: 0.6 }), x, 1.08, z);
+  // ward: supply carts by the end wall, a crash cart near the station, a linen trolley
+  const steel = new THREE.MeshStandardMaterial({ color: "#b9c2c6", metalness: 0.6, roughness: 0.35 });
+  const cart = (x, z, color, ry = 0) => {
+    const body = add(new THREE.BoxGeometry(0.9, 0.85, 0.55), steel, x, 0.55, z);
+    body.rotation.y = ry;
+    const top = add(new THREE.BoxGeometry(0.92, 0.1, 0.57), new THREE.MeshStandardMaterial({ color, roughness: 0.6 }), x, 1.03, z);
+    top.rotation.y = ry;
+    for (let i = 0; i < 3; i++) {
+      const d = add(new THREE.BoxGeometry(0.8, 0.02, 0.02), new THREE.MeshStandardMaterial({ color: "#6f7a7f" }), x + Math.sin(ry) * 0.28, 0.35 + i * 0.22, z + Math.cos(ry) * 0.28, false);
+      d.rotation.y = ry;
+    }
   };
-  cart(-21.2, -2.6, "#d9534f");
-  cart(-21.2, 2.6, "#4fb3ff");
-  cart(5.4, 0, "#d9534f");
-  cart(21.0, -4.6, "#4fb3ff");
+  cart(-21.2, -3.2, "#d9534f", Math.PI / 2);
+  cart(-21.2, 3.2, "#3d6fb6", Math.PI / 2);
+  cart(5.6, -1.0, "#d9534f");
+  cart(21.0, -4.4, "#3d6fb6", -Math.PI / 2);
 
-  // hand-wash stations on the back wall between every second bay
-  const basin = new THREE.MeshStandardMaterial({ color: "#e6eef0", roughness: 0.3 });
-  for (const x of [-13.2, -4.4, 4.4, 13.2]) {
-    add(new THREE.BoxGeometry(0.7, 0.16, 0.42), basin, x, 1.0, -10.6);
-    add(new THREE.BoxGeometry(0.5, 0.5, 0.05), new THREE.MeshStandardMaterial({ color: "#16404f", roughness: 0.4 }), x, 1.75, -10.83, false);
+  // hand-wash counter with wall cabinets on the left wall, between the windows
+  const oak = new THREE.MeshStandardMaterial({ color: "#cdb89a", roughness: 0.6 });
+  const white = new THREE.MeshStandardMaterial({ color: "#f1f4f4", roughness: 0.35 });
+  for (const z of [-3.25, 3.25]) {
+    add(new THREE.BoxGeometry(0.6, 0.9, 2.4), oak, -21.65, 0.45, z);
+    add(new THREE.BoxGeometry(0.64, 0.05, 2.5), white, -21.63, 0.93, z);
+    add(new THREE.BoxGeometry(0.36, 0.1, 0.5), new THREE.MeshStandardMaterial({ color: "#aeb8bc", metalness: 0.8, roughness: 0.25 }), -21.6, 0.94, z);
+    add(new THREE.BoxGeometry(0.34, 0.6, 2.4), oak, -21.8, 2.1, z);
   }
+  // wall clock above the doorway to the lobby
+  const clock = add(new THREE.CylinderGeometry(0.28, 0.28, 0.05, 28), white, 21.85, 2.72, 0, false);
+  clock.rotation.z = Math.PI / 2;
+  const hand = (len, a) => {
+    const h = add(new THREE.BoxGeometry(0.012, len, 0.025), new THREE.MeshBasicMaterial({ color: "#1b2327" }), 21.82, 2.72 + Math.cos(a) * len / 2, Math.sin(a) * len / 2, false);
+    h.rotation.x = a;
+  };
+  hand(0.2, 0.9); hand(0.14, -1.2);
 }
