@@ -3,9 +3,9 @@
 
 PY ?= python3
 
-.PHONY: reproduce data audit train deep blend evaluate compare secondary artifacts test app
+.PHONY: reproduce data audit train deep familiarity blend ensemble evaluate compare secondary artifacts bundle external-audit test app api
 
-reproduce: audit train deep blend evaluate compare secondary artifacts test
+reproduce: audit train deep familiarity blend ensemble evaluate compare secondary artifacts bundle test
 
 data:
 	$(PY) scripts/01_audit.py --download
@@ -19,8 +19,14 @@ train:
 deep:
 	$(PY) scripts/08_temporal_gru.py
 
+familiarity:
+	$(PY) scripts/07_familiarity_guard.py
+
 blend:
 	$(PY) scripts/10_blend.py
+
+ensemble:
+	$(PY) scripts/14_validated_ensemble.py
 
 compare:
 	$(PY) scripts/11_compare_models.py
@@ -34,8 +40,18 @@ secondary:
 artifacts:
 	$(PY) scripts/05_app_artifacts.py
 
+bundle:
+	$(PY) scripts/11_export_model_bundle.py
+
+external-audit:
+	@test -n "$(SOURCE)" && test -n "$(INPUT)" && test -n "$(REPORT)" || (echo "Use SOURCE=eicu|mimiciv|hirid INPUT=/secure/hourly.parquet REPORT=outputs/external/audit.json"; exit 2)
+	$(PY) scripts/12_external_audit.py --source $(SOURCE) --input $(INPUT) --report $(REPORT)
+
 test:
 	$(PY) -m pytest -q tests
 
 app:
 	$(PY) app/app.py
+
+api:
+	uvicorn api.main:app --host 127.0.0.1 --port 8000 --reload

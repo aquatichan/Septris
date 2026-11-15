@@ -1,0 +1,51 @@
+name: Reproduce and test SignalBridge
+
+on:
+  push:
+    branches: ["feature/safety-familiarity-guard"]
+  pull_request:
+    paths:
+      - "src/**"
+      - "scripts/**"
+      - "tests/**"
+      - "requirements.txt"
+      - "Makefile"
+      - ".github/workflows/safety-guard.yml"
+  workflow_dispatch:
+
+jobs:
+  guard-unit-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install minimal test dependencies
+        run: python -m pip install --upgrade pip numpy pandas pytest
+      - name: Run familiarity guard tests
+        run: python -m pytest -q tests/test_familiarity.py
+
+  full-reproduction:
+    runs-on: ubuntu-latest
+    timeout-minutes: 110
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install exact project dependencies
+        run: python -m pip install --upgrade pip && python -m pip install -r requirements.txt
+      - name: Download public PhysioNet 2019 data
+        run: make data
+      - name: Train and evaluate all models
+        run: make reproduce
+      - name: Upload reproducible results
+        uses: actions/upload-artifact@v4
+        with:
+          name: signalbridge-results
+          path: |
+            outputs/
+            app/artifacts/
+          if-no-files-found: error
+          retention-days: 14

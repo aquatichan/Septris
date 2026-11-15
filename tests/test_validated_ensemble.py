@@ -8,7 +8,7 @@ import pandas as pd
 
 
 ROOT = Path(__file__).resolve().parents[1]
-SPEC = importlib.util.spec_from_file_location("validated_ensemble", ROOT / "scripts" / "14_validated_ensemble.py")
+SPEC = importlib.util.spec_from_file_location("validated_ensemble", ROOT / "scripts" / "09_validated_ensemble.py")
 ensemble = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(ensemble)
 

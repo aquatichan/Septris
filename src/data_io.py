@@ -5,6 +5,7 @@ No modelling happens here. Works per hospital ("A" or "B").
 
 from __future__ import annotations
 
+import shutil
 import subprocess
 from pathlib import Path
 
@@ -33,21 +34,32 @@ SHORTCUTS = ["ICULOS", "HospAdmTime", "Unit1", "Unit2"]
 
 
 def download(data_dir: str | Path, hospitals=("A", "B")) -> Path:
-    """Download the training sets with wget (run this in Colab, not locally).
+    """Download the public PhysioNet files, preferring its documented S3 path.
 
-    Re-running is cheap: wget -N skips files that are already there.
+    S3 sync avoids brittle recursive HTML traversal. The official wget command
+    remains a portable fallback for environments without the AWS CLI.
     """
     data_dir = Path(data_dir)
     data_dir.mkdir(parents=True, exist_ok=True)
     for h in hospitals:
-        url = f"{PHYSIONET_BASE}/{HOSPITAL_DIRS[h]}/"
-        subprocess.run(
-            ["wget", "-q", "-r", "-N", "-c", "-np", "-nH", "--cut-dirs=4",
-             "-A", "*.psv", "-P", str(data_dir), url],
-            check=True,
-        )
+        destination = data_dir / HOSPITAL_DIRS[h]
+        if any(destination.glob("*.psv")):
+            continue
+        if shutil.which("aws"):
+            subprocess.run(
+                ["aws", "s3", "sync", "--no-sign-request", "--only-show-errors",
+                 f"s3://physionet-open/challenge-2019/1.0.0/training/{HOSPITAL_DIRS[h]}",
+                 str(destination)],
+                check=True,
+            )
+        else:
+            url = f"{PHYSIONET_BASE}/{HOSPITAL_DIRS[h]}/"
+            subprocess.run(
+                ["wget", "-q", "-r", "-N", "-c", "-np", "-nH", "--cut-dirs=4",
+                 "-A", "*.psv", "-P", str(data_dir), url],
+                check=True,
+            )
     return data_dir
-
 
 def load_hospital(data_dir: str | Path, hospital: str) -> pd.DataFrame:
     """Read every patient file for one hospital into one long table.

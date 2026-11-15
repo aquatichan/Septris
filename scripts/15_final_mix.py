@@ -3,7 +3,7 @@ on validation patients only.
 
 Run after 02_train.py (which now also trains Miheer's queue-tuned LightGBM),
 08_temporal_gru.py for seeds 2026/2027/2028, 12_gru_ensemble.py and
-14_validated_ensemble.py; before 03_evaluate.py.
+09_validated_ensemble.py; before 03_evaluate.py.
 
 Components, each turned into a percentile of its home hospital's validation
 hours: LightGBM combined (L), queue-tuned LightGBM (Q), 3-seed GRU ensemble
@@ -13,7 +13,7 @@ hours: LightGBM combined (L), queue-tuned LightGBM (Q), 3-seed GRU ensemble
   max(Q, G)        same rule with the queue-tuned LightGBM
   max(L, Q, G)     highest of all three
   mean(L, G), mean(Q, G), mean(L, Q, G)
-  platt blend      Miheer's Platt-calibrated convex blend (14_validated_ensemble.py)
+  platt blend      Miheer's Platt-calibrated convex blend (09_validated_ensemble.py)
   L, Q, G alone
 
 Rule (same as 10_blend.py): highest mean validation share of eligible septic
