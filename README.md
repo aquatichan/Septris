@@ -159,15 +159,18 @@ alarm. **How well does it work?** covers every test patient at both
 hospitals for 1, 2, 3 or 5 reviews per shift. **Questions** is a plain FAQ.
 
 Or open [notebooks/reproduce.ipynb](notebooks/reproduce.ipynb) in Colab and
-run all cells. Runtime: about 17 minutes for `make reproduce` on a 2-core,
-8 GB machine, plus the download. A fresh clone run with `make reproduce`
-produced byte-identical audit, split, result and app files (checked 14 Nov 2026). The
+run all cells. Runtime for `make reproduce` on a 2-core, 8 GB machine: several
+hours, almost all of it training the three temporal GRU seeds; the rest takes
+about 25 minutes, plus the download. The version 1 pipeline (before the GRU
+was added) was re-run from a fresh clone and produced byte-identical audit,
+split, result and app files (checked 14 Nov 2026); the current pipeline has
+not been re-run end to end from a fresh clone. The
 app only reads `app/artifacts/`, so it runs offline and cannot change any
 result. The non-PyTorch stack is pinned in `requirements-lock.txt`; PyTorch is platform-specific and is installed from `requirements.txt`.
 
 ```
 src/        data_io, labels, splits, audit, features, simulation, utility, explanations
-scripts/    01_audit → 02_train → 08_temporal_gru → 10_blend / 14_validated_ensemble → 03_evaluate → 04_secondary → 05_app_artifacts → 06_report
+scripts/    01_audit → 02_train → 08_temporal_gru → 10_blend / 09_validated_ensemble / 12_gru_ensemble / 15_final_mix → 03_evaluate → 04_secondary → 05_app_artifacts → 06_report
 tests/      leakage, splits, labels, slots, alert classes, utility, explanations, temporal GRU, API and external-data contracts
 app/        Gradio app and its precomputed artifacts
 docs/       results, pre-registration, data provenance

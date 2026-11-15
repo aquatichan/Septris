@@ -2,13 +2,15 @@
 
 import hashlib
 import pickle
+import re
+import zlib
 from pathlib import Path
 
 import lightgbm as lgb
 import numpy as np
 import pandas as pd
 
-from src import data_io as D, features as F
+from src import data_io as D, explanations as E, features as F
 
 
 CRITICAL_VITALS = ("HR", "SBP", "Resp", "O2Sat", "Temp")
@@ -56,9 +58,21 @@ class FrozenLightGBMEngine:
         self.model = lgb.Booster(model_file=str(model_path))
         self.hospital = hospital
 
+    @staticmethod
+    def _feature_patient_id(history: list[dict]) -> str:
+        """The feature code keys its gap-filling on ids shaped like 'p000123'.
+
+        A dataset id is passed through unchanged, so a replayed test patient
+        gets exactly the score it had in the evaluation. Any other id is mapped
+        to a stable number, so the same patient always gets the same fill-ins.
+        """
+        pid = str(history[-1].get("patient_id", ""))
+        return pid if re.fullmatch(r"[A-Za-z]\d+", pid) else f"p{zlib.crc32(pid.encode())}"
+
     def _frame(self, history: list[dict]) -> pd.DataFrame:
         if not history:
             raise ValueError("no observation history")
+        feature_pid = self._feature_patient_id(history)
         values = list(D.MEASURED)
         age = next((x.get("age") for x in reversed(history) if x.get("age") is not None), np.nan)
         sex = next((x.get("sex") for x in reversed(history) if x.get("sex") is not None), np.nan)
@@ -68,7 +82,7 @@ class FrozenLightGBMEngine:
             event = by_hour.get(h, {})
             row = {v: np.nan for v in values}
             row.update({k: v for k, v in event.get("values", {}).items() if k in row and v is not None})
-            row.update({"patient_id": "inference_patient", "hour": h, "Age": age, "Gender": sex})
+            row.update({"patient_id": feature_pid, "hour": h, "Age": age, "Gender": sex})
             for shortcut in D.SHORTCUTS:
                 row[shortcut] = np.nan
             rows.append(row)
@@ -87,7 +101,6 @@ class FrozenLightGBMEngine:
         raw_score = float(self.model.predict(latest)[0])
         probability = self._calibrate(raw_score)
         contrib = self.model.predict(latest, pred_contrib=True)[0][:-1]
-        top = np.argsort(np.abs(contrib))[::-1][:3]
 
         missing = []
         outside = []
@@ -101,13 +114,21 @@ class FrozenLightGBMEngine:
 
         familiarity = ("insufficient_data" if missing else
                        "unfamiliar_pattern" if len(outside) >= 2 else "within_validated_range")
+        # Same wording rules as the app: a statement never quotes a value that
+        # was gap-filled rather than measured (E.phrase returns None for those).
         explanations = []
-        for i in top:
-            feature, value = str(X.columns[i]), float(latest.iloc[0, i])
+        row = len(X) - 1
+        for i in np.argsort(np.abs(contrib))[::-1]:
+            if len(explanations) == 3 or contrib[i] == 0:
+                break
+            feature = str(X.columns[i])
+            text = E.phrase(feature, latest.iloc[0], base, row)
+            if text is None:
+                continue
             direction = "raised" if contrib[i] > 0 else "lowered"
             explanations.append({
                 "feature": feature, "contribution": float(contrib[i]),
-                "statement": f"{feature}={value:.2f} {direction} this prototype priority score.",
+                "statement": f"{text[0].upper() + text[1:]} {direction} this prototype priority score.",
             })
         return {
             "priority_score": probability,

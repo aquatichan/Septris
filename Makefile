@@ -1,11 +1,12 @@
 # One command reproduces every number from the raw PhysioNet files.
-# Runtime on a 2-core, 8 GB machine: about 17 minutes after the data is downloaded.
+# Runtime on a 2-core, 8 GB machine: several hours, almost all of it the three
+# temporal GRU seeds (`make deep`); everything else takes about 25 minutes.
 
 PY ?= python3
 
-.PHONY: reproduce data audit train deep familiarity blend ensemble evaluate compare secondary artifacts bundle external-audit test app api
+.PHONY: reproduce data audit train deep familiarity blend ensemble gru-ensemble final-mix web evaluate compare secondary artifacts bundle external-audit test app api
 
-reproduce: audit train deep familiarity blend ensemble evaluate compare secondary artifacts bundle test
+reproduce: audit train deep familiarity blend ensemble gru-ensemble final-mix evaluate compare secondary artifacts bundle web test
 
 data:
 	$(PY) scripts/01_audit.py --download
@@ -18,6 +19,8 @@ train:
 
 deep:
 	$(PY) scripts/08_temporal_gru.py
+	$(PY) scripts/08_temporal_gru.py --seed 2027
+	$(PY) scripts/08_temporal_gru.py --seed 2028
 
 familiarity:
 	$(PY) scripts/07_familiarity_guard.py
@@ -26,7 +29,17 @@ blend:
 	$(PY) scripts/10_blend.py
 
 ensemble:
-	$(PY) scripts/14_validated_ensemble.py
+	$(PY) scripts/09_validated_ensemble.py
+
+gru-ensemble:
+	$(PY) scripts/12_gru_ensemble.py
+
+final-mix:
+	$(PY) scripts/15_final_mix.py
+
+web:
+	$(PY) scripts/13_web_export.py
+	$(PY) scripts/16_lite_model.py
 
 compare:
 	$(PY) scripts/11_compare_models.py

@@ -8,6 +8,31 @@ The Gradio demo replays precomputed test-patient data. The API adds a separate,
 replayable backend contract that demonstrates how a frozen model could be
 connected to hourly EHR observations without changing the research result.
 
+## What it scores with
+
+The API serves the pre-registered **LightGBM combined** model for the chosen
+source hospital, with at most three charts per queue. It does not serve the
+later LightGBM + GRU mix shown in the 3D demo, and its queue rule (a
+calibrated minimum priority, three charts) differs from the 5-reviews-per-shift
+simulation.
+
+Replay check (14 Nov 2026): 25 Hospital A test patients were replayed through
+the engine at three time points each (75 scores). With the dataset's own
+patient ids the engine reproduced the evaluation scores exactly. With other
+ids the scores differed slightly (mean absolute difference 0.012 on the 0–1
+raw score, correlation 0.987), because gaps are filled with draws keyed to
+the patient id.
+
+Known limitation of the data-sufficiency rule (measured on test patients,
+14 Nov 2026): requiring heart rate, systolic pressure, respiratory rate,
+oxygen saturation **and** temperature all within two hours keeps a patient out
+of the queue for about 35% of ICU hours at both hospitals, and for about 40%
+of the hours that fall in the 12 hours before sepsis onset. Temperature is
+the cause: it is charted in only about 70% of two-hour windows. The research
+results do not use this rule. Before any real use, the rule should either
+allow a longer window for temperature or queue such patients with a
+"data missing" flag instead of dropping them.
+
 ## Safety properties
 
 - **Fail closed:** no score is returned if the source-hospital model bundle is absent or its model-file SHA-256 digest does not match.
