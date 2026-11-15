@@ -102,7 +102,7 @@ export function createGalaxy(world, { density = 0.8, hueShift = 190, saturation 
     uFlareGain: { value: glowIntensity * flareIntensity }, uSaturation: { value: saturation }, uTwinkleIntensity: { value: twinkleIntensity },
     uRotationAngle: { value: 0 }, uPan: { value: new THREE.Vector2() }, uBackground: { value: new THREE.Color("#030a10") },
   };
-  const sky = new THREE.Mesh(new THREE.SphereGeometry(200, 24, 16), new THREE.ShaderMaterial({
+  const sky = new THREE.Mesh(new THREE.SphereGeometry(600, 24, 16), new THREE.ShaderMaterial({
     uniforms, fragmentShader: FRAGMENT, side: THREE.BackSide, depthWrite: false, fog: false,
     vertexShader: "void main() { gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }",
   }));

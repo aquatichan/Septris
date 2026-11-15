@@ -279,9 +279,9 @@ export function createAudio() {
     // ~1.6 s sliding doors: filtered noise swell with a sweeping band, then a soft thunk.
     elevatorDoors: safe(() => {
       if (!ready()) return;
-      const t = ctx.currentTime + 0.02, { f } = burst(t, 1.5, 0.6, 'bandpass', 400, 0.8, ui, 0.7);
+      const t = ctx.currentTime + 0.02, { f } = burst(t, 1.5, 0.07, 'bandpass', 400, 0.8, ui, 0.7); // a soft slide, not a whoosh
       f.frequency.setValueAtTime(400, t); f.frequency.linearRampToValueAtTime(1100, t + 0.8); f.frequency.linearRampToValueAtTime(500, t + 1.5);
-      thump(t + 1.5, 85, 0.14, 0.18, ui); burst(t + 1.5, 0.12, 0.3, 'lowpass', 600, 0.7, ui, 0.003);
+      thump(t + 1.5, 85, 0.14, 0.035, ui); burst(t + 1.5, 0.12, 0.04, 'lowpass', 600, 0.7, ui, 0.003);
     }),
 
     chime: safe((kind) => {
@@ -294,7 +294,7 @@ export function createAudio() {
       } else if (kind === 'select') {
         tone(1800, t, 0.04, 0.03, 'sine', ui, 0.002);
       } else if (kind === 'admit') {
-        thump(t, 190, 0.08, 0.14, ui); thump(t + 0.13, 170, 0.1, 0.12, ui); burst(t, 0.05, 0.25, 'bandpass', 1200, 1, ui, 0.002);
+        thump(t, 190, 0.08, 0.05, ui); thump(t + 0.13, 170, 0.1, 0.04, ui);
       } else if (kind === 'alarm') {
         tone(523.25, t, 0.25, 0.07, 'triangle', ui, 0.01); tone(392, t + 0.25, 0.35, 0.07, 'triangle', ui, 0.01);
       }

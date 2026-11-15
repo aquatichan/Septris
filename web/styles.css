@@ -425,3 +425,59 @@ body.nursing .leftcol { opacity: 0; pointer-events: none; }
 body.nursing .viewhint { bottom: auto; top: 142px; }
 body.nursing .command { opacity: 0; pointer-events: none; }
 .rbars.rhead span:last-child { white-space: nowrap; justify-self: end; }
+
+/* ---------- v8: bigger clipboard, nurse's checklist, page layering, voice ---------- */
+.paper { width: min(1120px, 88vw); height: 86vh; bottom: 1vh; transform: translateX(-50%) perspective(1600px) rotateX(3deg); }
+.paper.fly { animation: lift2 .6s cubic-bezier(.2, .9, .25, 1.08) both; }
+@keyframes lift2 { from { transform: translateX(-50%) translateY(85%) perspective(1600px) rotateX(30deg); opacity: .4; }
+  to { transform: translateX(-50%) perspective(1600px) rotateX(3deg); opacity: 1; } }
+.paper .board { padding: 44px 18px 18px; }
+.paper .pen { top: 40px; right: -10px; width: 180px; }
+.paper .sheet { padding: 18px 24px; }
+.pcols { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 26px; }
+.pcol { min-width: 0; }
+.pcol h3:first-child { margin-top: 2px; }
+.paper .pchart { height: 230px; }
+.pacts { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.pacts li { display: flex; gap: 10px; align-items: flex-start; background: #fff; border: 1px solid #e3dccb; border-radius: 8px; padding: 7px 10px;
+  opacity: .35; transition: opacity .3s, border-color .3s, background .3s; }
+.pacts li small { display: block; color: #8a8478; font-size: 12px; }
+.pacts .tick { flex: none; width: 20px; height: 20px; border: 2px solid #b9b1a0; border-radius: 4px; position: relative; margin-top: 1px; }
+.pacts li.shown { opacity: 1; }
+.pacts li.shown.do { border-color: #1f9e66; background: #f1faf5; }
+.pacts li.shown.do .tick { border-color: #1f9e66; }
+.pacts li.shown.do .tick::after { content: ""; position: absolute; left: 5px; top: 0; width: 6px; height: 12px; border: solid #1f9e66;
+  border-width: 0 3px 3px 0; transform: rotate(45deg) scale(0); transform-origin: 50% 80%; animation: tickIn .35s ease-out forwards; }
+@keyframes tickIn { to { transform: rotate(45deg) scale(1); } }
+.pacts li.shown.skip { opacity: .5; }
+.pacts li.shown.skip span::after { content: " · not needed now"; color: #a39c8e; font-size: 12px; }
+@media (max-width: 980px) { .pcols { grid-template-columns: 1fr; } }
+
+/* pages sit under the header and cover the ward completely */
+.hud { z-index: 6; }
+.page { inset: 0; padding-top: 150px; z-index: 5; background: #050f16; }
+body.paged .viewbar, body.paged .paper, body.paged .viewhint { display: none !important; }
+
+/* first-person card: no modes, one clear description */
+.fpm-state { font-size: 13px; color: var(--muted); font-style: italic; }
+
+/* voice: words appear live while you speak */
+.cmd-echo { color: #cfe6ee; font-size: 14px; }
+.cmd-echo.live { color: #6ff0ff; font-weight: 600; font-size: 16px; text-shadow: 0 1px 6px rgba(0, 0, 0, 0.8); }
+.tally { padding: 8px 12px; font-size: 12.5px; }
+.tally b { font-size: 20px; display: inline; margin-right: 6px; }
+/* in first person the card sits where the left column was, clear of the clipboard */
+body.nursing .viewhint { top: 142px; bottom: auto; left: max(18px, env(safe-area-inset-left, 0px)); transform: none; width: 250px; max-width: 250px; }
+body.nursing .viewhint .fpm { flex-direction: column; align-items: flex-start; gap: 4px; }
+body.nursing .viewhint .fpm-exit { margin-left: 0; }
+.paper { width: min(1040px, 74vw); }
+@media (max-width: 1100px) { body.nursing .viewhint { top: auto; bottom: 8px; width: auto; max-width: none; right: 16px; } }
+.exrow2 { flex-wrap: nowrap; }
+.exrow2 .ex { padding: 3px 8px; font-size: 12px; white-space: nowrap; }
+@media (max-height: 940px) {
+  .legendbox { grid-template-columns: 1fr 1fr; column-gap: 10px; font-size: 12px; padding: 8px 12px; }
+  .legendbox .eyebrow { grid-column: 1 / -1; }
+  .nextcard { gap: 6px; padding: 12px; }
+  .nc-main b { font-size: 28px; }
+}
+@media (max-height: 760px) { .legendbox, .examples { display: none; } }

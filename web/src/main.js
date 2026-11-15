@@ -72,21 +72,16 @@ async function main() {
     if (!m) { $("viewHint").innerHTML = ""; paper.hide(); orbitOverview(); return; }
     $("viewHint").innerHTML = `
       <div class="fpm"><span class="fpm-title">First-person mode</span>
-        <div class="seg2" role="group" aria-label="First-person sub-mode">
-          <button data-fp="nurse" class="${roaming ? "" : "on"}">Be the nurse</button>
-          <button data-fp="roam" class="${roaming ? "on" : ""}">Roam freely</button>
-        </div>
+        <span class="fpm-state">${roaming ? "Roaming on your own" : "Following the charge nurse"}</span>
         <button data-fp="exit" class="fpm-exit">Leave <kbd>Esc</kbd></button></div>
-      <div class="fpm-text">${roaming
-        ? `Walk with <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> or the arrow keys, drag to look, hold <kbd>Shift</kbd> to hurry. Walk up to a bed and its chart comes up. <b>Stand still for 3 seconds and you become the nurse again<span id="fpCount"></span>.</b>`
-        : `You see through the charge nurse's eyes. She walks to each bed Septris picks and lifts the chart on her clipboard. Nothing to control. Press <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> any time to roam on your own.`}</div>`;
+      <div class="fpm-text">You see the ward through the charge nurse's eyes: she walks to each bed Septris picks and lifts its chart on her clipboard.
+        Press <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> or the arrow keys (drag to look) to <b>roam freely</b>; walk up to any bed to read its chart.
+        <b>Stand still for 3 seconds and you become the nurse again${roaming ? '<span id="fpCount"></span>' : ""}.</b></div>`;
   }
   $("viewHint").addEventListener("click", (e) => {
     const b = e.target.closest("[data-fp]");
     if (!b) return;
-    if (b.dataset.fp === "roam") views.roam();
-    else if (b.dataset.fp === "nurse") views.follow();
-    else { views.exit(); set({ playing: false }); }
+    if (b.dataset.fp === "exit") { views.exit(); set({ playing: false }); }
   });
   // countdown back to the nurse, and charts that come up as you walk past beds
   let nearBed = null;
@@ -121,7 +116,8 @@ async function main() {
     audio.setProximity(Math.max(0.25, Math.min(1, 1.15 - d / 70)));
   });
   const voice = createVoice({
-    onText: (t) => runCommand(t, true),
+    onText: (t) => { $("cmdEcho").classList.remove("live"); runCommand(t, true); },
+    onInterim: (t) => { const e = $("cmdEcho"); e.classList.add("live"); e.textContent = `🎙 ${t}…`; },
     onState: (s) => {
       $("mic").classList.toggle("listening", s === "listening");
       const msg = { unsupported: "Voice isn't supported in this browser. Type a command instead.",
@@ -189,6 +185,10 @@ async function main() {
       case "tab": set({ tab: a.tab }); break;
       case "tour": set({ tourStep: 0 }); break;
       case "admit": admitFromCommand(a.details); break;
+      case "firstperson": set({ page: "", tourStep: null }); if (!views.mode) $("beNurse").click(); break;
+      case "leave": if (views.mode) views.exit(); else if (state.page) set({ page: "" }); break;
+      case "intro": $("replayIntro").click(); break;
+      case "sound": audio.start(); audio.setEnabled(a.on); syncSound(); break;
     }
     if (spoken && a.type !== "explain" && state.narrate) speakPick();
   }
@@ -215,6 +215,7 @@ async function main() {
     // full-page sections
     $("page").hidden = !state.page;
     document.body.classList.toggle("paged", !!state.page);
+    if (state.page && views.mode) { views.exit(false); syncViews(null); }
     document.querySelectorAll(".pg").forEach((b) => b.classList.toggle("on", b.dataset.page === state.page));
     if (state.page === "results") $("pageBody").innerHTML = resultsHTML(data);
     if (state.page === "model") $("pageBody").innerHTML = modelHTML(data);
@@ -491,7 +492,13 @@ async function main() {
   $("sound").onclick = () => { audio.start(); audio.setEnabled(!audio.isEnabled()); syncSound(); };
   window.addEventListener("pointerdown", () => audio.start(), { once: true });
   function playIntro(openTour) {
+    if (document.body.classList.contains("intro")) return; // already riding: ignore double clicks
     views.exit(false);
+    paper.hide();
+    $("viewHint").hidden = true;
+    $("beNurse").classList.remove("on");
+    bedsView.nurse.setFixedTime(true);
+    set({ page: "", tourStep: null, selectedBed: null, playing: false });
     set({ selectedBed: null, tourStep: null });
     document.body.classList.add("intro");
     $("skipIntro").hidden = false;

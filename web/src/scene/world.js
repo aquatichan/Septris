@@ -39,12 +39,12 @@ export function createWorld(container) {
 
   const scene = new THREE.Scene();
   scene.background = new THREE.Color("#0b1418");
-  scene.fog = new THREE.Fog("#0b1418", 110, 220);
+  // no fog: zoomed far out it turned the ward black against the starry sky
   const pmrem = new THREE.PMREMGenerator(renderer);
   scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
   scene.environmentIntensity = 0.4;
 
-  const camera = new THREE.PerspectiveCamera(42, 1, 0.1, 320);
+  const camera = new THREE.PerspectiveCamera(42, 1, 0.1, 900);
   camera.position.set(0, 30, 34);
   const controls = new OrbitControls(camera, renderer.domElement);
   controls.target.set(0, 0, 0);

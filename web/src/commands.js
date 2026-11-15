@@ -11,7 +11,14 @@ const num = (s) => (/^\d+$/.test(s) ? Number(s) : WORDS[s]);
 const RULES = [
   [/\b(add|admit)\b/, (m, t) => ({ type: "admit", details: admitDetails(t) })],
   [/\bnew patient\b|\bcheck ?in\b/, () => ({ type: "admit", details: null })],
-  [/\b(bed|patient)\s+(\d+|[a-z]+)\b/, (m) => (num(m[2]) ? { type: "bed", bed: num(m[2]) } : null)],
+  [/\b(bed|patient)\s+(?:number\s+|no\.?\s+|#\s*)?(\d+|[a-z]+)\b/, (m) => (num(m[2]) ? { type: "bed", bed: num(m[2]) } : null)],
+  [/\b(first[- ]?person|be the nurse|walk (around|the ward)|roam)\b/, () => ({ type: "firstperson" })],
+  [/\b(leave|exit|quit)\b/, () => ({ type: "leave" })],
+  [/\b(replay|play)\s+(the\s+)?intro\b|\belevator\b/, () => ({ type: "intro" })],
+  [/\b(sound|audio|volume)\s+(off|mute)|\bmute\b/, () => ({ type: "sound", on: false })],
+  [/\b(sound|audio|volume)\s+on\b|\bunmute\b/, () => ({ type: "sound", on: true })],
+  [/\b(open|show)\s+(the\s+)?chart\b|\bpatient tab\b/, () => ({ type: "tab", tab: "patient" })],
+  [/\bpriority\b|\bcheck next\b|\bwho('s| is) next\b/, () => ({ type: "tab", tab: "priority" })],
   [/\b(next|forward)\s+(review|check)\b|^next$/, () => ({ type: "review", delta: 1 })],
   [/\b(previous|last|back)\s+(review|check)\b|^back$|^previous$/, () => ({ type: "review", delta: -1 })],
   [/\bnext\s+shift\b/, () => ({ type: "shift", delta: 1 })],
@@ -21,7 +28,7 @@ const RULES = [
   [/\bfalse\s*alarm\b/, () => ({ type: "example", kind: "false" })],
   [/\b(catch|caught|good)\b/, () => ({ type: "example", kind: "good" })],
   [/\b(zoom out|overview|whole unit|everything|ward)\b/, () => ({ type: "overview" })],
-  [/\b(play|start)\b(?!.*tour)/, () => ({ type: "play", on: true })],
+  [/\b(play|start)\b(?!.*(tour|intro))/, () => ({ type: "play", on: true })],
   [/\b(pause|stop)\b/, () => ({ type: "play", on: false })],
   [/\b(why|explain|reason)/, () => ({ type: "explain" })],
   [/\b(answer\s*key|outcomes?)\s*(off|hide)|hide\s+(the\s+)?(answer|outcomes?)/, () => ({ type: "key", on: false })],
@@ -61,7 +68,7 @@ export function admitDetails(t) {
     const cap = (w) => w.charAt(0).toUpperCase() + w.slice(1);
     d.name = cap(name[1]) + (name[2] && !NOT_NAMES.has(name[2]) && !/^(is|was|aged?|in|for|on|at|he|she)$/.test(name[2]) ? ` ${cap(name[2])}` : "");
   }
-  const age = t.match(/\b(\d{1,3})[\s-]*(?:years?|yrs?|yo\b|y o\b)/) || t.match(/\baged?\s+(\d{1,3})\b/);
+  const age = t.match(/\b(\d{1,3})[\s-]*(?:years?|yrs?|yo\b|y o\b)/) || t.match(/\baged?\s+(\d{1,3})\b/) || t.match(/\b(?:who|that|he|she) (?:is|'s) (\d{1,3})\b(?!\s*(?:bpm|beats|breaths|degrees|mmhg|%))/);
   if (age) d.age = Number(age[1]);
   if (/\b(woman|female|she|her|girl|lady)\b/.test(t)) d.sex = "F";
   else if (/\b(man|male|he|him|his|guy)\b/.test(t)) d.sex = "M";
