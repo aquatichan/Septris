@@ -2,9 +2,14 @@
 // blood pressure, with "now", the future (greyed), sepsis onset and the
 // caught-in-time window. Drawn by hand so the page needs no chart library.
 
-const C = { risk: "#4fb3ff", hr: "#cfe0e4", map: "#f5b84b", now: "#e7f0f2", onset: "#ff6b5e", win: "#3ccf8e", grid: "#2a3f47", muted: "#8fa6ad" };
+const DARK = { future: "#ffffff0d", risk: "#4fb3ff", hr: "#cfe0e4", map: "#f5b84b", now: "#e7f0f2", onset: "#ff6b5e", win: "#3ccf8e", grid: "#2a3f47", muted: "#8fa6ad" };
 
-export function drawChart(canvas, patient, now, showOutcome = true) {
+// a print palette for the paper chart the nurse holds
+const LIGHT = { future: "#0000000d", risk: "#1f78c8", hr: "#3b4a52", map: "#c47f0c", now: "#1b2a31", onset: "#d63a2f", win: "#1f9e66", grid: "#d8d1c3", muted: "#7b766c" };
+const C = DARK;
+
+export function drawChart(canvas, patient, now, showOutcome = true, light = false) {
+  const C = light ? LIGHT : DARK;
   const dpr = Math.min(window.devicePixelRatio || 1, 2);
   const W = canvas.clientWidth, H = canvas.clientHeight;
   canvas.width = W * dpr;
@@ -29,7 +34,7 @@ export function drawChart(canvas, patient, now, showOutcome = true) {
   for (const p of panels) {
     const Y = (v) => p.top + p.h - ((v - p.lo) / (p.hi - p.lo)) * p.h;
     // future shading and the caught-in-time window
-    g.fillStyle = "#ffffff0d";
+    g.fillStyle = C.future;
     if (showOutcome) g.fillRect(X(now + 0.5), p.top, R - X(now + 0.5), p.h);
     if (onset != null && onset - 6 > x0) {
       g.fillStyle = "#3ccf8e22";

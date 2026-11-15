@@ -315,3 +315,53 @@ body.walking #stage canvas:active { cursor: grabbing; }
 body.intro .viewhint { display: none; }
 @media (max-width: 1320px) { .vb { padding: 6px 9px; font-size: 13px; } .brand-tag { display: none; } }
 @media (max-width: 1180px) { .hud-top { flex-wrap: wrap; } .viewbar { order: 3; width: 100%; justify-content: flex-start; margin-left: 0; } }
+
+/* ---------- the paper chart that flies in when you are the nurse ---------- */
+body.nursing .panel { opacity: 0; pointer-events: none; }
+.paper { position: absolute; right: max(22px, env(safe-area-inset-right, 0px)); top: 150px; bottom: calc(60px + env(safe-area-inset-bottom, 0px)); zoom: 0.9;
+  width: min(430px, 40vw); overflow-y: auto; z-index: 5; padding: 30px 24px 22px; color: #20282c; font-size: 14.5px; line-height: 1.45;
+  background: #fbf8f1; border-radius: 6px; box-shadow: 0 24px 60px rgba(0, 0, 0, 0.45), 0 0 0 1px rgba(0, 0, 0, 0.06);
+  background-image: repeating-linear-gradient(#fbf8f1 0 27px, #ece6d8 27px 28px); transform-origin: 80% 0; }
+.paper.fly { animation: paperIn .7s cubic-bezier(.2, .9, .25, 1.15) both; }
+@keyframes paperIn { from { transform: translate(110%, -40px) rotate(14deg); opacity: 0; } to { transform: rotate(-0.6deg); opacity: 1; } }
+.paper .clip { position: sticky; top: -30px; margin: -30px auto 10px; width: 120px; height: 22px; border-radius: 0 0 10px 10px; z-index: 1;
+  background: linear-gradient(#c9ced1, #8d969b); box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3); }
+.paper .pclose { position: absolute; top: 8px; right: 10px; border: 0; background: none; font-size: 18px; color: #6d675c; cursor: pointer; }
+.paper h2 { font: 700 30px/1.1 var(--font-ui); margin: 2px 0 2px; color: #142024; }
+.paper h3 { font: 700 13px var(--font-ui); text-transform: uppercase; letter-spacing: .08em; color: #6d675c; margin: 16px 0 6px; }
+.phead { display: flex; justify-content: space-between; gap: 12px; align-items: flex-start; }
+.pk { font: 600 11px var(--font-ui); text-transform: uppercase; letter-spacing: .09em; color: #8a8478; }
+.pwho { color: #4b5559; }
+.prisk { text-align: center; border: 2px solid; border-radius: 12px; padding: 6px 12px; min-width: 92px; background: #fff; }
+.prisk b { display: block; font: 700 32px/1 var(--font-data); }
+.prisk span { font-size: 11.5px; color: #6d675c; }
+.prisk em { display: block; font: 700 12px var(--font-ui); font-style: normal; text-transform: uppercase; letter-spacing: .08em; }
+.prisk.t0 { border-color: #1f9e66; color: #1f9e66; } .prisk.t1 { border-color: #c47f0c; color: #c47f0c; } .prisk.t2 { border-color: #d63a2f; color: #d63a2f; }
+.pflag { background: #e3f0fb; border-left: 4px solid #1f78c8; padding: 6px 10px; margin: 12px 0 0; border-radius: 4px; }
+.pnote { color: #4b5559; margin: 10px 0 0; }
+.preasons { margin: 0; padding-left: 18px; }
+.pups { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; }
+.pups li { text-align: center; background: #fff; border: 1px solid #e3dccb; border-radius: 8px; padding: 4px 2px; }
+.pups span { display: block; font-size: 11px; color: #8a8478; }
+.pups b { display: block; font: 700 16px var(--font-data); }
+.pups i { display: block; font: 600 11px var(--font-data); font-style: normal; color: #8a8478; min-height: 14px; }
+.pups i.up { color: #d63a2f; } .pups i.down { color: #1f9e66; }
+.pvit { width: 100%; border-collapse: collapse; }
+.pvit td { padding: 4px 2px; border-bottom: 1px dashed #ddd5c4; }
+.pvit td.n { font: 600 14px var(--font-data); text-align: right; white-space: nowrap; }
+.pvit td.n small { font-size: 11px; color: #8a8478; }
+.pvit td.when { color: #8a8478; font-size: 12.5px; text-align: right; white-space: nowrap; }
+.pchart { width: 100%; height: 210px; display: block; background: #fff; border: 1px solid #e3dccb; border-radius: 8px; }
+.plegend { display: flex; gap: 12px; font-size: 12px; color: #6d675c; margin-top: 4px; }
+.plegend span::before { content: ""; display: inline-block; width: 12px; height: 3px; margin-right: 5px; vertical-align: middle; }
+.plegend .r::before { background: #1f78c8; } .plegend .h::before { background: #3b4a52; } .plegend .m::before { background: #c47f0c; }
+.pdec { display: grid; gap: 6px; }
+.pdec label { display: flex; gap: 10px; align-items: flex-start; background: #fff; border: 1px solid #e3dccb; border-radius: 8px; padding: 7px 10px; cursor: pointer; }
+.pdec input { width: 18px; height: 18px; margin-top: 1px; accent-color: #1f78c8; flex: none; }
+.pdec[data-done] label { cursor: default; opacity: .85; }
+.psign { justify-self: end; margin-top: 4px; }
+.pverdict { margin-top: 12px; background: #fff; border: 2px solid #1f78c8; border-radius: 10px; padding: 10px 12px; }
+.pverdict b { color: #142024; }
+.ptally { margin-top: 12px; font-size: 13px; color: #6d675c; border-top: 1px solid #e3dccb; padding-top: 8px; }
+body.intro .paper { display: none; }
+@media (max-width: 860px) { .paper { left: 16px; right: 16px; width: auto; top: auto; height: 50vh; } }

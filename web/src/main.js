@@ -9,6 +9,7 @@ import { createCameraRig } from "./scene/camera.js";
 import { createLobby } from "./scene/lobby.js";
 import { createDecor } from "./scene/decor.js";
 import { createViews } from "./scene/views.js";
+import { createPaper } from "./ui/paper.js";
 import { createStaff } from "./scene/people.js";
 import { bayPosition } from "./scene/beds.js";
 import { createAudio } from "./audio.js";
@@ -53,6 +54,7 @@ async function main() {
   createDecor(world);
   const audio = createAudio();
   window.__septris = { lobby, rig, state, audio, world };
+  queueMicrotask(() => Object.assign(window.__septris, { views, paper, bedsView }));
   const bedsView = createBeds(world, (bed) => selectBed(bed), lobby);
   // first-person views; while one is on, the orbit camera moves are ignored
   const views = createViews(world, { nurse: bedsView.nurse, onChange: (m) => syncViews(m) });
@@ -60,15 +62,24 @@ async function main() {
   rig.bed = (b) => { if (!views.mode) orbitBed(b); };
   rig.overview = () => { if (!views.mode) orbitOverview(); };
   const toOverview = () => { views.exit(); orbitOverview(); };
-  function syncViews(m) {
-    $("walk").classList.toggle("on", m === "walk");
-    $("beNurse").classList.toggle("on", m === "nurse");
+  const paper = createPaper({ el: $("paper"), getData: () => data, getState: () => state });
+  function syncViews(m, roaming) {
+    $("beNurse").classList.toggle("on", !!m);
     $("viewHint").hidden = !m;
-    $("viewHint").innerHTML = m === "walk"
-      ? "<b>Walking the ward.</b> W A S D or arrow keys to move · drag to look around · Shift to hurry · click a bed to open its chart · <kbd>Esc</kbd> to leave"
-      : m === "nurse" ? "<b>You are the charge nurse.</b> She walks to each bed Septris picks and reads the chart. Sit back and watch · <kbd>Esc</kbd> to leave" : "";
-    if (!m) orbitOverview();
+    $("viewHint").innerHTML = !m ? "" : roaming
+      ? `<b>Exploring on your own.</b> W A S D or arrows to move · drag to look · Shift to hurry · click any bed for its chart · back to the nurse after 3 s · <kbd>Esc</kbd> to leave`
+      : `<b>You are the charge nurse.</b> She walks to each bed Septris picks and pulls out the chart. Tick your decisions and sign · press W A S D to roam · <kbd>Esc</kbd> to leave`;
+    if (!m) { paper.hide(); orbitOverview(); }
   }
+  // the chart flies in when the nurse reaches the bed, and goes away when she sets off
+  let paperFor = null;
+  setInterval(() => {
+    if (views.mode !== "nurse") return;
+    const s = slotAt(data, state.slot);
+    const idle = bedsView.nurse.idleFor();
+    if (idle > 0.6 && paperFor !== state.slot && !views.roaming) { paperFor = state.slot; paper.show(s.bed); }
+    if (idle === 0 && paper.open && !paper.busy() && paperFor !== state.slot) paper.hide();
+  }, 250);
   createStaff(world, bayPosition);
   world.onDoors = () => audio.elevatorDoors();
   // the ward gets louder as the camera gets closer to it
@@ -102,6 +113,7 @@ async function main() {
   }
   function selectBed(bed) {
     set({ selectedBed: bed, tab: "patient" });
+    if (views.mode) paper.show(bed); // in first person, the chart comes to you
     rig.bed(bed);
     audio.chime("select");
   }
@@ -361,7 +373,6 @@ async function main() {
   $("showKey").onchange = (e) => set({ showKey: e.target.checked });
   $("narrate").onchange = (e) => { set({ narrate: e.target.checked }); if (e.target.checked) speakPick(); };
   $("overview").onclick = () => toOverview();
-  $("walk").onclick = () => (views.mode === "walk" ? views.exit() : (set({ selectedBed: null, page: "" }), views.walk()));
   $("beNurse").onclick = () => {
     if (views.mode === "nurse") { views.exit(); set({ playing: false }); return; }
     set({ page: "", tourStep: null, showKey: true });
@@ -405,7 +416,8 @@ async function main() {
   setInterval(() => {
     if (!state.playing || state.tourStep != null) return;
     const now = performance.now();
-    if (now - lastAdvance < 3400 || (views.mode === "nurse" && bedsView.nurse.idleFor() < 4)) return;
+    // as the nurse: give her time at the bed, and never move on while a chart is half filled in
+    if (now - lastAdvance < 3400 || (views.mode === "nurse" && (bedsView.nurse.idleFor() < 4 || paper.shownFor() < 9 || paper.busy()))) return;
     lastAdvance = now;
     goSlot(state.slot + 1, { focus: null });
   }, 500);

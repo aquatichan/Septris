@@ -92,12 +92,12 @@ void main() {
 
 /** Adds the sky to the scene. It follows the camera, so it is always behind everything. */
 export function createGalaxy(world, { density = 1, hueShift = 190, saturation = 0.35, glowIntensity = 0.3, twinkleIntensity = 0.3,
-  rotationSpeed = 0.03, starSpeed = 0.35, speed = 1 } = {}) {
+  rotationSpeed = 0.03, starSpeed = 0.35, speed = 1, flareIntensity = 0.12, starGlow = 0.6 } = {}) {
   const { scene, camera, renderer } = world;
   const uniforms = {
     uTime: { value: 0 }, uResolution: { value: new THREE.Vector2(1, 1) }, uGloss: { value: 0 }, uDepth: { value: 0 },
-    uDensity: { value: density }, uHueShift: { value: hueShift }, uSpeed: { value: speed }, uStarGlow: { value: 0.05 * glowIntensity },
-    uFlareGain: { value: glowIntensity }, uSaturation: { value: saturation }, uTwinkleIntensity: { value: twinkleIntensity },
+    uDensity: { value: density }, uHueShift: { value: hueShift }, uSpeed: { value: speed }, uStarGlow: { value: 0.05 * glowIntensity * starGlow }, // smaller halo round each star
+    uFlareGain: { value: glowIntensity * flareIntensity }, uSaturation: { value: saturation }, uTwinkleIntensity: { value: twinkleIntensity },
     uRotationAngle: { value: 0 }, uPan: { value: new THREE.Vector2() }, uBackground: { value: new THREE.Color("#030a10") },
   };
   const sky = new THREE.Mesh(new THREE.SphereGeometry(200, 24, 16), new THREE.ShaderMaterial({
