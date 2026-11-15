@@ -4,100 +4,190 @@
 // in beds.js, who walks to the bed Septris picks.
 import * as THREE from "three";
 
-const SKIN = ["#e8c4a6", "#c99a7a", "#a8765a", "#7d5540", "#f0d2b8"];
-const HAIR = ["#2b211c", "#4a3426", "#151515", "#7a5a3a", "#b9b3ac"];
-const mat = (color, rough = 0.8) => new THREE.MeshStandardMaterial({ color, roughness: rough });
+const SKIN = ["#eac8ab", "#d2a487", "#b07c5d", "#8a5d43", "#f1d6c0", "#6e4632"];
+const HAIR = ["#2b211c", "#4a3426", "#151515", "#7a5a3a", "#c9c2b8", "#a5683a"];
+const mat = (color, rough = 0.75) => new THREE.MeshStandardMaterial({ color, roughness: rough });
+
+// Shared, smooth body-part geometry. Every part is a lathe (a turned profile) so
+// limbs taper like real ones (thigh to knee, calf bulge to ankle) instead of
+// being plain cylinders. Profiles are [radius, height] pairs from bottom to top.
+const lathe = (pts, seg = 16) => new THREE.LatheGeometry(pts.map(([r, y]) => new THREE.Vector2(r, y)), seg);
+const GEO = {
+  torso: lathe([[0, 1.0], [0.155, 1.0], [0.148, 1.08], [0.152, 1.18], [0.168, 1.28], [0.176, 1.36], [0.168, 1.42], [0.12, 1.47], [0.06, 1.49], [0, 1.49]], 20),
+  pelvis: lathe([[0, 0.86], [0.11, 0.86], [0.16, 0.9], [0.168, 0.97], [0.158, 1.05], [0, 1.05]], 20),
+  coat: lathe([[0, 0.6], [0.205, 0.6], [0.19, 0.8], [0.172, 1.0], [0.16, 1.1], [0.172, 1.28], [0.182, 1.36], [0.174, 1.42], [0.125, 1.47], [0.065, 1.5], [0, 1.5]], 20),
+  thigh: lathe([[0, -0.44], [0.058, -0.44], [0.064, -0.36], [0.076, -0.2], [0.086, -0.06], [0.08, 0.02], [0, 0.04]]),
+  shin: lathe([[0, -0.4], [0.04, -0.4], [0.044, -0.3], [0.058, -0.16], [0.06, -0.08], [0.056, 0], [0, 0.02]]),
+  sleeve: lathe([[0, -0.17], [0.058, -0.17], [0.062, -0.08], [0.064, 0.0], [0.05, 0.04], [0, 0.05]]),
+  longSleeve: lathe([[0, -0.29], [0.048, -0.29], [0.054, -0.15], [0.06, 0], [0.05, 0.04], [0, 0.05]]),
+  upperArm: lathe([[0, -0.29], [0.036, -0.29], [0.042, -0.18], [0.046, -0.1], [0, -0.08]], 12),
+  forearm: lathe([[0, -0.25], [0.028, -0.25], [0.034, -0.15], [0.041, -0.04], [0.036, 0.02], [0, 0.03]], 12),
+  hand: new THREE.SphereGeometry(0.042, 12, 10),
+  head: new THREE.SphereGeometry(0.104, 24, 20),
+  jaw: new THREE.SphereGeometry(0.078, 18, 14),
+  nose: new THREE.ConeGeometry(0.016, 0.04, 8),
+  ear: new THREE.SphereGeometry(0.022, 10, 8),
+  eye: new THREE.SphereGeometry(0.011, 8, 6),
+  neck: lathe([[0.048, 0], [0.044, 0.08], [0.046, 0.12]], 12),
+  hairCap: new THREE.SphereGeometry(0.112, 22, 14, 0, Math.PI * 2, 0, Math.PI * 0.55),
+  bun: new THREE.SphereGeometry(0.05, 12, 10),
+  tail: new THREE.CapsuleGeometry(0.035, 0.16, 4, 10),
+  shoe: new THREE.CapsuleGeometry(0.045, 0.16, 4, 10),
+  shoulder: new THREE.SphereGeometry(0.068, 14, 12),
+  pocket: new THREE.BoxGeometry(0.11, 0.1, 0.01),
+  badge: new THREE.BoxGeometry(0.05, 0.07, 0.008),
+  steth: new THREE.TorusGeometry(0.11, 0.008, 6, 24, Math.PI * 1.25),
+};
 
 /**
- * Builds a person about 1.72 m tall, facing +z.
- * outfit: "scrubs" (one colour), "coat" (white coat over dark trousers) or "casual".
- * Returns { group, walk(phase, amount), sit(), idle(t) }.
+ * Builds a person about 1.72 m tall, facing +z, with jointed hips, knees,
+ * shoulders and elbows.
+ * outfit: "scrubs", "coat" (doctor: white coat over dark trousers) or "casual".
+ * Returns { group, body, armL, armR, legL, legR, head, walk(phase, amount), sit(), idle(t) }.
  */
-export function makePerson({ outfit = "scrubs", color = "#2f9aa8", seed = Math.random() } = {}) {
-  const pick = (arr) => arr[Math.floor(seed * 997) % arr.length];
-  const skin = mat(pick(SKIN), 0.7), hair = mat(pick(HAIR), 0.9);
-  const top = mat(outfit === "coat" ? "#f2f4f5" : color);
-  const bottom = mat(outfit === "scrubs" ? color : outfit === "coat" ? "#39424d" : "#4b5563");
-  const shoe = mat("#f1f1f1", 0.6);
+export function makePerson({ outfit = "scrubs", color = "#2f9aa8", seed = Math.random(), cap = false, steth = false } = {}) {
+  const r = (k) => Math.floor(seed * 997 * (k + 1)) ;
+  const pick = (arr, k = 0) => arr[r(k) % arr.length];
+  const skin = mat(pick(SKIN), 0.62), hair = mat(pick(HAIR, 1), 0.85);
+  const topColor = outfit === "coat" ? "#f4f6f7" : color;
+  const top = mat(topColor, outfit === "scrubs" ? 0.85 : 0.7);
+  const bottom = mat(outfit === "scrubs" ? new THREE.Color(color).multiplyScalar(0.9).getStyle() : outfit === "coat" ? "#38414b" : pick(["#3b4f6b", "#4b4f55", "#5d4a3a"], 2));
+  const shoeM = mat(outfit === "casual" ? "#2a2c2e" : "#f2f3f3", 0.5);
   const g = new THREE.Group();
-  const body = new THREE.Group(); // everything above the feet, so the whole figure can bob
+  const body = new THREE.Group(); // everything above the floor, so the whole figure can bob or sit
   g.add(body);
+  const M = (geo, m, x = 0, y = 0, z = 0, shadow = true) => { const o = new THREE.Mesh(geo, m); o.position.set(x, y, z); o.castShadow = shadow; return o; };
 
-  const torso = new THREE.Mesh(new THREE.CapsuleGeometry(0.17, 0.36, 4, 12), top);
-  torso.position.y = 1.2;
-  torso.scale.set(1.15, 1, 0.75);
-  const hips = new THREE.Mesh(new THREE.CapsuleGeometry(0.16, 0.1, 4, 10), bottom);
-  hips.position.y = 0.93;
-  hips.scale.set(1.12, 1, 0.78);
-  const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.06, 0.1, 8), skin);
-  neck.position.y = 1.5;
-  const head = new THREE.Mesh(new THREE.SphereGeometry(0.115, 18, 14), skin);
-  head.position.y = 1.62;
-  head.scale.set(0.92, 1.08, 1);
-  const cap = new THREE.Mesh(new THREE.SphereGeometry(0.122, 18, 12, 0, Math.PI * 2, 0, Math.PI * 0.58), hair);
-  cap.position.set(0, 1.635, -0.012);
-  body.add(torso, hips, neck, head, cap);
-  if (outfit === "coat") {
-    const tail = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.42, 0.24), top);
-    tail.position.y = 0.86;
-    body.add(tail);
+  // torso and hips (shoulders wider than deep)
+  const torso = M(outfit === "coat" ? GEO.coat : GEO.torso, top);
+  torso.scale.set(1.12, 1, 0.68);
+  const pelvis = M(GEO.pelvis, bottom);
+  pelvis.scale.set(1.08, 1, 0.72);
+  body.add(torso, pelvis);
+  for (const s of [-1, 1]) { const sh = M(GEO.shoulder, top, s * 0.175, 1.405, 0); sh.scale.set(0.95, 0.8, 0.9); body.add(sh); }
+  if (outfit !== "casual") {
+    const pk = M(GEO.pocket, mat(new THREE.Color(topColor).multiplyScalar(0.93).getStyle()), -0.075, 1.26, 0.118);
+    body.add(pk);
+    const badge = M(GEO.badge, mat("#ffffff", 0.4), 0.08, 1.3, 0.12);
+    body.add(badge);
+  }
+  if (steth) {
+    const st = M(GEO.steth, mat("#2b3135", 0.4), 0, 1.4, 0.02);
+    st.rotation.x = Math.PI / 2 - 0.35;
+    st.rotation.z = Math.PI * 0.62;
+    st.scale.set(1, 1.15, 1);
+    body.add(st);
   }
 
-  const limb = (len, r, material, endMat, endLen) => {
-    const pivot = new THREE.Group();
-    const seg = new THREE.Mesh(new THREE.CapsuleGeometry(r, len - 2 * r, 4, 8), material);
-    seg.position.y = -len / 2;
-    pivot.add(seg);
-    if (endMat) {
-      const end = new THREE.Mesh(new THREE.BoxGeometry(r * 2.1, r * 1.5, endLen), endMat);
-      end.position.set(0, -len - r * 0.4, endLen * 0.22);
-      pivot.add(end);
-    }
-    return pivot;
-  };
-  const legL = limb(0.82, 0.075, bottom, shoe, 0.24), legR = limb(0.82, 0.075, bottom, shoe, 0.24);
-  legL.position.set(-0.09, 0.9, 0); legR.position.set(0.09, 0.9, 0);
-  const armL = limb(0.58, 0.05, top, skin, 0.08), armR = limb(0.58, 0.05, top, skin, 0.08);
-  armL.position.set(-0.235, 1.42, 0); armR.position.set(0.235, 1.42, 0);
-  armL.rotation.z = -0.07; armR.rotation.z = 0.07;
-  body.add(legL, legR, armL, armR);
-  // lower legs used only when seated (the walking leg is one straight piece)
-  const shins = [-0.09, 0.09].map((x) => {
-    const s = new THREE.Group();
-    const seg = new THREE.Mesh(new THREE.CapsuleGeometry(0.068, 0.3, 4, 8), bottom);
-    seg.position.y = -0.2;
-    const foot = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.1, 0.24), shoe);
-    foot.position.set(0, -0.42, 0.06);
-    s.add(seg, foot);
-    s.position.set(x, 0.9, 0.42);
-    s.visible = false;
-    body.add(s);
-    return s;
-  });
-  g.traverse((m) => { if (m.isMesh) m.castShadow = true; });
+  // neck and head with a simple face
+  const neck = M(GEO.neck, skin, 0, 1.46, 0);
+  const head = new THREE.Group();
+  head.position.set(0, 1.62, 0.005);
+  const skull = M(GEO.head, skin, 0, 0, 0, false);
+  skull.scale.set(0.9, 1.04, 0.98);
+  const jaw = M(GEO.jaw, skin, 0, -0.04, 0.016, false);
+  jaw.scale.set(0.95, 0.85, 1);
+  const nose = M(GEO.nose, skin, 0, -0.012, 0.1, false);
+  nose.rotation.x = Math.PI / 2 + 0.3;
+  head.add(skull, jaw, nose);
+  for (const s of [-1, 1]) {
+    const ear = M(GEO.ear, skin, s * 0.094, -0.005, -0.005);
+    ear.scale.set(0.45, 1, 0.75);
+    const eye = M(GEO.eye, mat("#1d1a18", 0.3), s * 0.034, 0.012, 0.094);
+    head.add(ear, eye);
+  }
+  const style = r(3) % 4;
+  if (cap) { // theatre cap in the scrub colour
+    const c = M(GEO.hairCap, mat(new THREE.Color(color).multiplyScalar(1.12).getStyle(), 0.9), 0, 0.02, -0.004);
+    c.scale.set(0.98, 0.9, 1.04);
+    head.add(c);
+  } else {
+    const capHair = M(GEO.hairCap, hair, 0, 0.004, -0.018, false);
+    capHair.rotation.x = -0.55; // hairline sits high on the forehead, hair covers the back of the head
+    capHair.scale.set(0.97, 1.0, 1.04);
+    head.add(capHair);
+    if (style === 1) head.add(M(GEO.bun, hair, 0, 0.05, -0.105));
+    if (style === 2) { const t = M(GEO.tail, hair, 0, -0.06, -0.11); t.rotation.x = 0.25; head.add(t); }
+  }
+  body.add(neck, head);
 
+  // arms: shoulder pivot > upper arm (sleeve + skin) > elbow pivot > forearm > hand
+  const arm = (s) => {
+    const shoulder = new THREE.Group();
+    shoulder.position.set(s * 0.205, 1.4, 0);
+    const longSleeve = outfit !== "scrubs";
+    shoulder.add(M(longSleeve ? GEO.longSleeve : GEO.sleeve, top));
+    if (!longSleeve) shoulder.add(M(GEO.upperArm, skin));
+    const elbow = new THREE.Group();
+    elbow.position.y = -0.29;
+    elbow.rotation.x = -0.18;
+    const fore = M(GEO.forearm, skin);
+    const hand = M(GEO.hand, skin, 0, -0.29, 0.01);
+    hand.scale.set(0.7, 1.25, 0.95);
+    elbow.add(fore, hand);
+    shoulder.add(elbow);
+    shoulder.rotation.z = s * 0.06;
+    shoulder.userData.elbow = elbow;
+    return shoulder;
+  };
+  const armL = arm(-1), armR = arm(1);
+
+  // legs: hip pivot > thigh > knee pivot > shin > shoe
+  const leg = (s) => {
+    const hip = new THREE.Group();
+    hip.position.set(s * 0.085, 0.9, 0);
+    hip.add(M(GEO.thigh, bottom));
+    const knee = new THREE.Group();
+    knee.position.y = -0.44;
+    knee.add(M(GEO.shin, bottom));
+    const shoe = M(GEO.shoe, shoeM, 0, -0.42, 0.045);
+    shoe.rotation.x = Math.PI / 2;
+    shoe.scale.set(1.05, 1, 0.8);
+    knee.add(shoe);
+    hip.add(knee);
+    hip.userData.knee = knee;
+    return hip;
+  };
+  const legL = leg(-1), legR = leg(1);
+  body.add(armL, armR, legL, legR);
+
+  const E = (a) => a.userData.elbow, K = (l) => l.userData.knee;
+  let seated = false;
   return {
     group: g, body, armL, armR, legL, legR, head,
     /** phase advances with distance walked; amount 0..1 blends between standing and full stride. */
     walk(phase, amount = 1) {
-      const s = Math.sin(phase) * 0.55 * amount;
+      const s = Math.sin(phase) * 0.42 * amount;
       legL.rotation.x = s; legR.rotation.x = -s;
-      armL.rotation.x = -s * 0.8; armR.rotation.x = s * 0.8;
-      body.position.y = Math.abs(Math.cos(phase)) * 0.025 * amount;
+      // the knee bends as the leg swings through, straight on contact
+      K(legL).rotation.x = Math.max(0, Math.sin(phase + 1.2)) * 0.75 * amount;
+      K(legR).rotation.x = Math.max(0, Math.sin(phase + 1.2 + Math.PI)) * 0.75 * amount;
+      armL.rotation.x = -s * 0.75; armR.rotation.x = s * 0.75;
+      E(armL).rotation.x = -0.25 - Math.max(0, -s) * 0.4; E(armR).rotation.x = -0.25 - Math.max(0, s) * 0.4;
+      body.position.y = Math.abs(Math.cos(phase)) * 0.022 * amount;
+      body.rotation.y = Math.sin(phase) * 0.05 * amount; // a little hip and shoulder counter-swing
     },
-    /** Seated pose on a chair of normal height. */
+    /** Seated pose on a chair of normal height (seat ~0.47 m). */
     sit() {
-      legL.rotation.x = legR.rotation.x = -1.5;
-      legL.scale.y = legR.scale.y = 0.52; // thigh only; the shins hang from the knee
-      for (const s of shins) s.visible = true;
-      body.position.y = -0.4;
-      armL.rotation.x = armR.rotation.x = -0.9;
+      seated = true;
+      legL.rotation.x = legR.rotation.x = -1.45;
+      K(legL).rotation.x = K(legR).rotation.x = 1.42;
+      legL.rotation.z = -0.06; legR.rotation.z = 0.06;
+      body.position.y = -0.42;
+      armL.rotation.x = armR.rotation.x = -0.35;
+      E(armL).rotation.x = E(armR).rotation.x = -0.9;
     },
     /** Standing still: slow weight shift and a little head movement. */
     idle(t, k = 1) {
-      body.rotation.z = Math.sin(t * 0.7 + seed * 9) * 0.015 * k;
+      if (seated) return;
+      body.rotation.z = Math.sin(t * 0.7 + seed * 9) * 0.012 * k;
+      body.rotation.y = 0;
       head.rotation.y = Math.sin(t * 0.33 + seed * 20) * 0.35 * k;
-      armL.rotation.x = armR.rotation.x = legL.rotation.x = legR.rotation.x = 0;
+      legL.rotation.x = legR.rotation.x = 0;
+      K(legL).rotation.x = K(legR).rotation.x = 0;
+      armL.rotation.x = armR.rotation.x = 0;
+      E(armL).rotation.x = E(armR).rotation.x = -0.15;
+      body.position.y = 0;
     },
   };
 }
@@ -160,21 +250,22 @@ export function createStaff(world, bayPosition) {
     const r = Math.random();
     if (r < 0.7) {
       const bed = 1 + Math.floor(Math.random() * 20), p = bayPosition(bed);
-      return new THREE.Vector3(p.x + 1.25, 0, p.z + (p.z < 0 ? 1.0 : -1.0)); // beside the bed, opposite the charge nurse's spot
+      const s = p.z < 0 ? 1 : -1; // foot-right corner of the bay (front row is mirrored)
+      return new THREE.Vector3(p.x + 0.95 * s, 0, p.z + 1.55 * s);
     }
     if (r < 0.88) return new THREE.Vector3(-3 + Math.random() * 6, 0, 2.0 + Math.random() * 0.4); // station counter
     return new THREE.Vector3(25 + Math.random() * 6, 0, -3.4 + Math.random() * 1.2); // check-in desk
   };
   const walkers = [];
   for (let i = 0; i < 4; i++) {
-    const p = makePerson(i === 3 ? { outfit: "coat" } : { color: SCRUBS[i] });
+    const p = makePerson(i === 3 ? { outfit: "coat", steth: true, seed: 0.77 } : { color: SCRUBS[i], cap: i === 1, steth: i === 2, seed: 0.13 + i * 0.21 });
     const start = spots();
     p.group.position.copy(start);
     scene.add(p.group);
     walkers.push({ p, w: makeWalker(p, 1.2 + Math.random() * 0.35), wait: 2 + Math.random() * 8 });
   }
   for (const [i, [x, z]] of (world.station?.seats || []).entries()) {
-    const p = makePerson({ color: SCRUBS[(i + 1) % SCRUBS.length] });
+    const p = makePerson({ color: SCRUBS[(i + 1) % SCRUBS.length], seed: 0.41 + i * 0.3 });
     p.sit();
     p.group.position.set(x, 0, z - 0.05);
     p.group.rotation.y = Math.PI;
@@ -184,8 +275,10 @@ export function createStaff(world, bayPosition) {
   world.onFrame((dt, t) => {
     for (const s of walkers) {
       if (s.seated) { // typing: small forearm movement, the odd glance up
-        s.p.armL.rotation.x = -0.9 + Math.sin(t * 7 + s.p.group.position.x) * 0.05;
-        s.p.armR.rotation.x = -0.9 + Math.cos(t * 6 + s.p.group.position.x) * 0.05;
+        s.p.armL.rotation.x = -0.45 + Math.sin(t * 7 + s.p.group.position.x) * 0.04;
+        s.p.armL.userData.elbow.rotation.x = -1.15 + Math.sin(t * 9 + s.p.group.position.x) * 0.06;
+        s.p.armR.rotation.x = -0.45 + Math.cos(t * 6 + s.p.group.position.x) * 0.04;
+        s.p.armR.userData.elbow.rotation.x = -1.15 + Math.cos(t * 8 + s.p.group.position.x) * 0.06;
         s.p.head.rotation.y = Math.sin(t * 0.25 + s.p.group.position.x) * 0.3;
         continue;
       }

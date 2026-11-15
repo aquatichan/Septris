@@ -131,7 +131,7 @@ async function main() {
   // ---------- render ----------
   function renderHud() {
     const s = slotAt(data, state.slot);
-    $("clock").innerHTML = `Day ${s.day} · ${s.clock} <small>${shiftLabel(s)}</small>`;
+    $("clock").innerHTML = `<b>Day ${s.day} · ${s.clock}</b><small>${shiftLabel(s)}</small>`;
     const ids = data.shifts.get(s.shift);
     $("reviewChips").innerHTML = ids.map((i) => {
       const x = data.slots[i];
@@ -149,7 +149,8 @@ async function main() {
     if (state.tab === "queue") $("tab-queue").innerHTML = queueHTML(data, state);
     // full-page sections
     $("page").hidden = !state.page;
-    document.querySelectorAll(".btn.pg").forEach((b) => b.classList.toggle("on", b.dataset.page === state.page));
+    document.body.classList.toggle("paged", !!state.page);
+    document.querySelectorAll(".pg").forEach((b) => b.classList.toggle("on", b.dataset.page === state.page));
     if (state.page === "results") $("pageBody").innerHTML = resultsHTML(data, resultsK);
     if (state.page === "model") $("pageBody").innerHTML = modelHTML(data);
     if (state.page === "faq") $("pageBody").innerHTML = faqHTML(data);
@@ -176,8 +177,10 @@ async function main() {
       const lead = Math.round(s.lead_hours);
       text = `<b>✓ Sepsis flagged ${lead} hour${lead === 1 ? "" : "s"} early.</b> Septris sent the nurse to Bed ${s.bed} at ${s.clock}; the record shows sepsis ${lead} hour${lead === 1 ? "" : "s"} later${s.review_class === "early6" ? ", early enough to start treatment ahead of time" : ""}.`;
     }
-    el.innerHTML = text;
-    el.hidden = !text || !!state.page;
+    // the panel already celebrates an early catch, so only example notes are shown here
+    const isHitOnly = hit && !(f && f.slot === state.slot && f.kind !== "good");
+    el.innerHTML = isHitOnly ? "" : text;
+    el.hidden = isHitOnly || !text || !!state.page;
     const key = text ? `${state.slot}:${f?.kind || "hit"}` : "";
     if (key && key !== renderNote.last) audio.chime(f && f.slot === state.slot && f.kind === "miss" ? "alarm" : hit ? "caught" : "select");
     renderNote.last = key;
@@ -338,13 +341,13 @@ async function main() {
   $("narrate").onchange = (e) => { set({ narrate: e.target.checked }); if (e.target.checked) speakPick(); };
   $("overview").onclick = () => rig.overview();
   $("startTour").onclick = () => set({ tourStep: 0 });
-  document.querySelectorAll(".btn.ex").forEach((b) => (b.onclick = () => example(b.dataset.kind)));
+  document.querySelectorAll(".ex").forEach((b) => (b.onclick = () => example(b.dataset.kind)));
   document.querySelectorAll(".tab").forEach((t) => (t.onclick = () => set({ tab: t.dataset.tab })));
   for (const id of ["tab-priority", "tab-queue"]) $(id).onclick = (e) => {
     const b = e.target.closest("[data-bed]");
     if (b) selectBed(Number(b.dataset.bed));
   };
-  document.querySelectorAll(".btn.pg").forEach((b) => (b.onclick = () => set({ page: b.dataset.page })));
+  document.querySelectorAll(".pg").forEach((b) => (b.onclick = () => set({ page: b.dataset.page })));
   $("pageClose").onclick = () => set({ page: "" });
   $("pageBody").onclick = (e) => {
     const b = e.target.closest("[data-k]");
@@ -375,7 +378,13 @@ async function main() {
   set({ data, slot: TOUR });
   const SEEN = "septris_seen_intro";
   const seen = (() => { try { return localStorage.getItem(SEEN) === "1"; } catch { return false; } })();
-  const syncSound = () => { $("sound").textContent = audio.isEnabled() ? "🔊 Sound on" : "🔇 Sound off"; };
+  const SPEAKER = '<svg viewBox="0 0 24 24"><path d="M4 9h4l5-4v14l-5-4H4z"/>';
+  const syncSound = () => {
+    const on = audio.isEnabled();
+    $("sound").innerHTML = SPEAKER + (on ? '<path d="M16 9a4 4 0 0 1 0 6M18.5 6.5a7.5 7.5 0 0 1 0 11"/></svg>' : '<path d="M16 9l5 6M21 9l-5 6"/></svg>');
+    $("sound").title = on ? "Sound on (click to mute)" : "Sound off (click to turn on)";
+    $("sound").setAttribute("aria-pressed", String(on));
+  };
   syncSound();
   $("sound").onclick = () => { audio.start(); audio.setEnabled(!audio.isEnabled()); syncSound(); };
   window.addEventListener("pointerdown", () => audio.start(), { once: true });

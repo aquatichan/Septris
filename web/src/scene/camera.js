@@ -1,6 +1,7 @@
 // Smooth camera moves: overview of the whole unit, or a close look at a bed.
 import * as THREE from "three";
 import { bayPosition } from "./beds.js";
+import { freeSpan } from "./world.js";
 
 export function createCameraRig(world) {
   const { camera, controls } = world;
@@ -10,8 +11,9 @@ export function createCameraRig(world) {
   let path = null, held = false;
   function overviewPose() {
     const narrow = window.innerWidth < 860;
-    const wide = window.innerWidth / window.innerHeight;
-    const d = narrow ? 2.6 : Math.max(1.38, 2.6 / wide); // pull back on tall or narrow windows
+    const span = freeSpan();
+    const wide = (span.right - span.left) / window.innerHeight; // the part of the screen the ward can use
+    const d = narrow ? 2.6 : Math.max(1.1, 1.9 / wide); // pull back on tall or narrow views
     const cx = 8; // centre of ward + lobby
     return [new THREE.Vector3(cx, 34 * d, 36 * d), new THREE.Vector3(cx, 0, 1.5)];
   }

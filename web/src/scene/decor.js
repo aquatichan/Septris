@@ -58,8 +58,6 @@ export function createDecor(world) {
       d.rotation.y = ry;
     }
   };
-  cart(-21.2, -3.2, "#d9534f", Math.PI / 2);
-  cart(-21.2, 3.2, "#3d6fb6", Math.PI / 2);
   cart(5.6, -1.0, "#d9534f");
   cart(21.0, -4.4, "#3d6fb6", -Math.PI / 2);
 
@@ -72,12 +70,13 @@ export function createDecor(world) {
     add(new THREE.BoxGeometry(0.36, 0.1, 0.5), new THREE.MeshStandardMaterial({ color: "#aeb8bc", metalness: 0.8, roughness: 0.25 }), -21.6, 0.94, z);
     add(new THREE.BoxGeometry(0.34, 0.6, 2.4), oak, -21.8, 2.1, z);
   }
-  // wall clock above the doorway to the lobby
-  const clock = add(new THREE.CylinderGeometry(0.28, 0.28, 0.05, 28), white, 21.85, 2.72, 0, false);
-  clock.rotation.z = Math.PI / 2;
+  // wall clock on the back wall, above the nurse station
+  const face = add(new THREE.CylinderGeometry(0.28, 0.28, 0.05, 32), white, 0, 2.5, -10.95, false);
+  face.rotation.x = Math.PI / 2;
+  const rim = add(new THREE.TorusGeometry(0.28, 0.02, 8, 32), new THREE.MeshStandardMaterial({ color: "#3a4246", roughness: 0.4 }), 0, 2.5, -10.93, false);
   const hand = (len, a) => {
-    const h = add(new THREE.BoxGeometry(0.012, len, 0.025), new THREE.MeshBasicMaterial({ color: "#1b2327" }), 21.82, 2.72 + Math.cos(a) * len / 2, Math.sin(a) * len / 2, false);
-    h.rotation.x = a;
+    const h = add(new THREE.BoxGeometry(0.014, len, 0.01), new THREE.MeshBasicMaterial({ color: "#1b2327" }), Math.sin(a) * len / 2, 2.5 + Math.cos(a) * len / 2, -10.915, false);
+    h.rotation.z = -a;
   };
   hand(0.2, 0.9); hand(0.14, -1.2);
 }

@@ -4,6 +4,8 @@
 // for the current check. Furniture is merged into a few meshes per material
 // so 20 fully dressed bays stay cheap to draw.
 import * as THREE from "three";
+import { headwallPanel } from "./textures.js";
+import { freeSpan } from "./world.js";
 import { CSS2DObject } from "three/addons/renderers/CSS2DRenderer.js";
 import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
 import { ordinal } from "../data.js";
@@ -44,11 +46,15 @@ const BEAM_ALPHA = beamAlpha();
 const std = (color, o = {}) => new THREE.MeshStandardMaterial({ color, roughness: 0.7, ...o });
 const MAT = {
   beige: std("#d9cdb8", { roughness: 0.55 }),
+  frame: std("#f2f4f5", { roughness: 0.32 }),
+  base: std("#c9d0d3", { roughness: 0.45, metalness: 0.3 }),
+  mint: std("#9fd8c5", { roughness: 0.6 }),
+  panel: new THREE.MeshStandardMaterial({ map: headwallPanel(), roughness: 0.45 }),
   steel: std("#b9c2c6", { metalness: 0.7, roughness: 0.3 }),
   dark: std("#3a4246", { roughness: 0.6 }),
   white: std("#f4f6f6", { roughness: 0.85 }),
-  blanket: std("#3f6fb5", { roughness: 0.95 }),
-  curtain: std("#2f5aa6", { roughness: 1, side: THREE.DoubleSide }),
+  blanket: std("#e9eef0", { roughness: 0.95 }),
+  curtain: std("#8fb9cf", { roughness: 1, side: THREE.DoubleSide }),
   skin: std("#c99a7a"),
   glow: new THREE.MeshBasicMaterial({ color: new THREE.Color(2.2, 2.2, 2.1), toneMapped: false }),
   bag: std("#d7eef7", { transparent: true, opacity: 0.8, roughness: 0.2 }),
@@ -77,6 +83,42 @@ function makeBatch() {
       }
     },
   };
+}
+
+/** A board with rounded corners and an optional hand-hold slot, extruded and bevelled (head/foot boards, rails). */
+function boardGeometry(w, h, depth, r, slot) {
+  const shape = new THREE.Shape();
+  shape.moveTo(-w / 2 + r, 0);
+  shape.lineTo(w / 2 - r, 0); shape.quadraticCurveTo(w / 2, 0, w / 2, r);
+  shape.lineTo(w / 2, h - r); shape.quadraticCurveTo(w / 2, h, w / 2 - r, h);
+  shape.lineTo(-w / 2 + r, h); shape.quadraticCurveTo(-w / 2, h, -w / 2, h - r);
+  shape.lineTo(-w / 2, r); shape.quadraticCurveTo(-w / 2, 0, -w / 2 + r, 0);
+  if (slot) {
+    const hw = w * 0.28, y0 = h * 0.62, y1 = h * 0.84, rr = (y1 - y0) / 2;
+    const hole = new THREE.Path();
+    hole.moveTo(-hw, y0); hole.lineTo(hw, y0); hole.absarc(hw, y0 + rr, rr, -Math.PI / 2, Math.PI / 2, false);
+    hole.lineTo(-hw, y1); hole.absarc(-hw, y0 + rr, rr, Math.PI / 2, Math.PI * 1.5, false);
+    shape.holes.push(hole);
+  }
+  const g = new THREE.ExtrudeGeometry(shape, { depth, bevelEnabled: true, bevelSize: 0.015, bevelThickness: 0.015, bevelSegments: 2, curveSegments: 8 });
+  g.translate(0, 0, -depth / 2);
+  return g;
+}
+
+/** A mattress: a slab with softly rounded edges. */
+function roundedSlab(w, l, h, r) {
+  const g = new THREE.BoxGeometry(w, h, l, 8, 4, 16);
+  const p = g.attributes.position, v = new THREE.Vector3();
+  for (let i = 0; i < p.count; i++) {
+    v.fromBufferAttribute(p, i);
+    const ix = Math.max(Math.abs(v.x) - (w / 2 - r), 0), iz = Math.max(Math.abs(v.z) - (l / 2 - r), 0), iy = Math.max(Math.abs(v.y) - (h / 2 - r), 0);
+    const len = Math.hypot(ix, iy, iz);
+    if (len > 0) { const k = r / len; const cx = Math.sign(v.x) * (w / 2 - r), cy = Math.sign(v.y) * (h / 2 - r), cz = Math.sign(v.z) * (l / 2 - r);
+      v.set(Math.abs(v.x) > w / 2 - r ? cx + Math.sign(v.x) * ix * k : v.x, Math.abs(v.y) > h / 2 - r ? cy + Math.sign(v.y) * iy * k : v.y, Math.abs(v.z) > l / 2 - r ? cz + Math.sign(v.z) * iz * k : v.z); }
+    p.setXYZ(i, v.x, v.y, v.z);
+  }
+  g.computeVertexNormals();
+  return g;
 }
 
 /** A hanging curtain bunched into folds. */
@@ -150,6 +192,11 @@ export function createBeds(world, onSelect, lobby) {
     box: (w, h, d) => new THREE.BoxGeometry(w, h, d),
     cyl: (r, h, s = 10) => new THREE.CylinderGeometry(r, r, h, s),
     curtain: curtainGeometry(),
+    plane: (w, h) => new THREE.PlaneGeometry(w, h),
+    round: roundedSlab(0.9, 2.0, 0.16, 0.08),
+    headboard: boardGeometry(1.02, 0.66, 0.08, 0.12, true),
+    footboard: boardGeometry(1.02, 0.46, 0.07, 0.1, false),
+    rail: boardGeometry(0.85, 0.26, 0.04, 0.06, true),
   };
 
   for (let bed = 1; bed <= 20; bed++) {
@@ -161,22 +208,29 @@ export function createBeds(world, onSelect, lobby) {
     const P = g.matrix;
     const put = (geo, material, ...t) => batch.add(geo, material, P, ...t);
 
-    // bed: wheels, lift column, frame, mattress, head and foot boards, side rails
-    for (const [x, z] of [[-0.42, -0.9], [0.42, -0.9], [-0.42, 0.9], [0.42, 0.9]]) put(G.cyl(0.07, 0.05, 12), MAT.dark, x, 0.07, z, 0, 0, Math.PI / 2);
-    put(G.box(0.7, 0.3, 1.5), MAT.dark, 0, 0.27, 0);
-    put(G.box(0.98, 0.12, 2.08), MAT.beige, 0, 0.47, 0);
-    put(G.box(0.9, 0.15, 2.0), MAT.white, 0, 0.6, 0);
-    put(G.box(1.02, 0.78, 0.07), MAT.beige, 0, 0.82, -1.07);
-    put(G.box(1.02, 0.5, 0.07), MAT.beige, 0, 0.68, 1.07);
-    for (const x of [-0.5, 0.5]) put(G.box(0.04, 0.26, 0.85), MAT.beige, x, 0.82, -0.4);
-    put(G.box(0.62, 0.11, 0.36), MAT.white, 0, 0.73, -0.78);
+    // bed (like the reference ward): white moulded head and foot boards with hand-holds,
+    // mint mattress, white side rails, grey lifting base on castors
+    for (const [x, z] of [[-0.4, -0.85], [0.4, -0.85], [-0.4, 0.85], [0.4, 0.85]]) {
+      put(G.cyl(0.065, 0.045, 14), MAT.dark, x, 0.065, z, 0, 0, Math.PI / 2);
+      put(G.box(0.05, 0.1, 0.05), MAT.base, x, 0.15, z);
+    }
+    put(G.box(0.86, 0.06, 1.85), MAT.base, 0, 0.2, 0);
+    for (const z of [-0.45, 0.45]) put(G.box(0.12, 0.3, 0.12), MAT.base, 0, 0.36, z, 0.35 * Math.sign(z));
+    put(G.box(0.96, 0.08, 2.0), MAT.frame, 0, 0.52, 0);
+    put(G.round, MAT.mint, 0, 0.62, 0.05);
+    put(G.headboard, MAT.frame, 0, 0.5, -1.06);
+    put(G.footboard, MAT.frame, 0, 0.5, 1.07);
+    for (const x of [-0.5, 0.5]) {
+      put(G.rail, MAT.frame, x, 0.66, -0.38, 0, Math.PI / 2, 0);
+    }
+    put(G.box(0.6, 0.11, 0.34), MAT.white, 0, 0.73, -0.78);
 
-    // head wall: service rail with outlets, reading light, monitor arm
-    put(G.box(2.7, 0.24, 0.07), MAT.beige, 0, 1.32, -1.66);
-    for (const x of [-1.0, -0.7, 0.55]) put(G.box(0.14, 0.14, 0.03), MAT.white, x, 1.32, -1.615);
-    put(G.box(1.5, 0.1, 0.12), MAT.glow, 0, 1.98, -1.62);
-    put(G.box(1.6, 0.05, 0.16), MAT.steel, 0, 2.05, -1.62);
-    put(G.box(0.06, 0.06, 0.5), MAT.beige, 0.95, 1.72, -1.42);
+    // head wall: service panel with gas outlets and red readouts, monitor arm, reading light
+    put(G.box(2.9, 0.62, 0.06), MAT.frame, 0, 1.6, -1.67);
+    put(G.plane(2.86, 0.6), MAT.panel, 0, 1.6, -1.635);
+    put(G.box(1.4, 0.05, 0.14), MAT.glow, 0, 2.25, -1.62);
+    put(G.box(1.5, 0.04, 0.16), MAT.steel, 0, 2.29, -1.62);
+    put(G.box(0.06, 0.06, 0.5), MAT.frame, 0.95, 1.72, -1.42);
 
     // IV stand with two bags and an infusion pump
     for (let i = 0; i < 5; i++) put(G.box(0.3, 0.03, 0.04), MAT.steel, -0.92 + Math.cos(i * 1.257) * 0.14, 0.04, -0.72 + Math.sin(i * 1.257) * 0.14, 0, -i * 1.257, 0);
@@ -194,10 +248,10 @@ export function createBeds(world, onSelect, lobby) {
     }
 
     // some bays have a visitor chair or an over-bed table
-    if (bed % 3 === 0) {
-      put(G.box(0.5, 0.06, 0.5), MAT.beige, -1.35, 0.45, 0.75);
-      put(G.box(0.5, 0.5, 0.06), MAT.beige, -1.35, 0.72, 0.52);
-      for (const [x, z] of [[-1.57, 0.53], [-1.13, 0.53], [-1.57, 0.97], [-1.13, 0.97]]) put(G.cyl(0.02, 0.44, 6), MAT.steel, x, 0.22, z);
+    if (bed % 3 === 0) { // visitor chair at the foot-right corner, clear of the nurse's spot on the left
+      put(G.box(0.5, 0.06, 0.5), MAT.beige, 1.5, 0.45, 0.45);
+      put(G.box(0.06, 0.5, 0.5), MAT.beige, 1.73, 0.72, 0.45);
+      for (const [x, z] of [[1.28, 0.23], [1.72, 0.23], [1.28, 0.67], [1.72, 0.67]]) put(G.cyl(0.02, 0.44, 6), MAT.steel, x, 0.22, z);
     }
     if (bed % 4 === 2) {
       put(G.box(0.8, 0.03, 0.42), MAT.white, 0.25, 0.98, 0.5);
@@ -253,10 +307,10 @@ export function createBeds(world, onSelect, lobby) {
     el.style.pointerEvents = "auto";
     el.addEventListener("click", () => onSelect(bed));
     const label = new CSS2DObject(el);
-    label.position.set(0, 3.1, 0);
+    label.position.set(0, 2.55, 0);
 
     g.add(patientGroup, monitor.group, ring, pad, beam, hit, label);
-    bays.set(bed, { g, ring, ringMat, pad, padMat, beam, beamMat, patientGroup, chest, blanketMat, monitor, el, state: "low", breath: 0.9 + ((bed * 37) % 10) / 25 });
+    bays.set(bed, { label, g, ring, ringMat, pad, padMat, beam, beamMat, patientGroup, chest, blanketMat, monitor, el, state: "low", breath: 0.9 + ((bed * 37) % 10) / 25 });
   }
   batch.build(scene);
 
@@ -278,6 +332,20 @@ export function createBeds(world, onSelect, lobby) {
     if (hitObj) onSelect(hitObj.object.userData.bed);
   });
 
+  // keep bed labels out of the interface: hide any that would sit under the
+  // header, the left column or the panel
+  const v = new THREE.Vector3();
+  let span = freeSpan(), spanAt = 0;
+  world.onFrame((dt, t) => {
+    if (t - spanAt > 0.5) { span = freeSpan(); spanAt = t; }
+    const w = renderer.domElement.clientWidth, h = renderer.domElement.clientHeight;
+    for (const b of bays.values()) {
+      b.el.parentElement && b.label.getWorldPosition(v).project(camera);
+      const x = (v.x * 0.5 + 0.5) * w, y = (-v.y * 0.5 + 0.5) * h;
+      const clear = w <= 860 || (y > 140 && x > span.left + 30 && x < span.right - 30);
+      b.el.style.visibility = clear || b.el.classList.contains("hit") && y > 140 ? "visible" : "hidden";
+    }
+  });
   world.onFrame((dt, t) => {
     for (const b of bays.values()) {
       if (b.patientGroup.visible) b.chest.scale.z = 0.6 + 0.035 * Math.sin(t * b.breath * 1.6); // breathing
@@ -291,18 +359,19 @@ export function createBeds(world, onSelect, lobby) {
   });
 
   // the charge nurse walks (properly, along the corridor) to whichever bed Septris picks
-  const nurse = makePerson({ color: "#16817f", seed: 0.31 });
+  const nurse = makePerson({ color: "#16817f", seed: 0.31, steth: true });
   const tablet = new THREE.Mesh(new THREE.BoxGeometry(0.26, 0.02, 0.19), new THREE.MeshStandardMaterial({ color: "#0d1d24", emissive: "#4fb3ff", emissiveIntensity: 1.2 }));
-  tablet.position.set(0, -0.56, 0.1);
-  nurse.armR.add(tablet);
+  tablet.position.set(0, -0.3, 0.07);
+  tablet.rotation.x = 0.2;
+  nurse.armR.userData.elbow.add(tablet);
   nurse.group.position.set(1.2, 0, 2.2);
   scene.add(nurse.group);
   const nurseWalk = makeWalker(nurse, 3.2); // brisk: she is on her way to a patient
   let nurseBed = null, nurseFace = 0;
   world.onFrame((dt, t) => {
-    if (nurseWalk.step(dt)) { nurse.armR.rotation.x = -0.9; return; }
+    if (nurseWalk.step(dt)) { nurse.armR.rotation.x = -0.35; nurse.armR.userData.elbow.rotation.x = -1.3; return; }
     nurse.idle(t, 0.5);
-    nurse.armR.rotation.x = -1.0; // reading the tablet
+    nurse.armR.rotation.x = -0.4; nurse.armR.userData.elbow.rotation.x = -1.35; // reading the tablet
     const d = Math.atan2(Math.sin(nurseFace - nurse.group.rotation.y), Math.cos(nurseFace - nurse.group.rotation.y));
     nurse.group.rotation.y += d * Math.min(1, dt * 6);
   });
@@ -310,7 +379,8 @@ export function createBeds(world, onSelect, lobby) {
     if (bed === nurseBed) return;
     nurseBed = bed;
     const pb = bayPosition(bed);
-    const goal = new THREE.Vector3(pb.x - 1.25, 0, pb.z + (pb.z < 0 ? 0.9 : -0.9));
+    const side = pb.z < 0 ? 1 : -1; // the bay's local left, mirrored for the front row
+    const goal = new THREE.Vector3(pb.x - 1.25 * side, 0, pb.z + 0.9 * side);
     nurseFace = Math.atan2(pb.x - goal.x, pb.z + (pb.z < 0 ? 0.3 : -0.3) - goal.z);
     if (instant) { nurse.group.position.copy(goal); nurse.group.rotation.y = nurseFace; nurseWalk.go([]); }
     else nurseWalk.go(corridorRoute(nurse.group.position, goal));
@@ -370,7 +440,7 @@ export function createBeds(world, onSelect, lobby) {
       b.beam.visible = state === "pick" || state === "hit";
       b.occupied = !!r;
       b.patientGroup.visible = !!r && !b.arriving;
-      b.blanketMat.color.set(state === "snooze" ? "#7f93b3" : "#3f6fb5");
+      b.blanketMat.color.set(state === "snooze" ? "#c9d3d6" : "#e9eef0");
       drawMonitor(b.monitor, bed, r, pat, color);
 
       const cls = ["bed-label"];
@@ -384,7 +454,7 @@ export function createBeds(world, onSelect, lobby) {
       let extra = "";
       if (r && r.picked && st.showKey) {
         const c = slotRow.review_class, lead = Math.round(slotRow.lead_hours ?? 0);
-        if (c === "early6" || c === "early") extra = `<b class='hitbig'>✓ SEPSIS FLAGGED EARLY</b><small class='ok keep'>${lead} hour${lead === 1 ? "" : "s"} before it was recorded</small>`;
+        if (c === "early6" || c === "early") extra = `<b class='hitbig'>✓ Flagged ${lead} h early</b>`;
         else if (c === "false") extra = "<small class='line'>false alarm</small>";
         else if (c === "late") extra = "<small class='line'>checked too late</small>";
       }

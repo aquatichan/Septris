@@ -21,7 +21,7 @@ export function tourSteps(data, slot) {
     },
     {
       title: "Was it right?",
-      text: `These are real patients from past hospital records, so we can check each pick afterwards. Here the record shows sepsis ${Math.round(s.lead_hours)} hours after this chart check. Septris flagged Bed ${s.bed} early enough to act. Septris itself never sees outcomes. “Show outcomes” at the top turns this view on and off.`,
+      text: `These are real patients from past hospital records, so we can check each pick afterwards. Here the record shows sepsis ${Math.round(s.lead_hours)} hours after this chart check. Septris flagged Bed ${s.bed} early enough to act. Septris itself never sees outcomes.`,
       apply: (go) => go({ showKey: true, camera: s.bed, tab: "patient", selectedBed: s.bed }),
     },
     {

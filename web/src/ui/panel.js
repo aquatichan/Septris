@@ -76,7 +76,7 @@ export function priorityHTML(data, st) {
     <div class="qmini">${next.map((x) => `<button class="qrow" data-bed="${x.bed}"><b>Bed ${x.bed}</b><span class="pill ${TIER[x.tier].cls}">${TIER[x.tier].name}</span><span class="num">${x.percentile}</span></button>`).join("")}</div>
     <p class="small muted">This is <b>not</b> the order of the next chart checks. Septris re-ranks every bed from fresh data before each check, so the next check goes to whoever is highest <i>then</i>.${nextNote}</p>
     <p class="small muted">Septris uses only data recorded up to ${s.clock}. It points to a chart and does not diagnose. The nurse reads the chart and decides.</p>
-    ${st.showKey ? outcomeBlock(s, n, sbar) : `<p class="small muted">Turn on “Show outcomes” to see what the record shows happened after this chart check.</p>`}`;
+    ${st.showKey ? outcomeBlock(s, n, sbar) : `<p class="small muted">What the record shows happened next is revealed a little later in the tour.</p>`}`;
 }
 
 function latest(series, hour) {
@@ -284,7 +284,7 @@ export function faqHTML(data) {
     ["What problem does Septris solve?", `Checking one chart for signs of sepsis takes real time, and one nurse may cover 20 beds. Septris answers one question: whose chart should the nurse open next? This page shows ${k} chart checks per 12-hour shift. We also tested 1, 2 and 3.`],
     ["What do the colours mean?", "Blue: check this bed now. Red: high risk (top 5% of ICU hours). Yellow: medium risk (top 20%). Green: low risk. Grey: checked in the last 12 hours, so skipped for now."],
     ["What does “risk score 92 of 100” mean?", "It is a ranking. This patient's data right now looks more worrying than about 92% of ICU hours at the training hospital. It does not tell you the chance of having sepsis."],
-    ["How do you know if a pick was right?", "These are real patients from past records, so each stay is already written down. Septris only gets the data up to each moment. Afterwards we look at the record. If sepsis was recorded 6–12 hours after the chart check, the patient counts as caught early. Turn on “Show outcomes” to see this."],
+    ["How do you know if a pick was right?", "These are real patients from past records, so each stay is already written down. Septris only gets the data up to each moment. Afterwards we look at the record. If sepsis was recorded 6–12 hours after the chart check, the patient counts as caught early."],
     ["Why are most picks false alarms?", "Only about 8% of these ICU patients ever develop sepsis. At any moment, very few are 6–12 hours away from it. So most of the time there is no one to catch. A false alarm is a check on a patient who did not get sepsis. What counts is catching more real cases with the same nurse time."],
     ["Can I add my own patient?", "Yes. Click “＋ Add a patient” at the top of the ward, type in their readings (or use an example), and choose how long they stay. They are wheeled in from the elevator, scored and ranked with the other beds. In a real hospital, this information would come in automatically from the patient record."],
     ["Does it diagnose sepsis?", "No. It never diagnoses or recommends treatment. It only sorts the nurse's list of charts to check and explains why."],

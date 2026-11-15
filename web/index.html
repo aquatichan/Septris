@@ -7,7 +7,8 @@
 <meta name="description" content="Septris: a 3D ICU replay showing which ICU patient a nurse should check next for early signs of sepsis. Prototype, not medical advice.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@500;700&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,500;0,8..60,600;0,8..60,700;1,8..60,400&family=IBM+Plex+Mono:wght@400;600&display=swap">
+<link rel="icon" type="image/png" href="assets/favicon.png">
 <link rel="stylesheet" href="styles.css">
 <script type="importmap">
 {
@@ -24,47 +25,50 @@
   <div id="stage" aria-label="3D view of a 20-bed ICU"></div>
 
   <header id="hud" class="hud">
-    <div class="brand">
-      <span class="brand-name">Septris</span>
-      <span class="brand-tag">which ICU patient to check next for sepsis</span>
+    <div class="hud-top">
+      <a class="brand" href="#" aria-label="Septris home">
+        <img src="assets/septris-logo.png" alt="Septris" width="150" height="35">
+        <span class="brand-tag">Which ICU patient to check next for sepsis</span>
+      </a>
+      <nav class="pages" aria-label="Sections">
+        <button class="pg on" data-page="">Ward</button>
+        <button class="pg" data-page="results">Results</button>
+        <button class="pg" data-page="model">How it works</button>
+        <button class="pg" data-page="faq">FAQ</button>
+      </nav>
+      <button id="addPatient" class="btn add">＋ Add a patient</button>
     </div>
-    <nav class="pages" aria-label="Sections">
-      <button class="btn pg on" data-page="">Ward</button>
-      <button class="btn pg" data-page="results">Results</button>
-      <button class="btn pg" data-page="model">How it works</button>
-      <button class="btn pg" data-page="faq">FAQ</button>
-    </nav>
-    <div class="clock" id="clock" aria-live="polite"></div>
     <nav class="timebar" aria-label="Move through time">
-      <button id="prevShift" class="btn ghost">◀ Previous shift</button>
+      <div class="clock" id="clock" aria-live="polite"></div>
+      <button id="prevShift" class="btn ghost" title="Previous shift">◀ Previous shift</button>
       <div id="reviewChips" class="chips" role="group" aria-label="This shift's checks"></div>
-      <button id="nextShift" class="btn ghost">Next shift ▶</button>
+      <button id="nextShift" class="btn ghost" title="Next shift">Next shift ▶</button>
       <button id="play" class="btn" title="Play through the checks">▶ Play</button>
     </nav>
-    <div class="toggles">
-      <label class="switch"><input type="checkbox" id="showKey" checked><span>Show outcomes</span></label>
-      <label class="switch"><input type="checkbox" id="narrate"><span>Read aloud</span></label>
-      <button id="addPatient" class="btn add">＋ Add a patient</button>
-      <button id="overview" class="btn ghost" title="Zoom out to the whole unit">Overview</button>
-      <button id="startTour" class="btn ghost">Tour</button>
-    </div>
+    <!-- kept for the scripts; outcomes always show and read-aloud is a voice command -->
+    <input type="checkbox" id="showKey" checked hidden><input type="checkbox" id="narrate" hidden>
   </header>
 
-  <aside id="examples" class="examples" aria-label="Jump to an example">
-    <div class="eyebrow">Jump to an example</div>
-    <button class="btn ex" data-kind="good"><i class="dot good"></i>Sepsis accurately predicted</button>
-    <button class="btn ex" data-kind="miss"><i class="dot miss"></i>A sepsis patient it missed</button>
-    <button class="btn ex" data-kind="false"><i class="dot false"></i>A false alarm</button>
-  </aside>
+  <div class="leftcol">
+    <aside id="examples" class="examples card" aria-label="Jump to an example">
+      <div class="eyebrow">See an example</div>
+      <button class="ex" data-kind="good"><i class="dot good"></i>Sepsis caught early</button>
+      <button class="ex" data-kind="miss"><i class="dot miss"></i>A patient it missed</button>
+      <button class="ex" data-kind="false"><i class="dot false"></i>A false alarm</button>
+    </aside>
+  </div>
 
-  <aside id="legend" class="legendbox" aria-label="Colour key">
-    <div class="eyebrow">Colour key</div>
-    <div><i class="sw pick"></i>Check now (Septris's pick)</div>
+  <div class="leftfoot">
+  <div id="tally" class="tally card" hidden></div>
+  <aside id="legend" class="legendbox card" aria-label="Colour key">
+    <div class="eyebrow">Floor rings</div>
+    <div><i class="sw pick"></i>Check now</div>
     <div><i class="sw high"></i>High risk</div>
     <div><i class="sw med"></i>Medium risk</div>
     <div><i class="sw low"></i>Low risk</div>
-    <div><i class="sw snooze"></i>Checked in the last 12 hours</div>
+    <div><i class="sw snooze"></i>Checked in the last 12 h</div>
   </aside>
+  </div>
 
   <aside id="panel" class="panel" aria-label="Details">
     <div class="tabs" role="tablist">
@@ -112,16 +116,16 @@
       </div>
     </form>
   </div>
-  <div id="tally" class="tally" hidden></div>
-  <div class="corner">
-    <button id="replayIntro" class="btn ghost" title="Ride the elevator in again">↻ Replay intro</button>
-    <button id="sound" class="btn ghost" title="Hospital background sound">🔊 Sound on</button>
+  <div class="corner" role="toolbar" aria-label="View">
+    <button id="overview" class="icon" title="Zoom out to the whole ward" aria-label="Zoom out to the whole ward"><svg viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button>
+    <button id="startTour" class="icon" title="Guided tour" aria-label="Guided tour"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .9-1 1.6v.6M12 17.2v.1"/></svg></button>
+    <button id="replayIntro" class="icon" title="Replay the elevator intro" aria-label="Replay the elevator intro"><svg viewBox="0 0 24 24"><path d="M4 12a8 8 0 1 0 2.4-5.7M4 4v4h4"/></svg></button>
+    <button id="sound" class="icon" title="Sound" aria-label="Sound"></button>
   </div>
   <button id="skipIntro" class="btn skipintro" hidden>Skip intro ▶</button>
   <div id="splash" class="splash" hidden>
     <div class="splash-card">
-      <div class="eyebrow">Intensive care · floor 3</div>
-      <h1>Septris</h1>
+      <div class="eyebrow">Intensive care · third floor</div>
       <p>Sepsis is easier to treat the earlier it is noticed. Septris watches 20 ICU beds and tells the nurse which patient to check next.</p>
       <button id="enter" class="btn add big">Enter the ward ▶</button>
       <button id="enterQuiet" class="btn ghost">Enter without sound</button>

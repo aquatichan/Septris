@@ -4,9 +4,9 @@
 // visitors. The lobby ceiling and front wall are one-sided, like the ward's.
 import * as THREE from "three";
 import { bayPosition } from "./beds.js";
-import { fixture, flicker, officeChair } from "./world.js";
+import { fixture, flicker, officeChair, floorMaterial, floorReflections, alarmBell } from "./world.js";
 import { makePerson } from "./people.js";
-import { floorTiles, ceilingTiles, wallPaint, wood, brushedSteel, buttonPanel, signTexture } from "./textures.js";
+import { ceilingTiles, wood, brushedSteel, buttonPanel, signTexture, panelWall, exitSign, noticeBoard, wallLettering } from "./textures.js";
 
 export const LOBBY = { x0: 22, x1: 36, halfZ: 8, door: 3.5, lift: 1.7 };
 const ELEVATOR = new THREE.Vector3(37.9, 0, 0);
@@ -33,7 +33,7 @@ function gurney() {
     wheel.position.set(x, 0.07, z);
     g.add(leg, wheel);
   }
-  const blanket = new THREE.MeshStandardMaterial({ color: "#3f6fb5", roughness: 0.95 });
+  const blanket = new THREE.MeshStandardMaterial({ color: "#e9eef0", roughness: 0.95 });
   const body = new THREE.Mesh(new THREE.CapsuleGeometry(0.2, 1.0, 6, 14), blanket);
   body.rotation.x = Math.PI / 2;
   body.scale.set(1.2, 1, 0.6);
@@ -44,7 +44,7 @@ function gurney() {
   const porter = makePerson({ color: "#5e6fb8" });
   porter.group.position.set(0, 0, 1.5);
   porter.group.rotation.y = Math.PI; // pushing: faces the way the gurney travels (-z local)
-  porter.armL.rotation.x = porter.armR.rotation.x = -1.1;
+  porter.armL.rotation.x = porter.armR.rotation.x = -0.7;
   g.add(porter.group);
   g.traverse((m) => { if (m.isMesh) m.castShadow = true; });
   g.userData.porter = porter;
@@ -61,11 +61,11 @@ export function createLobby(world) {
     scene.add(m);
     return m;
   };
-  const paint = (len) => new THREE.MeshStandardMaterial({ map: wallPaint(len / 2), roughness: 0.9 });
+  const paint = (len) => new THREE.MeshStandardMaterial({ map: panelWall(len / 2.4, { dado: "#7f9e9d" }), roughness: 0.55 });
   const oak = new THREE.MeshStandardMaterial({ map: wood(), roughness: 0.6 });
 
   // floor, ceiling (one-sided), walls
-  const floor = new THREE.Mesh(new THREE.PlaneGeometry(W, Z * 2), new THREE.MeshStandardMaterial({ map: floorTiles(W / 1.2, (Z * 2) / 1.2), roughness: 0.38, metalness: 0.02 }));
+  const floor = new THREE.Mesh(new THREE.PlaneGeometry(W, Z * 2), floorMaterial(W / 4, (Z * 2) / 4, "#628f90"));
   floor.rotation.x = -Math.PI / 2;
   floor.position.set(cx, 0.002, 0);
   floor.receiveShadow = true;
@@ -90,6 +90,10 @@ export function createLobby(world) {
   scene.add(tired);
   flicker(world, fixture(scene, cx + 3.5, 2.5, { len: 2 }), tired, 8);
   fixture(scene, cx + 3.5, -3, { len: 2 });
+  floorReflections(scene, [[cx - 3, -2.5], [cx - 3, 3.5], [cx + 3.5, 2.5], [cx + 3.5, -3]], 2);
+  // grey-teal hand rail on the dado line
+  const railMat = new THREE.MeshStandardMaterial({ color: "#6d8b8a", roughness: 0.4 });
+  box(W, 0.14, 0.08, cx, 0.92, -Z + 0.04, railMat, false);
 
   // elevator: steel cab seen from inside during the opening shot
   const steelTex = brushedSteel(3);
@@ -141,19 +145,65 @@ export function createLobby(world) {
   scene.add(lintel, display);
 
   // sliding doors (brushed steel on both faces)
-  const doorMat = new THREE.MeshStandardMaterial({ map: brushedSteel(2), metalness: 0.8, roughness: 0.32 });
+  const doorMat = new THREE.MeshStandardMaterial({ map: brushedSteel(2), color: "#9fb7b8", metalness: 0.55, roughness: 0.36 });
+  const logoTex = new THREE.TextureLoader().load("assets/septris-logo.png", (t) => { t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8; });
+  const stickerMat = new THREE.MeshStandardMaterial({ map: logoTex, transparent: true, roughness: 0.4, metalness: 0.1, polygonOffset: true, polygonOffsetFactor: -2 });
+  const halfSticker = (leftHalf) => {
+    const g = new THREE.PlaneGeometry(1.25, 0.29);
+    const uv = g.attributes.uv;
+    for (let i = 0; i < uv.count; i++) uv.setX(i, uv.getX(i) * 0.5 + (leftHalf ? 0 : 0.5));
+    return new THREE.Mesh(g, stickerMat);
+  };
   const doors = [-1, 1].map((s) => {
     const d = box(0.07, 2.4, LOBBY.lift, LOBBY.x1 + 0.12, 1.2, (s * LOBBY.lift) / 2, doorMat);
     d.userData.side = s;
+    // lobby face (-x): the left half of the logo sits on the -z leaf
+    const out = halfSticker(s < 0);
+    out.rotation.y = -Math.PI / 2;
+    out.position.set(-0.037, 0.42, -s * (LOBBY.lift / 2 - 0.625));
+    // cab face (+x): seen from inside, left is +z
+    const inn = halfSticker(s > 0);
+    inn.rotation.y = Math.PI / 2;
+    inn.position.set(0.037, 0.42, -s * (LOBBY.lift / 2 - 0.625));
+    d.add(out, inn);
     return d;
   });
+  // painted surround with a floor number plate, like the reference lobby
+  const surround = new THREE.MeshStandardMaterial({ color: "#5f7b7c", roughness: 0.45, metalness: 0.2 });
+  for (const s2 of [-1, 1]) box(0.1, 2.55, 0.14, LOBBY.x1 - 0.03, 1.275, s2 * (LOBBY.lift + 0.07), surround);
+  box(0.1, 0.5, LOBBY.lift * 2 + 0.28, LOBBY.x1 - 0.03, 2.8, 0, surround);
+  const plate = sign("3", 0.45, 0.16, { bg: "#c9d3d4", fg: "#26343a" });
+  plate.rotation.y = -Math.PI / 2;
+  plate.position.set(LOBBY.x1 - 0.085, 2.8, 0.55);
+  scene.add(plate);
+  // wall lettering and lift sign to the right of the doors
+  const letters = new THREE.Mesh(new THREE.PlaneGeometry(3.6, 1.1), new THREE.MeshBasicMaterial({ map: wallLettering(["THIRD FLOOR", "INTENSIVE CARE"]), transparent: true, color: new THREE.Color(0.9, 0.9, 0.9) }));
+  letters.rotation.y = -Math.PI / 2;
+  letters.position.set(LOBBY.x1 - 0.01, 1.95, 4.55);
+  scene.add(letters);
+  const callBtn = box(0.03, 0.26, 0.1, LOBBY.x1 - 0.015, 1.15, 2.2, new THREE.MeshStandardMaterial({ color: "#b9c4c6", metalness: 0.8, roughness: 0.25 }), false);
+  callBtn.castShadow = false;
+  const exit = new THREE.Mesh(new THREE.PlaneGeometry(0.75, 0.28), new THREE.MeshBasicMaterial({ map: exitSign(), toneMapped: false, color: new THREE.Color(1.3, 1.3, 1.3) }));
+  exit.rotation.y = -Math.PI / 2;
+  exit.position.set(LOBBY.x1 - 0.02, 2.62, -4.5);
+  scene.add(exit);
+  // notice board and internal window on the back wall, alarm bells
+  const board = new THREE.Mesh(new THREE.BoxGeometry(1.0, 1.25, 0.04), [0, 1, 2, 3, 4, 5].map((i) => i === 4 ? new THREE.MeshStandardMaterial({ map: noticeBoard(2), roughness: 0.6 }) : new THREE.MeshStandardMaterial({ color: "#c3cbcd", metalness: 0.4, roughness: 0.4 })));
+  board.position.set(LOBBY.x0 + 1.4, 1.75, -Z + 0.03);
+  scene.add(board);
+  const pane = new THREE.Mesh(new THREE.PlaneGeometry(1.6, 1.0), new THREE.MeshStandardMaterial({ color: "#9fb5bb", metalness: 0.9, roughness: 0.08 }));
+  pane.position.set(LOBBY.x1 - 1.6, 1.75, -Z + 0.02);
+  const paneFrame = new THREE.Mesh(new THREE.BoxGeometry(1.75, 1.15, 0.05), new THREE.MeshStandardMaterial({ color: "#c3cbcd", metalness: 0.4, roughness: 0.4 }));
+  paneFrame.position.set(LOBBY.x1 - 1.6, 1.75, -Z + 0.005);
+  scene.add(paneFrame, pane);
+  alarmBell(scene, LOBBY.x1 - 0.02, 2.5, -2.4, -Math.PI / 2);
   const lamp = new THREE.Mesh(new THREE.CircleGeometry(0.1, 20), new THREE.MeshBasicMaterial({ color: "#3ccf8e", toneMapped: false }));
   lamp.rotation.y = -Math.PI / 2;
-  lamp.position.set(LOBBY.x1 - 0.02, 2.62, 1.1);
+  lamp.position.set(LOBBY.x1 - 0.085, 2.8, -0.55);
   scene.add(lamp);
-  const liftSign = sign("ELEVATOR", 2.0, 0.32, { bg: "#22313a", fg: "#eef3f5" });
+  const liftSign = sign("LIFT", 0.7, 0.24, { bg: "#dde3e4", fg: "#26343a" });
   liftSign.rotation.y = -Math.PI / 2;
-  liftSign.position.set(LOBBY.x1 - 0.02, 2.62, -0.2);
+  liftSign.position.set(LOBBY.x1 - 0.02, 2.62, -2.6);
   scene.add(liftSign);
 
   // check-in desk against the back wall: oak front, white counter, screen, clerk, sign
@@ -175,20 +225,24 @@ export function createLobby(world) {
   scene.add(clerk.group);
 
   // waiting area: a row of seats along the open side, two visitors
-  const seatMat = new THREE.MeshStandardMaterial({ color: "#3f6c8a", roughness: 0.8 });
-  const legMat = new THREE.MeshStandardMaterial({ color: "#9aa4a8", metalness: 0.7, roughness: 0.3 });
+  const seatMat = new THREE.MeshStandardMaterial({ color: "#5f9a86", roughness: 0.7 });
+  const chrome = new THREE.MeshStandardMaterial({ color: "#d7dde0", metalness: 0.95, roughness: 0.18 });
+  const tube = (pts) => {
+    const m = new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts.map((p) => new THREE.Vector3(...p)), false, "catmullrom", 0.05), 24, 0.016, 6), chrome);
+    m.castShadow = true; scene.add(m);
+  };
   for (let i = 0; i < 5; i++) {
-    const x = LOBBY.x0 + 2.2 + i * 0.75;
-    box(0.66, 0.08, 0.6, x, 0.46, 6.55, seatMat);
-    box(0.66, 0.55, 0.07, x, 0.78, 6.86, seatMat);
+    const x = LOBBY.x0 + 2.2 + i * 0.72;
+    const seat = box(0.6, 0.09, 0.56, x, 0.47, 6.5, seatMat);
+    const back = box(0.6, 0.56, 0.08, x, 0.8, 6.84, seatMat);
+    back.rotation.x = -0.12;
+    for (const sx of [-0.27, 0.27]) tube([[x + sx, 0.42, 6.22], [x + sx, 0.02, 6.25], [x + sx, 0.02, 6.86], [x + sx, 0.45, 6.82], [x + sx, 1.05, 6.92]]);
   }
-  box(3.9, 0.05, 0.08, LOBBY.x0 + 3.7, 0.4, 6.6, legMat, false);
-  for (const x of [LOBBY.x0 + 2.0, LOBBY.x0 + 5.4]) box(0.06, 0.4, 0.5, x, 0.2, 6.6, legMat, false);
   const visitors = [];
   for (const [i, col] of [[0, "#8a6d4f"], [3, "#55708a"]]) {
     const v = makePerson({ outfit: "casual", color: col, seed: 0.2 + i * 0.17 });
     v.sit();
-    v.group.position.set(LOBBY.x0 + 2.2 + i * 0.75, 0, 6.5);
+    v.group.position.set(LOBBY.x0 + 2.2 + i * 0.72, 0, 6.45);
     v.group.rotation.y = Math.PI;
     scene.add(v.group);
     visitors.push(v);
@@ -200,8 +254,8 @@ export function createLobby(world) {
   scene.add(ward);
 
   world.onFrame((dt, t) => {
-    clerk.armL.rotation.x = -0.9 + Math.sin(t * 6) * 0.05;
-    clerk.armR.rotation.x = -0.9 + Math.cos(t * 7) * 0.05;
+    clerk.armL.rotation.x = -0.45 + Math.sin(t * 6) * 0.04; clerk.armL.userData.elbow.rotation.x = -1.15 + Math.sin(t * 9) * 0.06;
+    clerk.armR.rotation.x = -0.45 + Math.cos(t * 7) * 0.04; clerk.armR.userData.elbow.rotation.x = -1.15 + Math.cos(t * 8) * 0.06;
     clerk.head.rotation.y = Math.sin(t * 0.3) * 0.4;
     for (const [i, v] of visitors.entries()) v.head.rotation.y = Math.sin(t * 0.21 + i * 2) * 0.5;
   });
@@ -222,7 +276,7 @@ export function createLobby(world) {
       t.mesh.visible = true;
       t.s = Math.min(t.len, t.s + dt * 6.5);
       t.mesh.userData.porter.walk(t.s * 4.6, 1);
-      t.mesh.userData.porter.armL.rotation.x = t.mesh.userData.porter.armR.rotation.x = -1.1;
+      for (const a of [t.mesh.userData.porter.armL, t.mesh.userData.porter.armR]) { a.rotation.x = -0.75; a.userData.elbow.rotation.x = -0.7; }
       const p = t.curve.getPointAt(t.s / t.len);
       const q = t.curve.getPointAt(Math.min(1, t.s / t.len + 0.01));
       t.mesh.position.copy(p);

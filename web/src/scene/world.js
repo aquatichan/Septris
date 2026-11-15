@@ -15,7 +15,7 @@ import { EffectComposer } from "three/addons/postprocessing/EffectComposer.js";
 import { RenderPass } from "three/addons/postprocessing/RenderPass.js";
 import { UnrealBloomPass } from "three/addons/postprocessing/UnrealBloomPass.js";
 import { OutputPass } from "three/addons/postprocessing/OutputPass.js";
-import { floorTiles, ceilingTiles, wallPaint, wood, blindsLight, windowBlinds } from "./textures.js";
+import { ceilingTiles, wood, blindsLight, windowBlinds, vinylFloor, panelWall, floorSheen, exitSign, noticeBoard } from "./textures.js";
 
 export const UNIT = { length: 44, width: 22, wall: 3.0 };
 const LIGHT_ON = new THREE.Color(2.4, 2.45, 2.5); // brighter than white, so fixtures glow
@@ -50,7 +50,7 @@ export function createWorld(container) {
   controls.enableDamping = true;
   controls.maxPolarAngle = Math.PI * 0.47;
   controls.minDistance = 4;
-  controls.maxDistance = 110;
+  controls.maxDistance = 150;
 
   // soft daylight-white fill plus one shadow-casting key light from above
   scene.add(new THREE.HemisphereLight("#ffffff", "#8e999e", 0.62));
@@ -80,9 +80,9 @@ export function createWorld(container) {
     labels.setSize(w, h);
     camera.aspect = w / h;
     // keep the scene centred in the part of the screen the panel doesn't cover
-    const panel = document.getElementById("panel");
+    const span = freeSpan(w);
     if (world.fullView) camera.clearViewOffset();
-    else if (w > 860 && panel) camera.setViewOffset(w, h, (panel.offsetWidth + 16) / 2, 0, w, h);
+    else if (w > 860) camera.setViewOffset(w, h, w / 2 - (span.left + span.right) / 2, 0, w, h);
     else camera.setViewOffset(w, h, 0, h * 0.2, w, h);
     camera.updateProjectionMatrix();
   }
@@ -104,6 +104,14 @@ export function createWorld(container) {
   return world;
 }
 
+/** The horizontal stretch of screen not covered by the side columns (left column, right panel). */
+export function freeSpan(w = window.innerWidth) {
+  const rect = (id) => document.querySelector(id)?.getBoundingClientRect();
+  const panel = rect("#panel"), left = rect(".leftcol");
+  if (w <= 860 || !panel || !panel.width) return { left: 0, right: w };
+  return { left: left && left.width ? left.right + 12 : 0, right: panel.left - 12 };
+}
+
 /** A ceiling light: a one-sided glowing panel in a thin housing. Returns its material so it can flicker. */
 export function fixture(scene, x, z, { y = UNIT.wall - 0.02, len = 2.4, wide = 0.5, alongX = true } = {}) {
   const mat = new THREE.MeshBasicMaterial({ color: LIGHT_ON.clone(), toneMapped: false });
@@ -116,6 +124,38 @@ export function fixture(scene, x, z, { y = UNIT.wall - 0.02, len = 2.4, wide = 0
   housing.position.set(x, y - 0.01, z);
   scene.add(housing, lamp);
   return mat;
+}
+
+let FLOOR_SHEEN = null;
+/** Faked glossy reflections: soft streaks on the floor under each light (no extra render pass). */
+export function floorReflections(scene, spots, len = 2.6, alongX = true) {
+  FLOOR_SHEEN ??= floorSheen();
+  const mat = new THREE.MeshBasicMaterial({ map: FLOOR_SHEEN, transparent: true, opacity: 0.08, blending: THREE.AdditiveBlending, depthWrite: false });
+  for (const [x, z] of spots) {
+    const m = new THREE.Mesh(new THREE.PlaneGeometry(0.9, len * 1.6), mat);
+    m.rotation.x = -Math.PI / 2;
+    if (alongX) m.rotation.z = Math.PI / 2;
+    m.position.set(x, 0.006, z);
+    scene.add(m);
+  }
+}
+
+/** The shared floor material: glossy vinyl that picks up the room's reflections. */
+export function floorMaterial(repX, repY, base) {
+  return new THREE.MeshStandardMaterial({ map: vinylFloor(repX, repY, base), roughness: 0.22, metalness: 0.0, envMapIntensity: 1.5 });
+}
+
+/** A red fire-alarm bell on a wall. */
+export function alarmBell(scene, x, y, z, ry) {
+  const g = new THREE.Group();
+  const bell = new THREE.Mesh(new THREE.SphereGeometry(0.11, 18, 10, 0, Math.PI * 2, 0, Math.PI / 2), new THREE.MeshStandardMaterial({ color: "#c8332b", roughness: 0.35, metalness: 0.2 }));
+  bell.rotation.x = Math.PI / 2;
+  const base = new THREE.Mesh(new THREE.CylinderGeometry(0.075, 0.075, 0.03, 16), new THREE.MeshStandardMaterial({ color: "#8f1f1a" }));
+  base.rotation.x = Math.PI / 2;
+  g.add(bell, base);
+  g.position.set(x, y, z);
+  g.rotation.y = ry + Math.PI / 2;
+  scene.add(g);
 }
 
 /** Makes a fixture stutter like a failing tube; `light` is an optional point light that follows it. */
@@ -145,16 +185,15 @@ function buildRoom(world) {
     return m;
   };
 
-  // floor
-  const floor = new THREE.Mesh(new THREE.PlaneGeometry(L, W),
-    new THREE.MeshStandardMaterial({ map: floorTiles(L / 1.2, W / 1.2), roughness: 0.38, metalness: 0.02 }));
+  // glossy sheet-vinyl floor (teal-green, like the reference ward)
+  const floor = new THREE.Mesh(new THREE.PlaneGeometry(L, W), floorMaterial(L / 4, W / 4));
   floor.rotation.x = -Math.PI / 2;
   floor.receiveShadow = true;
   scene.add(floor);
 
   // walls: back and left are solid; the right wall has the doorway to the lobby;
   // the front wall is one-sided so the overview can see in
-  const paint = (len) => new THREE.MeshStandardMaterial({ map: wallPaint(len / 2), roughness: 0.9 });
+  const paint = (len) => new THREE.MeshStandardMaterial({ map: panelWall(len / 2.4), roughness: 0.55 });
   add(new THREE.BoxGeometry(L + 0.5, H, 0.25), paint(L), 0, H / 2, -W / 2 - 0.125);
   add(new THREE.BoxGeometry(0.25, H, W), paint(W), -L / 2 - 0.125, H / 2, 0);
   for (const z of [-7.25, 7.25]) add(new THREE.BoxGeometry(0.25, H, 7.5), paint(7.5), L / 2, H / 2, z);
@@ -163,6 +202,28 @@ function buildRoom(world) {
   front.rotation.y = Math.PI; // faces into the room
   front.position.set(0, H / 2, W / 2);
   scene.add(front);
+
+  // blue bump rail at hand height all round the ward (one-sided on the see-through front wall)
+  const railMat = new THREE.MeshStandardMaterial({ color: "#2f8fd1", roughness: 0.35 });
+  add(new THREE.BoxGeometry(L, 0.13, 0.07), railMat, 0, 0.95, -W / 2 + 0.03, false);
+  add(new THREE.BoxGeometry(0.07, 0.13, W), railMat, -L / 2 + 0.03, 0.95, 0, false);
+  for (const z of [-7.25, 7.25]) add(new THREE.BoxGeometry(0.07, 0.13, 7.5), railMat, L / 2 - 0.03, 0.95, z, false);
+  const frontRail = new THREE.Mesh(new THREE.PlaneGeometry(L, 0.13), railMat);
+  frontRail.rotation.y = Math.PI;
+  frontRail.position.set(0, 0.95, W / 2 - 0.05);
+  scene.add(frontRail);
+
+  // fire-exit sign over the doorway, notice boards and alarm bells
+  const exit = new THREE.Mesh(new THREE.PlaneGeometry(0.75, 0.28), new THREE.MeshBasicMaterial({ map: exitSign(), toneMapped: false, color: new THREE.Color(1.3, 1.3, 1.3) }));
+  exit.rotation.y = -Math.PI / 2;
+  exit.position.set(L / 2 - 0.02, 2.7, 0);
+  scene.add(exit);
+  for (const [z, k] of [[-5.6, 0], [5.6, 1]]) {
+    const nb = new THREE.Mesh(new THREE.BoxGeometry(0.04, 1.1, 0.9), [0, 1, 2, 3, 4, 5].map((i) => i === 1 ? new THREE.MeshStandardMaterial({ map: noticeBoard(k), roughness: 0.6 }) : new THREE.MeshStandardMaterial({ color: "#b8c1c4", metalness: 0.4, roughness: 0.4 })));
+    nb.position.set(L / 2 - 0.03, 1.75, z);
+    scene.add(nb);
+  }
+  for (const [x, z, ry] of [[L / 2 - 0.02, -3.0, -Math.PI / 2], [-L / 2 + 0.02, -9.6, Math.PI / 2]]) alarmBell(scene, x, 2.55, z, ry);
 
   // ceiling (one-sided, faces down)
   const ceiling = new THREE.Mesh(new THREE.PlaneGeometry(L, W),
@@ -175,6 +236,9 @@ function buildRoom(world) {
   const fixtures = [];
   for (let x = -18; x <= 18; x += 6) fixtures.push(fixture(scene, x, 0));
   for (const z of [-6.2, 6.2]) for (let x = -17.6; x <= 17.6; x += 8.8) fixtures.push(fixture(scene, x, z, { len: 1.8 }));
+  // glossy floor: soft reflections of the corridor fixtures
+  floorReflections(scene, [...Array(7).keys()].map((i) => [-18 + i * 6, 0]), 2.6);
+
   // one tired tube in the corridor flickers and takes a pool of light with it
   const tired = new THREE.PointLight("#f4f8ff", 9, 9, 1.8);
   tired.position.set(-6, H - 0.4, 0);
@@ -204,6 +268,13 @@ function buildRoom(world) {
   add(new THREE.BoxGeometry(7.1, 0.05, 0.95), top, 0, 0.765, 0.12);
   for (const x of [-3.5, 3.5]) add(new THREE.BoxGeometry(0.12, 1.0, 1.6), oak, x, 0.5, -0.3);
   const screenMat = new THREE.MeshStandardMaterial({ color: "#0d1d24", emissive: "#2a87c7", emissiveIntensity: 0.9 });
+  // the logo on the station's front panel
+  const brand = new THREE.Mesh(new THREE.PlaneGeometry(2.4, 0.56), new THREE.MeshBasicMaterial({ map: new THREE.TextureLoader().load("assets/septris-logo.png", (t) => { t.colorSpace = THREE.SRGBColorSpace; }), transparent: true }));
+  brand.position.set(0, 0.42, 0.531);
+  const brandBack = brand.clone();
+  brandBack.rotation.y = Math.PI;
+  brandBack.position.set(0, 0.55, -1.111);
+  scene.add(brand, brandBack);
   for (const x of [-2.2, 0, 2.2]) {
     const s = add(new THREE.BoxGeometry(0.85, 0.52, 0.05), screenMat, x, 1.12, -0.05, false);
     s.rotation.x = -0.1;
