@@ -8,6 +8,7 @@ import { createBeds } from "./scene/beds.js";
 import { createCameraRig } from "./scene/camera.js";
 import { createLobby } from "./scene/lobby.js";
 import { createDecor } from "./scene/decor.js";
+import { createViews } from "./scene/views.js";
 import { createStaff } from "./scene/people.js";
 import { bayPosition } from "./scene/beds.js";
 import { createAudio } from "./audio.js";
@@ -18,17 +19,22 @@ import { createVoice } from "./voice.js";
 
 const $ = (id) => document.getElementById(id);
 
-// A clear first example: caught 7-11 h ahead, the patient's first review,
-// risk rising over the last 12 h, reasons that cite real values.
+// Where the demo starts: the clear early catch (caught 6-12 h ahead, the
+// patient's first check, reasons that cite real values) that is followed by
+// the most early catches over the next 15 checks (three shifts), so pressing
+// Next or Play right away shows Septris at its best stretch.
 function tourSlot(data) {
+  const S = data.slots, W = 15;
+  const early6 = S.map((s) => (s.review_class === "early6" ? 1 : 0));
+  const early = S.map((s) => (s.review_class === "early" ? 1 : 0));
+  const score = (i) => { let a = 0, b = 0; for (let j = i; j < Math.min(S.length, i + W); j++) { a += early6[j]; b += early[j]; } return a * 10 + b; };
   let best = null;
-  data.slots.forEach((s, i) => {
-    if (s.review_class !== "early6" || s.sepsis_so_far < 1 || s.lead_hours < 7 || s.lead_hours > 11) return;
-    const p = data.patients[s.p];
-    if (p.reviews.some((h) => h < s.record_hour) || s.record_hour < 12) return;
-    const reasons = (s.reasons || "").split(" | ").filter(Boolean);
-    if (reasons.length < 3 || reasons.filter((r) => /\d/.test(r)).length < 2) return;
-    if (!best && s.day >= 2 && data.bedsByHour.get(s.unit_hour).length >= 19) best = [0, i]; // the first clear one
+  S.forEach((s, i) => {
+    if (s.review_class !== "early6" || s.day < 2 || s.sepsis_so_far < 1) return;
+    const clear = s.lead_hours >= 6 && s.record_hour >= 12 && !data.patients[s.p].reviews.some((h) => h < s.record_hour)
+      && (s.reasons || "").split(" | ").filter((r) => /\d/.test(r)).length >= 2 && data.bedsByHour.get(s.unit_hour).length >= 19;
+    const v = score(i) + (clear ? 5 : 0);
+    if (!best || v > best[0]) best = [v, i];
   });
   return best ? best[1] : data.examples.good[0];
 }
@@ -48,6 +54,21 @@ async function main() {
   const audio = createAudio();
   window.__septris = { lobby, rig, state, audio, world };
   const bedsView = createBeds(world, (bed) => selectBed(bed), lobby);
+  // first-person views; while one is on, the orbit camera moves are ignored
+  const views = createViews(world, { nurse: bedsView.nurse, onChange: (m) => syncViews(m) });
+  const orbitBed = rig.bed, orbitOverview = rig.overview;
+  rig.bed = (b) => { if (!views.mode) orbitBed(b); };
+  rig.overview = () => { if (!views.mode) orbitOverview(); };
+  const toOverview = () => { views.exit(); orbitOverview(); };
+  function syncViews(m) {
+    $("walk").classList.toggle("on", m === "walk");
+    $("beNurse").classList.toggle("on", m === "nurse");
+    $("viewHint").hidden = !m;
+    $("viewHint").innerHTML = m === "walk"
+      ? "<b>Walking the ward.</b> W A S D or arrow keys to move · drag to look around · Shift to hurry · click a bed to open its chart · <kbd>Esc</kbd> to leave"
+      : m === "nurse" ? "<b>You are the charge nurse.</b> She walks to each bed Septris picks and reads the chart. Sit back and watch · <kbd>Esc</kbd> to leave" : "";
+    if (!m) orbitOverview();
+  }
   createStaff(world, bayPosition);
   world.onDoors = () => audio.elevatorDoors();
   // the ward gets louder as the camera gets closer to it
@@ -116,7 +137,7 @@ async function main() {
       case "reviewN": goSlot(shiftIdx[Math.min(a.n, shiftIdx.length) - 1], { focus: null }); break;
       case "shift": goShift(a.delta); break;
       case "example": example(a.kind); break;
-      case "overview": set({ page: "" }); rig.overview(); break;
+      case "overview": set({ page: "" }); toOverview(); break;
       case "page": set({ page: a.page }); break;
       case "play": set({ playing: a.on }); break;
       case "explain": speakPick(); set({ tab: "priority" }); break;
@@ -339,7 +360,14 @@ async function main() {
   $("play").onclick = () => set({ playing: !state.playing });
   $("showKey").onchange = (e) => set({ showKey: e.target.checked });
   $("narrate").onchange = (e) => { set({ narrate: e.target.checked }); if (e.target.checked) speakPick(); };
-  $("overview").onclick = () => rig.overview();
+  $("overview").onclick = () => toOverview();
+  $("walk").onclick = () => (views.mode === "walk" ? views.exit() : (set({ selectedBed: null, page: "" }), views.walk()));
+  $("beNurse").onclick = () => {
+    if (views.mode === "nurse") { views.exit(); set({ playing: false }); return; }
+    set({ page: "", tourStep: null, showKey: true });
+    views.nurse();
+    set({ playing: true }); // she goes from pick to pick by herself
+  };
   $("startTour").onclick = () => set({ tourStep: 0 });
   document.querySelectorAll(".ex").forEach((b) => (b.onclick = () => example(b.dataset.kind)));
   document.querySelectorAll(".tab").forEach((t) => (t.onclick = () => set({ tab: t.dataset.tab })));
@@ -363,6 +391,7 @@ async function main() {
   window.addEventListener("keydown", (e) => {
     if (e.key === "Escape" && !$("admit").hidden) closeAdmit();
     if (["INPUT", "SELECT", "TEXTAREA"].includes(e.target.tagName) || !$("admit").hidden) return;
+    if (views.mode) return; // arrows walk in first person
     if (e.key === "ArrowRight") goSlot(state.slot + 1, { focus: null });
     if (e.key === "ArrowLeft") goSlot(state.slot - 1, { focus: null });
     if (e.key === "/") { e.preventDefault(); $("cmdInput").focus(); }
@@ -370,7 +399,16 @@ async function main() {
   window.addEventListener("resize", () => state.tab === "patient" && drawBedChart(data, state));
 
   // autoplay: one review every 3.5 s
-  setInterval(() => { if (state.playing && state.tourStep == null) goSlot(state.slot + 1, { focus: null }); }, 3500);
+  // autoplay: one check every 3.5 s; in the nurse's view, wait until she has
+  // reached the bed and read the chart for a few seconds
+  let lastAdvance = 0;
+  setInterval(() => {
+    if (!state.playing || state.tourStep != null) return;
+    const now = performance.now();
+    if (now - lastAdvance < 3400 || (views.mode === "nurse" && bedsView.nurse.idleFor() < 4)) return;
+    lastAdvance = now;
+    goSlot(state.slot + 1, { focus: null });
+  }, 500);
 
   // start: first visit rides the elevator in (after one click, so sound can
   // play); return visits land straight on the overview.
@@ -381,7 +419,7 @@ async function main() {
   const SPEAKER = '<svg viewBox="0 0 24 24"><path d="M4 9h4l5-4v14l-5-4H4z"/>';
   const syncSound = () => {
     const on = audio.isEnabled();
-    $("sound").innerHTML = SPEAKER + (on ? '<path d="M16 9a4 4 0 0 1 0 6M18.5 6.5a7.5 7.5 0 0 1 0 11"/></svg>' : '<path d="M16 9l5 6M21 9l-5 6"/></svg>');
+    $("sound").innerHTML = SPEAKER + (on ? '<path d="M16 9a4 4 0 0 1 0 6M18.5 6.5a7.5 7.5 0 0 1 0 11"/></svg>Sound on' : '<path d="M16 9l5 6M21 9l-5 6"/></svg>Sound off');
     $("sound").title = on ? "Sound on (click to mute)" : "Sound off (click to turn on)";
     $("sound").setAttribute("aria-pressed", String(on));
   };
@@ -389,6 +427,7 @@ async function main() {
   $("sound").onclick = () => { audio.start(); audio.setEnabled(!audio.isEnabled()); syncSound(); };
   window.addEventListener("pointerdown", () => audio.start(), { once: true });
   function playIntro(openTour) {
+    views.exit(false);
     set({ selectedBed: null, tourStep: null });
     document.body.classList.add("intro");
     $("skipIntro").hidden = false;

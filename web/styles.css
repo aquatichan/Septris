@@ -293,3 +293,25 @@ body.intro .modal { display: none; }
 /* on Results / How it works / FAQ the ward and its time controls step back */
 body.paged .hud { background: var(--bg); }
 body.paged .timebar, body.paged .leftcol, body.paged .leftfoot, body.paged .panel, body.paged .command, body.paged .bed-label { display: none; }
+
+/* ---------- v6: labelled view buttons, first-person views, logo proportions ---------- */
+.brand { align-items: flex-start; }
+.brand img { height: 34px; width: auto; max-width: none; object-fit: contain; flex: none; align-self: flex-start; }
+.hud-top .add { margin-left: 0; }
+.viewbar { display: flex; gap: 4px; margin-left: auto; flex-wrap: wrap; justify-content: flex-end; }
+.vb { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 999px; cursor: pointer; white-space: nowrap;
+  background: var(--glass); border: 1px solid var(--line); font-size: 14px; }
+.vb:hover { border-color: var(--accent); }
+.vb.on { background: var(--accent); border-color: var(--accent); color: #031320; font-weight: 600; }
+.vb svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+.viewhint { position: absolute; left: 50%; transform: translateX(-50%); bottom: calc(100px + env(safe-area-inset-bottom, 0px)); zoom: 0.9;
+  max-width: min(640px, calc(100% - 32px)); text-align: center; padding: 9px 16px; border-radius: 12px; background: var(--glass-2);
+  border: 1px solid var(--accent); box-shadow: var(--shadow); font-size: 14.5px; z-index: 4; }
+.viewhint b { color: var(--accent); }
+.viewhint kbd { font: 600 12px var(--font-data); border: 1px solid var(--line-2); border-radius: 5px; padding: 1px 5px; }
+body.walking .leftcol, body.walking .leftfoot, body.nursing .leftcol, body.nursing .leftfoot { opacity: 0; pointer-events: none; }
+body.walking #stage canvas { cursor: grab; }
+body.walking #stage canvas:active { cursor: grabbing; }
+body.intro .viewhint { display: none; }
+@media (max-width: 1320px) { .vb { padding: 6px 9px; font-size: 13px; } .brand-tag { display: none; } }
+@media (max-width: 1180px) { .hud-top { flex-wrap: wrap; } .viewbar { order: 3; width: 100%; justify-content: flex-start; margin-left: 0; } }

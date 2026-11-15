@@ -216,10 +216,10 @@ export function headwallPanel() {
     g.fillStyle = "#2c8fd6"; g.fillRect(0, 150, w, 34);
     g.fillStyle = "rgba(0,0,0,0.12)"; g.fillRect(0, 0, w, 3); g.fillRect(0, h - 3, w, 3);
     const round = (x, y, r, fill, ring = "#9aa6ab") => { g.beginPath(); g.arc(x, y, r, 0, 7); g.fillStyle = fill; g.fill(); g.lineWidth = 3; g.strokeStyle = ring; g.stroke(); };
-    // two red LED readouts
-    for (const x of [300, 640]) {
+    // two LED windows; the live numbers are drawn per bed on top (see beds.js)
+    for (const [x, label] of [[300, "HEART RATE"], [640, "TEMP °C"]]) {
       g.fillStyle = "#1c1f22"; g.fillRect(x, 40, 92, 52);
-      g.fillStyle = "#ff3b30"; g.font = "700 40px 'IBM Plex Mono', monospace"; g.fillText(x === 300 ? "4.2" : "21", x + 8, 82);
+      g.fillStyle = "#6b7780"; g.font = "600 15px Arial, sans-serif"; g.textAlign = "center"; g.fillText(label, x + 46, 116); g.textAlign = "left";
     }
     // gas outlets (white with coloured collars), switches and sockets
     [["#e9ecef", 90], ["#ffffff", 170], ["#f2c94c", 450], ["#4fa3e0", 530], ["#ffffff", 790]].forEach(([c, x]) => round(x, 70, 26, "#fbfbfb", c));

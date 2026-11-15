@@ -49,7 +49,7 @@ export function createCameraRig(world) {
      */
     intro(lobby, hooks = {}) {
       const [endPos, endTarget] = overviewPose();
-      const finish = () => { world.fullView = false; world.resize?.(); hooks.done?.(); };
+      const finish = () => { world.fullView = false; world.indoor = false; world.resize?.(); hooks.done?.(); };
       if (reduce) { camera.position.copy(endPos); controls.target.copy(endTarget); finish(); return; }
       const V = (x, y, z) => new THREE.Vector3(x, y, z);
       const pos = new THREE.CatmullRomCurve3([V(39.6, 1.6, 0), V(36.8, 1.62, 0), V(32, 1.62, -0.4), V(26, 1.62, -0.3), V(21.5, 1.62, 0),
@@ -60,6 +60,7 @@ export function createCameraRig(world) {
       controls.maxPolarAngle = Math.PI;
       controls.enabled = false;
       world.fullView = true; // centre the picture while the side panel is hidden
+      world.indoor = true;
       world.resize?.();
       camera.position.copy(pos.getPoint(0));
       controls.target.copy(tgt.getPoint(0));

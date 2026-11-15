@@ -15,6 +15,7 @@ import { EffectComposer } from "three/addons/postprocessing/EffectComposer.js";
 import { RenderPass } from "three/addons/postprocessing/RenderPass.js";
 import { UnrealBloomPass } from "three/addons/postprocessing/UnrealBloomPass.js";
 import { OutputPass } from "three/addons/postprocessing/OutputPass.js";
+import { createGalaxy } from "./galaxy.js";
 import { ceilingTiles, wood, blindsLight, windowBlinds, vinylFloor, panelWall, floorSheen, exitSign, noticeBoard } from "./textures.js";
 
 export const UNIT = { length: 44, width: 22, wall: 3.0 };
@@ -64,8 +65,11 @@ export function createWorld(container) {
   scene.add(key);
 
   const frameFns = new Set();
-  const world = { THREE, renderer, scene, camera, controls, onFrame: (fn) => frameFns.add(fn) };
+  // ceilings only exist while the camera is inside (walking, nurse view, opening shot);
+  // from the orbiting views they would clip and flicker, so they are hidden there
+  const world = { THREE, renderer, scene, camera, controls, onFrame: (fn) => frameFns.add(fn), ceilings: [], indoor: false, manualCamera: false };
   world.fixtures = buildRoom(world);
+  createGalaxy(world);
 
   // gentle glow on light fixtures, floor rings and the pick beam only
   const composer = new EffectComposer(renderer);
@@ -94,7 +98,8 @@ export function createWorld(container) {
   renderer.setAnimationLoop(() => {
     const dt = Math.min(clock.getDelta(), 0.1), t = clock.elapsedTime;
     for (const fn of frameFns) fn(dt, t);
-    controls.update();
+    if (!world.manualCamera) controls.update(); // walk and nurse views drive the camera themselves
+    for (const c of world.ceilings) c.visible = world.indoor && camera.position.y < 2.95;
     // zoomed out: bed labels switch to a compact form so they don't overlap
     container.classList.toggle("far", camera.position.distanceTo(controls.target) > 26);
     composer.render();
@@ -231,6 +236,7 @@ function buildRoom(world) {
   ceiling.rotation.x = Math.PI / 2;
   ceiling.position.y = H;
   scene.add(ceiling);
+  world.ceilings.push(ceiling);
 
   // fluorescent fixtures: a row down the corridor and one over each pair of bays
   const fixtures = [];

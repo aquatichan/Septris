@@ -9,7 +9,7 @@ import { freeSpan } from "./world.js";
 import { CSS2DObject } from "three/addons/renderers/CSS2DRenderer.js";
 import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
 import { ordinal } from "../data.js";
-import { makePerson, makeWalker, corridorRoute } from "./people.js";
+import { makePerson, makeWalker, corridorRoute, makeHead } from "./people.js";
 
 const COLOR = {
   pick: new THREE.Color("#2f8fff"),
@@ -147,6 +147,22 @@ function makeMonitor() {
   return { group: g, canvas, tex };
 }
 
+/** The most recent recorded value at or before hour h (vitals are not measured every hour). */
+function latest(series, h) {
+  if (!series) return null;
+  for (let i = Math.min(h, series.length - 1); i >= Math.max(0, h - 12); i--) if (series[i] != null) return series[i];
+  return null;
+}
+
+function drawLed(led, value, decimals) {
+  const g = led.canvas.getContext("2d");
+  g.fillStyle = "#14171a"; g.fillRect(0, 0, 128, 64);
+  g.fillStyle = value == null ? "#5a2622" : "#ff3b30";
+  g.font = "700 46px 'IBM Plex Mono', monospace"; g.textAlign = "center"; g.textBaseline = "middle";
+  g.fillText(value == null ? "--" : Number(value).toFixed(decimals), 64, 34);
+  led.tex.needsUpdate = true;
+}
+
 function drawMonitor(m, bed, row, patient, color) {
   const g = m.canvas.getContext("2d");
   g.fillStyle = "#03090c";
@@ -178,8 +194,8 @@ function drawMonitor(m, bed, row, patient, color) {
   g.stroke();
   g.fillStyle = "#cfe0e4";
   g.font = "500 18px IBM Plex Mono, monospace";
-  const hr = patient.hr[row.record_hour], map = patient.map[row.record_hour];
-  g.fillText(`HR ${hr ?? "--"}   MAP ${map ?? "--"}`, 16, 176);
+  const hr = latest(patient.hr, row.record_hour), map = latest(patient.map, row.record_hour), rr = latest(patient.resp, row.record_hour);
+  g.fillText(`HR ${hr ?? "--"}  BP ${map ?? "--"}  RR ${rr ?? "--"}`, 16, 176);
   m.tex.needsUpdate = true;
 }
 
@@ -268,14 +284,24 @@ export function createBeds(world, onSelect, lobby) {
     chest.rotation.x = Math.PI / 2;
     chest.scale.set(1.25, 1, 0.6);
     chest.position.set(0, 0.76, 0.2);
-    const headM = new THREE.Mesh(new THREE.SphereGeometry(0.12, 18, 14), std(["#e8c4a6", "#c99a7a", "#a8765a", "#7d5540"][bed % 4]));
-    headM.position.set(0, 0.86, -0.72);
-    headM.scale.set(0.95, 0.9, 1.05);
-    const hairM = new THREE.Mesh(new THREE.SphereGeometry(0.125, 16, 10, 0, Math.PI * 2, 0, Math.PI * 0.5), std(["#2b211c", "#b9b3ac", "#4a3426", "#151515", "#d9d6d0"][bed % 5], { roughness: 0.95 }));
-    hairM.position.set(0, 0.87, -0.76);
-    hairM.rotation.x = -1.1;
-    for (const m of [sheet, chest, headM, hairM]) { m.castShadow = true; m.receiveShadow = true; }
-    patientGroup.add(sheet, chest, headM, hairM);
+    const headM = makeHead({ seed: ((bed * 0.6180339) % 1), closed: true });
+    headM.position.set(0, 0.85, -0.74);
+    headM.rotation.x = -Math.PI / 2 + 0.6; // lying on the pillow, face to the ceiling, chin slightly down
+    headM.traverse((m) => { if (m.isMesh) m.castShadow = true; });
+    for (const m of [sheet, chest]) { m.castShadow = true; m.receiveShadow = true; }
+    patientGroup.add(sheet, chest, headM);
+
+    // live red readouts on the service panel: heart rate and temperature from the record
+    const leds = [-0.464, 0.486].map((x) => {
+      const canvas = document.createElement("canvas");
+      canvas.width = 128; canvas.height = 64;
+      const tex = new THREE.CanvasTexture(canvas);
+      tex.colorSpace = THREE.SRGBColorSpace;
+      const m = new THREE.Mesh(new THREE.PlaneGeometry(0.25, 0.12), new THREE.MeshBasicMaterial({ map: tex, toneMapped: false }));
+      m.position.set(x, 1.745, -1.63);
+      return { m, canvas, tex };
+    });
+    g.add(...leds.map((l) => l.m));
 
     const monitor = makeMonitor();
     monitor.group.position.set(0.95, 1.72, -1.15);
@@ -310,7 +336,7 @@ export function createBeds(world, onSelect, lobby) {
     label.position.set(0, 2.55, 0);
 
     g.add(patientGroup, monitor.group, ring, pad, beam, hit, label);
-    bays.set(bed, { label, g, ring, ringMat, pad, padMat, beam, beamMat, patientGroup, chest, blanketMat, monitor, el, state: "low", breath: 0.9 + ((bed * 37) % 10) / 25 });
+    bays.set(bed, { leds, label, g, ring, ringMat, pad, padMat, beam, beamMat, patientGroup, chest, blanketMat, monitor, el, state: "low", breath: 0.9 + ((bed * 37) % 10) / 25 });
   }
   batch.build(scene);
 
@@ -367,9 +393,10 @@ export function createBeds(world, onSelect, lobby) {
   nurse.group.position.set(1.2, 0, 2.2);
   scene.add(nurse.group);
   const nurseWalk = makeWalker(nurse, 3.2); // brisk: she is on her way to a patient
-  let nurseBed = null, nurseFace = 0;
+  let nurseBed = null, nurseFace = 0, wasWalking = false, nurseArrived = performance.now() / 1000;
   world.onFrame((dt, t) => {
-    if (nurseWalk.step(dt)) { nurse.armR.rotation.x = -0.35; nurse.armR.userData.elbow.rotation.x = -1.3; return; }
+    if (nurseWalk.step(dt)) { nurse.armR.rotation.x = -0.35; nurse.armR.userData.elbow.rotation.x = -1.3; wasWalking = true; return; }
+    if (wasWalking) { wasWalking = false; nurseArrived = performance.now() / 1000; }
     nurse.idle(t, 0.5);
     nurse.armR.rotation.x = -0.4; nurse.armR.userData.elbow.rotation.x = -1.35; // reading the tablet
     const d = Math.atan2(Math.sin(nurseFace - nurse.group.rotation.y), Math.cos(nurseFace - nurse.group.rotation.y));
@@ -382,7 +409,7 @@ export function createBeds(world, onSelect, lobby) {
     const side = pb.z < 0 ? 1 : -1; // the bay's local left, mirrored for the front row
     const goal = new THREE.Vector3(pb.x - 1.25 * side, 0, pb.z + 0.9 * side);
     nurseFace = Math.atan2(pb.x - goal.x, pb.z + (pb.z < 0 ? 0.3 : -0.3) - goal.z);
-    if (instant) { nurse.group.position.copy(goal); nurse.group.rotation.y = nurseFace; nurseWalk.go([]); }
+    if (instant) { nurse.group.position.copy(goal); nurse.group.rotation.y = nurseFace; nurseWalk.go([]); nurseArrived = performance.now() / 1000; }
     else nurseWalk.go(corridorRoute(nurse.group.position, goal));
   }
 
@@ -442,6 +469,9 @@ export function createBeds(world, onSelect, lobby) {
       b.patientGroup.visible = !!r && !b.arriving;
       b.blanketMat.color.set(state === "snooze" ? "#c9d3d6" : "#e9eef0");
       drawMonitor(b.monitor, bed, r, pat, color);
+      const h = r ? r.record_hour : 0;
+      drawLed(b.leds[0], r ? latest(pat.hr, h) : null, 0);
+      drawLed(b.leds[1], r ? latest(pat.temp, h) : null, 1);
 
       const cls = ["bed-label"];
       if (state === "pick") cls.push("pick");
@@ -464,5 +494,13 @@ export function createBeds(world, onSelect, lobby) {
     }
   }
 
-  return { update, bayPosition };
+  return {
+    update, bayPosition,
+    nurse: {
+      person: nurse,
+      /** seconds she has been standing at the current bed (0 while walking) */
+      idleFor: () => (nurseWalk.moving ? 0 : performance.now() / 1000 - nurseArrived),
+      facing: () => nurseFace,
+    },
+  };
 }

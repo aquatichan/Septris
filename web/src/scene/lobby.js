@@ -11,6 +11,9 @@ import { ceilingTiles, wood, brushedSteel, buttonPanel, signTexture, panelWall, 
 export const LOBBY = { x0: 22, x1: 36, halfZ: 8, door: 3.5, lift: 1.7 };
 const ELEVATOR = new THREE.Vector3(37.9, 0, 0);
 const H = 3.0;
+// seconds for one gurney trip between a bed and the elevator. Kept under the
+// autoplay step (3.5 s) so a transfer always finishes before the next check.
+const TRIP = 2.4;
 
 function sign(text, w = 4, h = 0.7, opts = {}) {
   return new THREE.Mesh(new THREE.PlaneGeometry(w, h),
@@ -74,6 +77,7 @@ export function createLobby(world) {
   ceiling.rotation.x = Math.PI / 2;
   ceiling.position.set(cx, H, 0);
   scene.add(ceiling);
+  world.ceilings.push(ceiling);
   box(W, H, 0.25, cx, H / 2, -Z - 0.125, paint(W));
   const seg = Z - LOBBY.lift;
   for (const s of [-1, 1]) box(0.25, H, seg, LOBBY.x1 + 0.125, H / 2, s * (LOBBY.lift + seg / 2), paint(seg));
@@ -149,7 +153,7 @@ export function createLobby(world) {
   const logoTex = new THREE.TextureLoader().load("assets/septris-logo.png", (t) => { t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8; });
   const stickerMat = new THREE.MeshStandardMaterial({ map: logoTex, transparent: true, roughness: 0.4, metalness: 0.1, polygonOffset: true, polygonOffsetFactor: -2 });
   const halfSticker = (leftHalf) => {
-    const g = new THREE.PlaneGeometry(1.25, 0.29);
+    const g = new THREE.PlaneGeometry(1.25, 0.5778); // keeps the logo's own proportions (900x208)
     const uv = g.attributes.uv;
     for (let i = 0; i < uv.count; i++) uv.setX(i, uv.getX(i) * 0.5 + (leftHalf ? 0 : 0.5));
     return new THREE.Mesh(g, stickerMat);
@@ -274,7 +278,7 @@ export function createLobby(world) {
       t.wait -= dt;
       if (t.wait > 0) continue;
       t.mesh.visible = true;
-      t.s = Math.min(t.len, t.s + dt * 6.5);
+      t.s = Math.min(t.len, t.s + dt * (t.len / TRIP)); // every trip takes the same time, however far the bed is
       t.mesh.userData.porter.walk(t.s * 4.6, 1);
       for (const a of [t.mesh.userData.porter.armL, t.mesh.userData.porter.armR]) { a.rotation.x = -0.75; a.userData.elbow.rotation.x = -0.7; }
       const p = t.curve.getPointAt(t.s / t.len);
@@ -316,7 +320,7 @@ export function createLobby(world) {
         transfers.push({ mesh, curve, len: curve.getLength(), s: 0, wait, done: cb });
       };
       if (leaves) add(true, 0, arrives ? null : done);
-      if (arrives) add(false, leaves ? 0.9 : 0.2, done);
+      if (arrives) add(false, leaves ? 0.5 : 0.1, done);
       else if (!leaves) done?.();
     },
     cancel() {

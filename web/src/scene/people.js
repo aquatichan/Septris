@@ -7,6 +7,8 @@ import * as THREE from "three";
 const SKIN = ["#eac8ab", "#d2a487", "#b07c5d", "#8a5d43", "#f1d6c0", "#6e4632"];
 const HAIR = ["#2b211c", "#4a3426", "#151515", "#7a5a3a", "#c9c2b8", "#a5683a"];
 const mat = (color, rough = 0.75) => new THREE.MeshStandardMaterial({ color, roughness: rough });
+const EYE = new THREE.MeshStandardMaterial({ color: "#1d1a18", roughness: 0.3 });
+const LIP = new THREE.MeshStandardMaterial({ color: "#9a5a50", roughness: 0.6 });
 
 // Shared, smooth body-part geometry. Every part is a lathe (a turned profile) so
 // limbs taper like real ones (thigh to knee, calf bulge to ankle) instead of
@@ -28,6 +30,9 @@ const GEO = {
   nose: new THREE.ConeGeometry(0.016, 0.04, 8),
   ear: new THREE.SphereGeometry(0.022, 10, 8),
   eye: new THREE.SphereGeometry(0.011, 8, 6),
+  lid: new THREE.BoxGeometry(0.026, 0.004, 0.004),
+  brow: new THREE.BoxGeometry(0.03, 0.006, 0.006),
+  mouth: new THREE.BoxGeometry(0.034, 0.006, 0.006),
   neck: lathe([[0.048, 0], [0.044, 0.08], [0.046, 0.12]], 12),
   hairCap: new THREE.SphereGeometry(0.112, 22, 14, 0, Math.PI * 2, 0, Math.PI * 0.55),
   bun: new THREE.SphereGeometry(0.05, 12, 10),
@@ -38,6 +43,49 @@ const GEO = {
   badge: new THREE.BoxGeometry(0.05, 0.07, 0.008),
   steth: new THREE.TorusGeometry(0.11, 0.008, 6, 24, Math.PI * 1.25),
 };
+
+/**
+ * A head with a simple face (eyes, nose, ears, jaw) and hair, facing +z.
+ * cap: a scrub-cap colour instead of hair. closed: sleeping eyes (patients).
+ * skin/hair may be materials or omitted (picked from the seed).
+ */
+export function makeHead({ seed = Math.random(), skin, hair, cap = null, closed = false } = {}) {
+  const r = (k) => Math.floor(seed * 997 * (k + 1));
+  skin ??= mat(SKIN[r(0) % SKIN.length], 0.62);
+  hair ??= mat(HAIR[r(1) % HAIR.length], 0.85);
+  const M = (geo, m, x = 0, y = 0, z = 0) => { const o = new THREE.Mesh(geo, m); o.position.set(x, y, z); return o; };
+  const head = new THREE.Group();
+  const skull = M(GEO.head, skin);
+  skull.scale.set(0.9, 1.04, 0.98);
+  const jaw = M(GEO.jaw, skin, 0, -0.04, 0.016);
+  jaw.scale.set(0.95, 0.85, 1);
+  const nose = M(GEO.nose, skin, 0, -0.012, 0.1);
+  nose.rotation.x = Math.PI / 2 + 0.3;
+  const mouth = M(GEO.mouth, LIP, 0, -0.058, 0.085);
+  head.add(skull, jaw, nose, mouth);
+  for (const s of [-1, 1]) {
+    const ear = M(GEO.ear, skin, s * 0.094, -0.005, -0.005);
+    ear.scale.set(0.45, 1, 0.75);
+    const eye = closed ? M(GEO.lid, EYE, s * 0.034, 0.012, 0.097) : M(GEO.eye, EYE, s * 0.034, 0.012, 0.094);
+    const brow = M(GEO.brow, hair, s * 0.035, 0.04, 0.095);
+    brow.rotation.z = s * -0.12;
+    head.add(ear, eye, brow);
+  }
+  if (cap) {
+    const c = M(GEO.hairCap, mat(cap, 0.9), 0, 0.02, -0.004);
+    c.scale.set(0.98, 0.9, 1.04);
+    head.add(c);
+  } else {
+    const capHair = M(GEO.hairCap, hair, 0, 0.004, -0.018);
+    capHair.rotation.x = -0.55; // hairline high on the forehead, hair over the back of the head
+    capHair.scale.set(0.97, 1.0, 1.04);
+    head.add(capHair);
+    const style = r(3) % 4;
+    if (style === 1) head.add(M(GEO.bun, hair, 0, 0.05, -0.105));
+    if (style === 2) { const t = M(GEO.tail, hair, 0, -0.06, -0.11); t.rotation.x = 0.25; head.add(t); }
+  }
+  return head;
+}
 
 /**
  * Builds a person about 1.72 m tall, facing +z, with jointed hips, knees,
@@ -81,34 +129,8 @@ export function makePerson({ outfit = "scrubs", color = "#2f9aa8", seed = Math.r
 
   // neck and head with a simple face
   const neck = M(GEO.neck, skin, 0, 1.46, 0);
-  const head = new THREE.Group();
+  const head = makeHead({ skin, hair, seed, cap: cap ? new THREE.Color(color).multiplyScalar(1.12).getStyle() : null });
   head.position.set(0, 1.62, 0.005);
-  const skull = M(GEO.head, skin, 0, 0, 0, false);
-  skull.scale.set(0.9, 1.04, 0.98);
-  const jaw = M(GEO.jaw, skin, 0, -0.04, 0.016, false);
-  jaw.scale.set(0.95, 0.85, 1);
-  const nose = M(GEO.nose, skin, 0, -0.012, 0.1, false);
-  nose.rotation.x = Math.PI / 2 + 0.3;
-  head.add(skull, jaw, nose);
-  for (const s of [-1, 1]) {
-    const ear = M(GEO.ear, skin, s * 0.094, -0.005, -0.005);
-    ear.scale.set(0.45, 1, 0.75);
-    const eye = M(GEO.eye, mat("#1d1a18", 0.3), s * 0.034, 0.012, 0.094);
-    head.add(ear, eye);
-  }
-  const style = r(3) % 4;
-  if (cap) { // theatre cap in the scrub colour
-    const c = M(GEO.hairCap, mat(new THREE.Color(color).multiplyScalar(1.12).getStyle(), 0.9), 0, 0.02, -0.004);
-    c.scale.set(0.98, 0.9, 1.04);
-    head.add(c);
-  } else {
-    const capHair = M(GEO.hairCap, hair, 0, 0.004, -0.018, false);
-    capHair.rotation.x = -0.55; // hairline sits high on the forehead, hair covers the back of the head
-    capHair.scale.set(0.97, 1.0, 1.04);
-    head.add(capHair);
-    if (style === 1) head.add(M(GEO.bun, hair, 0, 0.05, -0.105));
-    if (style === 2) { const t = M(GEO.tail, hair, 0, -0.06, -0.11); t.rotation.x = 0.25; head.add(t); }
-  }
   body.add(neck, head);
 
   // arms: shoulder pivot > upper arm (sleeve + skin) > elbow pivot > forearm > hand

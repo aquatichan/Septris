@@ -57,3 +57,7 @@ Vercel). Nothing is built or installed: three.js loads from a CDN.
 next review · previous review · next shift · previous shift · review 3 ·
 show bed 6 · zoom out · play · pause · show me a catch · show me a miss ·
 show me a false alarm · why? · answer key on/off · results · start tour
+
+## Credits
+
+- Night-sky background: shader adapted from the **Galaxy** background in [React Bits](https://reactbits.dev/backgrounds/galaxy) by David Haz (MIT + Commons Clause), ported to a three.js material in `src/scene/galaxy.js`.

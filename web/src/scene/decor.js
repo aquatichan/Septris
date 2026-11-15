@@ -21,16 +21,7 @@ export function createDecor(world) {
     add(new THREE.BoxGeometry(w + 0.6, 0.08, d + 0.6), trim, x, -0.54, 0, false);
   }
 
-  // site grid that fades out with the fog
-  const grid = new THREE.GridHelper(400, 100, "#1c3a44", "#14262d");
-  grid.position.y = -0.6;
-  grid.material.transparent = true;
-  grid.material.opacity = 0.55;
-  scene.add(grid);
-  const ground = new THREE.Mesh(new THREE.PlaneGeometry(400, 400), new THREE.MeshBasicMaterial({ color: "#0a1216" }));
-  ground.rotation.x = -Math.PI / 2;
-  ground.position.y = -0.62;
-  scene.add(ground);
+  // no ground plane: the building floats in the night sky (galaxy.js)
 
   // plants
   const pot = new THREE.MeshStandardMaterial({ color: "#8d6e5a", roughness: 0.8 });
