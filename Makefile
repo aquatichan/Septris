@@ -4,7 +4,7 @@
 
 PY ?= python3
 
-.PHONY: reproduce data audit train deep familiarity blend ensemble gru-ensemble final-mix web evaluate compare secondary artifacts bundle external-audit test app api
+.PHONY: reproduce data audit train deep robust-candidates robust-gate familiarity blend ensemble gru-ensemble final-mix web evaluate compare secondary artifacts bundle external-audit test app api
 
 reproduce: audit train deep familiarity blend ensemble gru-ensemble final-mix evaluate compare secondary artifacts bundle web test
 
@@ -21,6 +21,15 @@ deep:
 	$(PY) scripts/08_temporal_gru.py
 	$(PY) scripts/08_temporal_gru.py --seed 2027
 	$(PY) scripts/08_temporal_gru.py --seed 2028
+
+# Exploratory candidates. They never overwrite the baseline GRU; run the
+# validation-only gate before any held-out evaluation.
+robust-candidates:
+	$(PY) scripts/08_temporal_gru.py --input-mode values_only --target-window early_6_12 --name gru_early_values
+	$(PY) scripts/08_temporal_gru.py --input-mode masked --target-window early_6_12 --measurement-dropout 0.15 --name gru_early_maskdrop
+
+robust-gate:
+	$(PY) scripts/17_candidate_gate.py --candidates temporal_gru,gru_early_values,gru_early_maskdrop
 
 familiarity:
 	$(PY) scripts/07_familiarity_guard.py
