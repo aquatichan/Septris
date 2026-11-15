@@ -40,8 +40,11 @@ that as an early catch.
 5. Freeze the winning name and evaluate it once on all four held-out
    train-to-test pairs. Report home and unseen-hospital results side by side,
    with paired patient-bootstrap intervals against the original GRU and the
-   pre-registered LightGBM. The exact command is
-   `make evaluate-candidate NAME=<validation-selected candidate>`.
+   pre-registered LightGBM. If the two source hospitals select different
+   candidates, use `make robust-evaluate`; it materializes the two
+   validation-selected arrays under one neutral policy name without reading
+   test labels, then runs the single held-out evaluation. If both select the
+   same candidate, `make evaluate-candidate NAME=<candidate>` is equivalent.
 
 ## What would count as success
 
