@@ -28,7 +28,10 @@ jobs:
 
   full-reproduction:
     runs-on: ubuntu-latest
-    timeout-minutes: 110
+    # Five temporal models plus a patient-bootstrap evaluation need more time
+    # than the frozen three-seed reproduction. This workflow is manual-only on
+    # main, so the longer budget is intentional and auditable.
+    timeout-minutes: 180
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -40,6 +43,8 @@ jobs:
         run: make data
       - name: Train and evaluate all models
         run: make reproduce
+      - name: Train and validation-gate robust temporal candidates
+        run: make robust-candidates robust-evaluate
       - name: Upload reproducible results
         uses: actions/upload-artifact@v4
         with:
