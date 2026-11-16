@@ -1,7 +1,7 @@
 > **Superseded.** The final Septris policy is the Platt-calibrated, validation-selected
 > blend from `scripts/09_validated_ensemble.py` (Hospital A: 20% LightGBM + 80% GRU;
-> Hospital B: 10% LightGBM + 90% GRU). Primary results at 3 reviews per shift: 26.6% (A)
-> and 31.6% (B) caught 6–12 h early. This file records the earlier exploratory
+> Hospital B: 10% LightGBM + 90% GRU). Main results at 5 reviews per shift: 33.1% (A)
+> and 39.3% (B) caught 6–12 h early (at 3 reviews: 26.6% and 31.6%). This file records the earlier exploratory
 > "higher of the two" mix and is kept for history only.
 
 # LightGBM vs the temporal GRU, and the Septris mix (post hoc)

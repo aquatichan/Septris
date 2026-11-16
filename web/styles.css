@@ -555,3 +555,6 @@ body.nursing .viewhint .fpm-exit { margin-left: 0; }
 body.paged .tour, body.paged .note { display: none !important; }
 .ed .ed-stand { margin: 0 auto 30px; }
 .ed-track i { font-size: 20px; line-height: 1; align-self: center; }
+.ed-pull { clear: none; background: rgba(14, 36, 50, 0.9); border-left: 4px solid var(--warn); border-radius: 8px; padding: 14px 18px; margin: 6px 0 18px; }
+.ed-pull .eyebrow { color: var(--warn); margin-bottom: 6px; }
+.ed-pull p { margin: 0 !important; font-size: 16.5px !important; }

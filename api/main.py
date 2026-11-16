@@ -79,9 +79,9 @@ def ingest(observation: ObservationIn):
 
 
 @app.get("/v1/queue", response_model=QueueOut)
-def queue(hospital: str, limit: int = 3, as_of: datetime | None = None):
-    if hospital not in ("A", "B") or not 1 <= limit <= 3:
-        raise HTTPException(status_code=422, detail="hospital must be A/B and limit must be 1–3")
+def queue(hospital: str, limit: int = 5, as_of: datetime | None = None):
+    if hospital not in ("A", "B") or not 1 <= limit <= 5:
+        raise HTTPException(status_code=422, detail="hospital must be A/B and limit must be 1–5")
     now = iso(as_of or datetime.now(timezone.utc))
     reference = datetime.fromisoformat(now.replace("Z", "+00:00"))
     candidates = []
@@ -103,7 +103,7 @@ def queue(hospital: str, limit: int = 3, as_of: datetime | None = None):
     candidates.sort(key=lambda x: (-x["priority_score"], x["patient_id"]))
     queued = [{**x, "queue_rank": i + 1} for i, x in enumerate(candidates[:limit])]
     return {"hospital": hospital, "limit": limit, "eligible_patients": len(candidates),
-            "queue": queued, "policy": "calibrated source-validation threshold; max 3 reviews; 12-hour review snooze"}
+            "queue": queued, "policy": "calibrated source-validation threshold; max 5 reviews per shift; 12-hour review snooze"}
 
 
 @app.get("/v1/patients/{patient_id}/timeline")

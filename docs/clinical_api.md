@@ -11,10 +11,10 @@ connected to hourly EHR observations without changing the research result.
 ## What it scores with
 
 The API serves the pre-registered **LightGBM combined** model for the chosen
-source hospital, with at most three charts per queue. It does not serve the
-later LightGBM + GRU mix shown in the 3D demo, and its queue rule (a
-calibrated minimum priority, three charts) differs from the 5-reviews-per-shift
-simulation.
+source hospital, with at most five charts per queue (matching the
+5-reviews-per-shift budget). It does not serve the later LightGBM + GRU blend
+shown in the 3D demo, and its queue rule (a calibrated minimum priority, up to
+five charts) is simpler than the shift-by-shift review simulation.
 
 Replay check (14 Nov 2026): 25 Hospital A test patients were replayed through
 the engine at three time points each (75 scores). With the dataset's own

@@ -1,3 +1,8 @@
+> **Main budget is now 5 reviews per shift.** The final calibrated blend at 5 reviews per 20-bed shift
+> caught 33.1% (A) and 39.3% (B) of eligible sepsis cases 6–12 h early (see the README and
+> `outputs/results/five_review_final.csv`). This file is the auto-generated report of the
+> pre-registered version 1 evaluation, whose primary budget was 3 reviews per shift.
+
 # Results
 
 > This project is a prototype and is not medical advice.

@@ -46,6 +46,12 @@ def main():
     demo = json.loads((ART / "demo.json").read_text())
     examples = json.loads((ART / "examples.json").read_text())
     res = pd.read_csv(ART / "results_table.csv")
+    # five reviews per shift for the final calibrated blend (scripts/19_five_review_final.py)
+    five = ROOT / "outputs/results/five_review_final.csv"
+    if five.exists():
+        f = pd.read_csv(five).assign(subgroup="all")
+        have = set(zip(res.test, res.k, res.policy, res.subgroup))
+        res = pd.concat([res, f[[(t, k, p, "all") not in have for t, k, p in zip(f.test, f.k, f.policy)]]], ignore_index=True)
 
     pids = sorted(set(beds.patient_id))
     idx = {p: i for i, p in enumerate(pids)}

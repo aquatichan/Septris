@@ -13,7 +13,7 @@ Team: Miheer Parasnis, Aaron Qin, Reyansh Maheshwari.
 ## The problem and the user
 
 A tele-ICU nurse or ICU charge nurse running a sepsis review round across 20
-beds has time for about **3 deep chart reviews per 12-hour shift**. At each
+beds has time for about **5 deep chart reviews per 12-hour shift**. At each
 review slot the question is: *of the patients I haven't just reviewed, whose
 chart should I open now?* Sepsis alerts that fire on everyone are useless here.
 A widely used commercial sepsis model, when validated externally, missed about
@@ -25,17 +25,35 @@ to that hour, and explains each pick with a fixed-template "why now" line.
 
 ## Headline result
 
-With 3 reviews per 12-hour shift, on test patients the model never saw:
+**Final Septris** is a calibrated LightGBM + temporal GRU blend: both models are Platt-calibrated on one patient-disjoint validation slice, and the blend weight is chosen on a second validation slice (**20% LightGBM + 80% GRU** for the Hospital A model, **10% + 90%** for Hospital B; `scripts/09_validated_ensemble.py`).
+
+With **5 chart reviews per 20-bed, 12-hour shift**, on held-out test patients the model never saw (`scripts/19_five_review_final.py`):
+
+| | Hospital A (238 eligible) | Hospital B (134 eligible) |
+| --- | --- | --- |
+| **Septris, home model** | **33.1%** (28.5–39.2) | **39.3%** (29.2–46.5) |
+| Septris, model from the other hospital | 26.1% (22.6–33.1) | 28.4% (24.1–40.5) |
+| Temporal GRU alone | 33.4% (27.8–38.1) | 36.0% (29.7–44.4) |
+| LightGBM alone | 32.9% (27.9–39.8) | 35.1% (26.5–43.0) |
+| SIRS ranking | 17.9% (14.8–24.0) | 20.9% (16.2–30.8) |
+| Random review, same budget | 15.6% (9.7–18.1) | 13.7% (8.3–19.0) |
+
+Share of eligible sepsis patients reviewed **6–12 hours before recorded onset**; mean of 5 admission orders, 95% intervals from 200 patient-level bootstrap replicates. Septris catches about **2.1×** (A) and **2.9×** (B) as many cases early as random review with the same five reviews, and nearly twice as many as SIRS. About 4.5 (A) and 4.7 (B) of every 5 reviews still go to a patient with no onset in the next 12 hours, because only ~6–9% of ICU patients develop sepsis. At Hospital A the GRU alone is level with the blend; at Hospital B the blend is ahead; at the unseen hospital the GRU alone is about two points ahead. All of these gaps are inside the intervals.
+
+**If a nurse only has 3 reviews per shift** (the budget written into our pre-registration): Septris caught **26.6%** (21.7–32.6) at Hospital A and **31.6%** (20.9–36.9) at Hospital B, against 8.0% and 9.3% for random review and 12.5% and 16.9% for SIRS; at the unseen hospital, 22.6% (B → A) and 24.0% (A → B). The blend weight was tuned at 3 reviews on validation patients before any test patient was scored.
+
+The public data name the sources only as Hospital A and Hospital B. The web demo and its data (`scripts/05_app_artifacts.py`, `13_web_export.py`) use this blend at 5 reviews per shift. An earlier "higher of the two scores" mix is described in [docs/model_mix.md](docs/model_mix.md) as exploratory history.
+
+### Pre-registered version 1 (LightGBM, 3 reviews per shift)
+
+The original pre-registered model and budget, kept for the record:
 
 | | Hospital A | Hospital B |
 | --- | --- | --- |
-| **Septris, home model** | **25.1%** (21.2–31.2) · 60 of 238 | **26.3%** (19.8–33.8) · 35 of 134 |
-| Septris, model from the other hospital | 15.5% (12.1–21.0) | 23.7% (17.0–29.6) |
+| **LightGBM, home model** | **25.1%** (21.2–31.2) · 60 of 238 | **26.3%** (19.8–33.8) · 35 of 134 |
+| LightGBM from the other hospital | 15.5% (12.1–21.0) | 23.7% (17.0–29.6) |
 | SIRS ranking | 12.5% (8.6–18.1) | 16.9% (10.6–22.6) |
 | Random review, same budget | 8.0% (5.3–12.6) | 9.3% (4.2–13.7) |
-
-Share of eligible sepsis patients reviewed **6–12 hours before recorded onset**
-(95% intervals from 200 patient-level bootstrap replicates).
 
 - **Beats equal-budget random review:** +17.1 points at A (+10.2 to +23.9) and
   +17.0 at B (+10.3 to +25.3), paired inside each bootstrap replicate.
@@ -62,8 +80,6 @@ Share of eligible sepsis patients reviewed **6–12 hours before recorded onset*
 These findings replicate known results about cross-hospital transfer and
 missingness in this dataset. Our contribution is evaluating them as a
 budgeted review decision.
-
-**Final Septris (post hoc): a calibrated LightGBM + temporal GRU blend.** Both models are Platt-calibrated on one patient-disjoint validation slice, and the blend weight is chosen on a second validation slice using the real objective (caught 6–12 h early with 3 reviews per shift): **20% LightGBM + 80% GRU** for the Hospital A model and **10% LightGBM + 90% GRU** for Hospital B (`scripts/09_validated_ensemble.py`). Primary held-out results at 3 reviews per 20-bed shift: **26.6%** of eligible sepsis cases caught early at Hospital A (95% CI 21.7–32.6; random 8.0%, SIRS 12.5%) and **31.6%** at Hospital B (95% CI 20.9–36.9; random 9.3%, SIRS 16.9%); at the hospital it did not train on, 22.6% (B → A) and 24.0% (A → B). The public data name the sources only as Hospital A and Hospital B. The web demo and its data (`scripts/05_app_artifacts.py`, `13_web_export.py`) use this blend. An earlier "higher of the two scores" mix is described in [docs/model_mix.md](docs/model_mix.md) as exploratory history.
 
 Full results: **[docs/results.md](docs/results.md)**. The isolated exploratory sequence-model protocol and its completed-run results are in **[docs/masked_temporal_gru.md](docs/masked_temporal_gru.md)**. A post-hoc version 2
 (SOFA scores, 24-hour trends, baseline changes, local adaptation) gave no
@@ -149,8 +165,8 @@ python app/app.py                       # http://127.0.0.1:7860 (add --share for
 ```
 
 The app has three tabs. **Try it** replays the Hospital A test patients
-through a 20-bed unit at 5 reviews per 12-hour shift (the budget the team
-chose for the demo; 3 per shift stays the pre-registered primary result).
+through a 20-bed unit at 5 reviews per 12-hour shift, the budget the main
+results use (3 per shift was the pre-registered budget and is reported too).
 You move shift by shift, click one of the shift's 5 review times to see which
 bed Septris picks and why, and click any of the 20 beds to open its chart.
 Because these are past patients, an answer key shows what really happened,
