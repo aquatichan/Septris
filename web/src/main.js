@@ -477,12 +477,9 @@ async function main() {
     goSlot(state.slot + 1, { focus: null });
   }, 500);
 
-  // start: first visit rides the elevator in (after one click, so sound can
-  // play); return visits land straight on the overview.
+  // start: every visit rides the elevator in (after one click, so sound can play).
   $("loading").hidden = true;
   set({ data, slot: TOUR });
-  const SEEN = "septris_seen_intro";
-  const seen = (() => { try { return localStorage.getItem(SEEN) === "1"; } catch { return false; } })();
   const SPEAKER = '<svg viewBox="0 0 24 24"><path d="M4 9h4l5-4v14l-5-4H4z"/>';
   const syncSound = () => {
     const on = audio.isEnabled();
@@ -512,25 +509,19 @@ async function main() {
         audio.elevatorHum(false);
         document.body.classList.remove("intro");
         $("skipIntro").hidden = true;
-        try { localStorage.setItem(SEEN, "1"); } catch { /* private window */ }
         if (openTour) set({ tourStep: 0 });
       },
     });
   }
   $("replayIntro").onclick = () => playIntro(false);
-  if (seen) {
-    rig.intro(lobby, {}); rig.skipIntro();
-    $("splash").hidden = true;
-    set({ tourStep: 0 }); // every visit starts with the tour; the Tour button replays it
-  } else {
-    document.body.classList.add("intro");
-    rig.intro(lobby, {}); rig.pause(true); // hold inside the elevator until they click
-    $("splash").hidden = false;
-    // the held elevator shot set body.intro; clear it, or playIntro's double-click guard swallows the ride
-    const enterWard = () => { $("splash").hidden = true; rig.skipIntro(); document.body.classList.remove("intro"); playIntro(true); };
-    $("enter").onclick = () => { audio.start(); enterWard(); };
-    $("enterQuiet").onclick = () => { audio.setEnabled(false); syncSound(); enterWard(); };
-  }
+  // every visit opens inside the elevator; one click starts the ride (and lets sound play)
+  document.body.classList.add("intro");
+  rig.intro(lobby, {}); rig.pause(true); // hold inside the elevator until they click
+  $("splash").hidden = false;
+  // the held elevator shot set body.intro; clear it, or playIntro's double-click guard swallows the ride
+  const enterWard = () => { $("splash").hidden = true; rig.skipIntro(); document.body.classList.remove("intro"); playIntro(true); };
+  $("enter").onclick = () => { audio.start(); enterWard(); };
+  $("enterQuiet").onclick = () => { audio.setEnabled(false); syncSound(); enterWard(); };
 }
 
 main();
